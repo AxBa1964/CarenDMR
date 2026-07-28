@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.0.2
+
+- Plattformunabhängiges Release-Werkzeug ergänzt.
+- Versionsnummer wird automatisch aus `carendmr/version.py` gelesen.
+- Release-ZIP wird im Ordner `release` erzeugt.
+- ZIP-Dateien, Logs, Git-Daten, Cache- und Build-Dateien werden ausgeschlossen.
+- Pflichtdateien werden vor der Release-Erstellung geprüft.
+- Automatische Tests für die Release-Erstellung ergänzt.
+- `.gitignore` bereinigt und um Release-Artefakte erweitert.
+
 ## 0.0.1
 
 - Projektgrundgerüst angelegt.

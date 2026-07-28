@@ -18,15 +18,21 @@ CarenDMR soll:
 CarenDMR ist kein allgemeines Digitalfunk-Framework. Andere Betriebsarten
 wie D-Star, YSF, P25 oder NXDN gehören ausdrücklich nicht zum Projektumfang.
 
-## Version 0.0.1
+## Version 0.0.2
 
-Diese erste Version stellt nur das Projektfundament bereit:
+Diese Version ergänzt das Release-Werkzeug:
 
-- feste Versionsnummer,
-- Konfigurationsdatei,
-- Protokolldatei,
-- Betriebssystem- und Python-Erkennung,
-- Standard-Talkgroup 91,
-- automatische Tests.
+```text
+python tools/create_release_zip.py
+```
+
+Das Werkzeug erzeugt:
+
+```text
+release/CarenDMR_0.0.2.zip
+```
+
+Git-Daten, Logs, Caches, virtuelle Umgebungen und bereits vorhandene
+ZIP-Dateien werden nicht in das Release übernommen.
 
 Eine BrandMeister-Verbindung ist noch nicht enthalten.
