@@ -1,4 +1,4 @@
-"""Einmaliger BrandMeister-Login-Test für CarenDMR 0.0.7."""
+"""Einmaliger BrandMeister-Login-Test mit vollständiger Paketdiagnose."""
 
 from __future__ import annotations
 
@@ -9,6 +9,9 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+
+from carendmr.version import get_version
+from carendmr.network import PacketLogger
 
 from carendmr.brandmeister import (
     BrandMeisterClient,
@@ -32,6 +35,11 @@ def main() -> int:
         action="store_true",
         help="Nach der Anmeldung keinen RPTPING/MSTPONG-Test durchführen.",
     )
+    parser.add_argument(
+        "--no-packet-dump",
+        action="store_true",
+        help="Hex-/ASCII-Ausgabe der gesendeten und empfangenen Pakete abschalten.",
+    )
     args = parser.parse_args()
 
     try:
@@ -40,7 +48,7 @@ def main() -> int:
         print(f"BrandMeister-Prüfung nicht möglich. {exc}")
         return 2
 
-    print("\nCarenDMR 0.0.7 – BrandMeister-Anmeldung")
+    print(f"\nCarenDMR {get_version()} – BrandMeister-Anmeldung")
     print("-" * 52)
     print(f"Server:   {config.host}:{config.port}")
     print(f"DMR-ID:   {config.dmr_id}")
@@ -48,7 +56,8 @@ def main() -> int:
     print("Passwort: gespeichert, wird nicht angezeigt")
     print("\nAnmeldung wird durchgeführt ...")
 
-    client = BrandMeisterClient(config)
+    packet_logger = PacketLogger(enabled=not args.no_packet_dump)
+    client = BrandMeisterClient(config, packet_logger=packet_logger)
     try:
         result = client.login()
         print("OK: BrandMeister-Anmeldung erfolgreich.")

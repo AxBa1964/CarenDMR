@@ -33,6 +33,8 @@ class ReleaseZipTests(unittest.TestCase):
         self.assertTrue(should_exclude(Path("logs/carendmr.log")))
         self.assertTrue(should_exclude(Path("carendmr/__pycache__/app.pyc")))
         self.assertTrue(should_exclude(Path("config/config.local.json")))
+        self.assertTrue(should_exclude(Path("config/brandmeister.local.json")))
+        self.assertTrue(should_exclude(Path("config/audio.local.json")))
         self.assertFalse(should_exclude(Path("carendmr/app.py")))
 
     def test_collect_release_files_skips_zip_and_logs(self):

@@ -45,6 +45,14 @@ class FakeTransport:
         self.closed = True
 
 
+class RecordingPacketLogger:
+    def __init__(self):
+        self.entries = []
+
+    def log(self, direction, protocol, packet_name, packet):
+        self.entries.append((direction, protocol, packet_name, packet))
+
+
 class BrandMeisterClientTests(unittest.TestCase):
     def setUp(self):
         FakeTransport.instances = []
@@ -127,6 +135,38 @@ class BrandMeisterClientTests(unittest.TestCase):
             client.login()
 
         self.assertTrue(FakeTransport.instances[0].closed)
+
+    @patch("carendmr.brandmeister.client.resolve_udp_endpoint")
+    def test_packet_logger_records_login_traffic(self, resolve):
+        resolve.return_value = self.endpoint
+        challenge = bytes.fromhex("11223344")
+        FakeTransport.replies = [
+            b"RPTACK" + challenge,
+            b"RPTACK",
+            b"MSTNAK",
+        ]
+        logger = RecordingPacketLogger()
+        client = BrandMeisterClient(
+            self.config,
+            transport_factory=FakeTransport,
+            packet_logger=logger,
+        )
+
+        with self.assertRaises(BrandMeisterLoginError):
+            client.login()
+
+        summary = [(entry[0], entry[2]) for entry in logger.entries]
+        self.assertEqual(
+            [
+                ("TX", "RPTL"),
+                ("RX", "RPTACK"),
+                ("TX", "RPTK"),
+                ("RX", "RPTACK"),
+                ("TX", "RPTC"),
+                ("RX", "MSTNAK"),
+            ],
+            summary,
+        )
 
 
 if __name__ == "__main__":

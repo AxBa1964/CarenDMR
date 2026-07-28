@@ -15,7 +15,11 @@ __all__ = [
     "NetworkConfigStore",
     "NetworkReceiveTimeout",
     "NetworkTransportError",
+    "PacketLogger",
     "ResolvedEndpoint",
     "UdpTransport",
+    "identify_ascii_packet",
     "resolve_udp_endpoint",
 ]
+
+from .packet_log import PacketLogger, identify_ascii_packet

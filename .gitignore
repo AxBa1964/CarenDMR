@@ -29,3 +29,6 @@ config/audio.local.json
 config/network.local.json
 config/network.example.json
 config/brandmeister.local.json
+
+# Alle lokalen Zugangsdaten und Geräteeinstellungen
+config/*.local.json

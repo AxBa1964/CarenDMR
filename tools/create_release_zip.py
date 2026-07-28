@@ -27,7 +27,7 @@ EXCLUDED_PATTERNS = {
     "*.pyo",
     "*.spec",
     "*.zip",
-    "config.local.json",
+    "*.local.json",
     "Desktop.ini",
     "Thumbs.db",
 }

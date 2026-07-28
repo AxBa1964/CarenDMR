@@ -6,7 +6,9 @@ from dataclasses import dataclass
 
 from carendmr.network import (
     NetworkReceiveTimeout,
+    PacketLogger,
     UdpTransport,
+    identify_ascii_packet,
     resolve_udp_endpoint,
 )
 
@@ -45,10 +47,12 @@ class BrandMeisterClient:
         config: BrandMeisterConfig,
         *,
         transport_factory=UdpTransport,
+        packet_logger: PacketLogger | None = None,
     ) -> None:
         config.validate()
         self.config = config
         self.transport_factory = transport_factory
+        self.packet_logger = packet_logger or PacketLogger(enabled=False)
         self.transport = None
         self.state = LoginState.DISCONNECTED
         self.endpoint = None
@@ -66,14 +70,15 @@ class BrandMeisterClient:
 
         try:
             self.state = LoginState.WAITING_LOGIN_ACK
-            self.transport.send(build_login_packet(self.config.dmr_id))
+            self._send("RPTL", build_login_packet(self.config.dmr_id))
             first = self._receive_ack(
                 "Der BrandMeister-Master hat das Login nicht bestätigt."
             )
             challenge = extract_challenge(first)
 
             self.state = LoginState.WAITING_AUTH_ACK
-            self.transport.send(
+            self._send(
+                "RPTK",
                 build_auth_packet(
                     self.config.dmr_id,
                     challenge,
@@ -85,7 +90,8 @@ class BrandMeisterClient:
             )
 
             self.state = LoginState.WAITING_CONFIG_ACK
-            self.transport.send(
+            self._send(
+                "RPTC",
                 build_config_packet(
                     dmr_id=self.config.dmr_id,
                     callsign=self.config.callsign,
@@ -123,8 +129,8 @@ class BrandMeisterClient:
             raise BrandMeisterLoginError(
                 "Ein Ping ist erst nach erfolgreicher Anmeldung möglich."
             )
-        self.transport.send(build_ping_packet(self.config.dmr_id))
-        reply = self.transport.receive()
+        self._send("RPTPING", build_ping_packet(self.config.dmr_id))
+        reply = self._receive()
         if is_master_nak(reply):
             self.state = LoginState.REJECTED
             raise BrandMeisterLoginError(
@@ -137,15 +143,31 @@ class BrandMeisterClient:
         if transport is not None:
             if send_close and self.state is LoginState.CONNECTED:
                 try:
-                    transport.send(build_close_packet(self.config.dmr_id))
+                    packet = build_close_packet(self.config.dmr_id)
+                    self.packet_logger.log("TX", "BrandMeister", "RPTCL", packet)
+                    transport.send(packet)
                 except Exception:
                     pass
             transport.close()
         self.state = LoginState.DISCONNECTED
 
+    def _send(self, packet_name: str, packet: bytes) -> None:
+        self.packet_logger.log("TX", "BrandMeister", packet_name, packet)
+        self.transport.send(packet)
+
+    def _receive(self) -> bytes:
+        packet = self.transport.receive()
+        self.packet_logger.log(
+            "RX",
+            "BrandMeister",
+            identify_ascii_packet(packet),
+            packet,
+        )
+        return packet
+
     def _receive_ack(self, message: str) -> bytes:
         try:
-            packet = self.transport.receive()
+            packet = self._receive()
         except NetworkReceiveTimeout as exc:
             raise BrandMeisterLoginError(
                 f"{message} Das Zeitlimit wurde überschritten."

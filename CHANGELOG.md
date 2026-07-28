@@ -1,3 +1,12 @@
+# 0.0.7.2
+
+- Protokollunabhängigen Paketlogger mit TX/RX, Länge, Hexdump und ASCII-Darstellung ergänzt.
+- BrandMeister-Client protokolliert RPTL, RPTK, RPTC, RPTPING, RPTCL sowie alle Antworten.
+- `tools/brandmeister_check.py` zeigt standardmäßig den vollständigen Paketdump und liest die Versionsnummer zentral ein.
+- Schalter `--no-packet-dump` für eine kompakte Ausgabe ergänzt.
+- Release-Erzeugung schließt jetzt ausnahmslos alle `config/*.local.json` aus.
+- Tests für Paketlogger, Paketerkennung, Clientintegration und Geheimnisschutz ergänzt.
+
 # 0.0.7.1
 
 - RPTC-Koordinatenformat bytegenau an DroidStar angepasst.

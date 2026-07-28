@@ -1,3 +1,31 @@
+# Installation und Prüfung CarenDMR 0.0.7.2
+
+## 1. Update einspielen
+
+ZIP in einen getrennten Ordner entpacken und den Inhalt in das Projektverzeichnis kopieren. Vorhandene Dateien ersetzen. Die lokale Datei `config\brandmeister.local.json` bleibt erhalten, weil sie nicht im Update enthalten ist.
+
+## 2. Tests
+
+```powershell
+python -m unittest discover -s tests -v
+```
+
+## 3. BrandMeister-Paketdiagnose
+
+```powershell
+python tools\brandmeister_check.py
+```
+
+Die vollständige Ausgabe ab `[TX] BrandMeister RPTL` bis `[RX] BrandMeister MSTNAK` kopieren. Besonders wichtig ist der komplette Block `[TX] BrandMeister RPTC (302 Bytes)`.
+
+## 4. Optional kompakte Ausgabe
+
+```powershell
+python tools\brandmeister_check.py --no-packet-dump
+```
+
+---
+
 # DEPLOY – CarenDMR 0.0.7.1
 
 Alle Schritte in dieser Reihenfolge ausführen.
