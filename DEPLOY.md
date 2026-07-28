@@ -1,31 +1,3 @@
-# Installation und Prüfung CarenDMR 0.0.7.2
-
-## 1. Update einspielen
-
-ZIP in einen getrennten Ordner entpacken und den Inhalt in das Projektverzeichnis kopieren. Vorhandene Dateien ersetzen. Die lokale Datei `config\brandmeister.local.json` bleibt erhalten, weil sie nicht im Update enthalten ist.
-
-## 2. Tests
-
-```powershell
-python -m unittest discover -s tests -v
-```
-
-## 3. BrandMeister-Paketdiagnose
-
-```powershell
-python tools\brandmeister_check.py
-```
-
-Die vollständige Ausgabe ab `[TX] BrandMeister RPTL` bis `[RX] BrandMeister MSTNAK` kopieren. Besonders wichtig ist der komplette Block `[TX] BrandMeister RPTC (302 Bytes)`.
-
-## 4. Optional kompakte Ausgabe
-
-```powershell
-python tools\brandmeister_check.py --no-packet-dump
-```
-
----
-
 # DEPLOY – CarenDMR 0.0.7.1
 
 Alle Schritte in dieser Reihenfolge ausführen.
@@ -201,3 +173,13 @@ nothing to commit, working tree clean
 0.0.7 ist abgeschlossen, wenn alle Tests erfolgreich sind und der reale
 Login-Test entweder erfolgreich endet oder eine eindeutig auswertbare
 BrandMeister-Fehlermeldung liefert.
+
+## BrandMeister-Referenztest 0.0.7.3
+
+Nach dem vollständigen Testlauf ausführen:
+
+```powershell
+python tools\brandmeister_reference_check.py
+```
+
+Der Test verwendet das lokale Hotspot Security Password, überschreibt die lokale JSON-Datei aber nicht. Entscheidend ist, ob auf das 302-Byte-RPTC ein `RPTACK` statt `MSTNAK` folgt.

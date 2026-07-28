@@ -1,11 +1,19 @@
-# 0.0.7.2
+# Changelog
 
-- Protokollunabhängigen Paketlogger mit TX/RX, Länge, Hexdump und ASCII-Darstellung ergänzt.
-- BrandMeister-Client protokolliert RPTL, RPTK, RPTC, RPTPING, RPTCL sowie alle Antworten.
-- `tools/brandmeister_check.py` zeigt standardmäßig den vollständigen Paketdump und liest die Versionsnummer zentral ein.
-- Schalter `--no-packet-dump` für eine kompakte Ausgabe ergänzt.
-- Release-Erzeugung schließt jetzt ausnahmslos alle `config/*.local.json` aus.
-- Tests für Paketlogger, Paketerkennung, Clientintegration und Geheimnisschutz ergänzt.
+## 0.0.7.5 – Freie RPTC-Kennungen testen
+
+- `brandmeister_check.py` um `--software-value` und `--package-value` erweitert.
+- Beliebige Software- und Package-IDs können einzeln gegen das akzeptierte Referenzprofil getestet werden.
+- Gegenseitig widersprüchliche Parameter werden mit einer verständlichen Fehlermeldung abgewiesen.
+- Zusätzliche Regressionstests für frei gewählte Kennungen ergänzt.
+
+## 0.0.7.4 – BrandMeister-RPTC-Diagnose
+
+- `tools/brandmeister_check.py` um ein reproduzierbares DroidStar-Referenzprofil erweitert.
+- Einzeltests für Software-ID, Package-ID, Beschreibung und URL ergänzt.
+- Aktives RPTC-Profil wird vor dem Login vollständig angezeigt.
+- Lokales Standardprofil bleibt ohne Parameter unverändert.
+- 62 automatisierte Tests erfolgreich.
 
 # 0.0.7.1
 
@@ -55,3 +63,9 @@
 ## 0.0.1 – Projektgrundgerüst
 
 - Projektstart
+
+## 0.0.7.3 – BrandMeister-Referenztest
+
+- Neuer Referenztest mit den exakt aus dem funktionierenden DroidStar-Mitschnitt ermittelten RPTC-Metadaten.
+- Der Test verändert `config/brandmeister.local.json` nicht und übernimmt daraus nur Zugangsdaten und Rufzeichen.
+- Exakte Referenzwerte: leere Beschreibung, `www.qrz.com`, `20181107_Pi-Star`, `MMDVM_MMDVM_HS_Hat`, 52.36999 / 10.47.
