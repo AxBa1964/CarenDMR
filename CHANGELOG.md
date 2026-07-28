@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.3
+
+- Offiziellen DroidStar-DMR-Quellcode analysiert.
+- BrandMeister-/MMDVM-Anmeldeablauf dokumentiert.
+- DMRD-Paketstruktur und RX-/TX-Pipeline dokumentiert.
+- Zielarchitektur für CarenDMR festgelegt.
+- Nicht benötigte DroidStar-Komponenten abgegrenzt.
+- `docs/ARCHITECTURE.md` ergänzt.
+- `docs/DECISIONS.md` ergänzt.
+- Versionsnummer auf 0.0.3 erhöht.
+
 ## 0.0.2
 
 - Plattformunabhängiges Release-Werkzeug ergänzt.

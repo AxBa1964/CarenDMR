@@ -1,4 +1,4 @@
-# CarenDMR 0.0.2 – Aktualisierung und Prüfung unter Windows
+# CarenDMR 0.0.3 – Aktualisierung und Prüfung unter Windows
 
 Projektpfad:
 
@@ -6,47 +6,27 @@ Projektpfad:
 C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 ```
 
-## 1. Sicherheitsprüfung des aktuellen Git-Standes
+## 1. In das Projekt wechseln
 
 ```powershell
 cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
+```
+
+## 2. Aktuellen Git-Stand prüfen
+
+```powershell
 git status
+git log --oneline -3
 ```
 
-Der bisherige Stand 0.0.1 muss bereits committed sein.
+Version 0.0.2 muss committed sein und der Arbeitsbaum sollte sauber sein.
 
-## 2. ZIP-Datei aus Git entfernen
+## 3. Update übernehmen
 
-Dieser Schritt ist nur erforderlich, wenn `CarenDMR_0.0.1.zip` noch von Git
-verwaltet wird:
+Den Inhalt des Update-Pakets über den vorhandenen Projektordner kopieren.
+Vorhandene Dateien ersetzen.
 
-```powershell
-git rm --cached CarenDMR_0.0.1.zip
-```
-
-Die lokale ZIP-Datei kann danach gelöscht werden. Künftige ZIP-Dateien werden
-durch `.gitignore` automatisch ignoriert.
-
-## 3. Dateien aus Version 0.0.2 übernehmen
-
-Den Inhalt des bereitgestellten Pakets über den vorhandenen Projektordner
-kopieren. Vorhandene Dateien ersetzen.
-
-`main.py` muss weiterhin direkt in diesem Ordner liegen:
-
-```text
-C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
-```
-
-## 4. Python-Version prüfen
-
-```powershell
-python --version
-```
-
-Erwartet wird Python 3.12 oder neuer.
-
-## 5. Alle Tests ausführen
+## 4. Tests ausführen
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -59,7 +39,7 @@ Ran 8 tests
 OK
 ```
 
-## 6. CarenDMR starten
+## 5. Anwendung starten
 
 ```powershell
 python main.py
@@ -68,11 +48,19 @@ python main.py
 Erwartete Kernausgabe:
 
 ```text
-CarenDMR
-Version             : 0.0.2
+Version             : 0.0.3
 Standard-Talkgroup  : 91
 Status              : Grundsystem bereit
 ```
+
+## 6. Neue Dokumente prüfen
+
+```powershell
+notepad docs\ARCHITECTURE.md
+notepad docs\DECISIONS.md
+```
+
+Beide Dateien müssen vorhanden und lesbar sein.
 
 ## 7. Release-ZIP erzeugen
 
@@ -80,63 +68,28 @@ Status              : Grundsystem bereit
 python tools\create_release_zip.py
 ```
 
-Erwartete Ausgabe beginnt mit:
+Erwartete Datei:
 
 ```text
-Release erstellt
-----------------------------------------
-Version : 0.0.2
+release\CarenDMR_0.0.3.zip
 ```
 
-Die erzeugte Datei befindet sich hier:
-
-```text
-release\CarenDMR_0.0.2.zip
-```
-
-## 8. Inhalt der ZIP-Datei prüfen
-
-Die ZIP-Datei darf insbesondere nicht enthalten:
-
-```text
-.git
-logs
-release
-__pycache__
-.venv
-CarenDMR_0.0.1.zip
-```
-
-Sie muss mindestens enthalten:
-
-```text
-main.py
-README.md
-DEPLOY.md
-CHANGELOG.md
-RELEASE_INFO.md
-carendmr\version.py
-config\config.json
-tools\create_release_zip.py
-```
-
-## 9. Git-Status prüfen
+## 8. Git-Status prüfen
 
 ```powershell
 git status
 ```
 
-Die erzeugte ZIP-Datei unter `release` darf nicht als unversionierte Datei
-angezeigt werden.
+Die Datei unter `release` darf nicht angezeigt werden.
 
-## 10. Version 0.0.2 committen
+## 9. Version committen
 
 ```powershell
 git add .
-git commit -m "CarenDMR 0.0.2 Release-Werkzeug"
+git commit -m "CarenDMR 0.0.3 DroidStar Architektur-Analyse"
 ```
 
-## 11. Abschlussprüfung
+## 10. Abschlussprüfung
 
 ```powershell
 git status

@@ -1,25 +1,30 @@
-# Release 0.0.2
+# Release 0.0.3
 
 ## Ziel
 
-Reproduzierbare Release-Pakete erzeugen, ohne ZIP-Dateien oder andere
-Build-Artefakte im Git-Repository zu speichern.
+Die für CarenDMR relevanten Bestandteile des offiziellen DroidStar-
+DMR-Quellcodes verstehen und eine bewusst kleine Zielarchitektur festlegen.
 
 ## Enthalten
 
-- `tools/create_release_zip.py`
-- automatische Ermittlung der Versionsnummer
-- Prüfung der Pflichtdateien
-- Ausschluss von Logs, Git-Daten, Caches und vorhandenen ZIP-Dateien
-- Ausgabe nach `release/CarenDMR_<Version>.zip`
-- automatische Tests für das Release-Werkzeug
+- dokumentierter BrandMeister-Verbindungsablauf
+- dokumentierte DMRD-Paketstruktur
+- dokumentierter Empfangs- und Sendepfad
+- Trennung von Netzwerk, DMR-Rahmen, Vocoder und Audio
+- Architekturentscheidungen
+- klare Abgrenzung aller nicht benötigten Betriebsarten
+
+## Ergebnis
+
+CarenDMR wird kein verkleinertes DroidStar und keine allgemeine
+Digitalfunk-Plattform. Es wird ein eigenständiger BrandMeister-DMR-Client.
 
 ## Noch nicht enthalten
 
-- Mikrofon- und Lautsprechererkennung
+- Audio-Geräteerkennung
 - Audio-Test
 - TTS
 - PTT
-- BrandMeister
-- DMR-Audio
+- echte BrandMeister-Verbindung
+- AMBE-Verarbeitung
 - USB-Bedieneinheit
