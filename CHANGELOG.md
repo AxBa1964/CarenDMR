@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.0.7.6 – Eigene BrandMeister-Kennung
+
+- Produktive Software-ID auf `20260728_CarenDMR` gesetzt.
+- Produktive Package-ID auf `MMDVM_CarenDMR_PC` gesetzt.
+- Beschreibung auf `CarenDMR Digital Voice Client` gesetzt.
+- Konfigurationsprüfung für die experimentell bestätigten BrandMeister-Formate ergänzt.
+- Vollständige Testmatrix in `docs/BRANDMEISTER_COMPATIBILITY.md` dokumentiert.
+- Diagnoseparameter aus 0.0.7.5 bleiben erhalten.
+
 ## 0.0.7.5 – Freie RPTC-Kennungen testen
 
 - `brandmeister_check.py` um `--software-value` und `--package-value` erweitert.

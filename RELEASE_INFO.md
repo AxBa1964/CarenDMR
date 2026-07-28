@@ -1,5 +1,14 @@
-# CarenDMR 0.0.7.5
+# CarenDMR 0.0.7.6
 
-Diagnose-Release zum gezielten Test frei gewählter Software- und Package-IDs im sonst unveränderten, von BrandMeister akzeptierten RPTC-Referenzprofil.
+Produktiver BrandMeister-Kompatibilitätsstand mit eigener, erfolgreich abgeleiteter
+CarenDMR-Kennung.
 
-Teststatus: 64 Tests erfolgreich.
+```text
+Software-ID: 20260728_CarenDMR
+Package-ID:  MMDVM_CarenDMR_PC
+Description: CarenDMR Digital Voice Client
+```
+
+Die Diagnoseparameter für frei wählbare RPTC-Kennungen bleiben erhalten.
+
+Teststatus: 67 Tests erfolgreich.

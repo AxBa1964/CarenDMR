@@ -7,10 +7,10 @@
   "latitude": 0.0,
   "longitude": 0.0,
   "location": "",
-  "description": "CarenDMR",
+  "description": "CarenDMR Digital Voice Client",
   "frequency_hz": 0,
   "url": "",
-  "software_id": "CarenDMR 0.0.7",
-  "package_id": "CarenDMR",
+  "software_id": "20260728_CarenDMR",
+  "package_id": "MMDVM_CarenDMR_PC",
   "timeout_seconds": 5.0
 }

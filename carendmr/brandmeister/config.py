@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -18,11 +19,11 @@ class BrandMeisterConfig:
     latitude: float = 0.0
     longitude: float = 0.0
     location: str = ""
-    description: str = "CarenDMR"
+    description: str = "CarenDMR Digital Voice Client"
     frequency_hz: int = 0
     url: str = ""
-    software_id: str = "CarenDMR"
-    package_id: str = "CarenDMR"
+    software_id: str = "20260728_CarenDMR"
+    package_id: str = "MMDVM_CarenDMR_PC"
     timeout_seconds: float = 5.0
 
     def validate(self) -> None:
@@ -45,6 +46,15 @@ class BrandMeisterConfig:
             raise ValueError("Der Längengrad muss zwischen -180 und 180 liegen.")
         if self.frequency_hz < 0 or self.frequency_hz > 999_999_999:
             raise ValueError("Die Frequenz muss zwischen 0 und 999999999 liegen.")
+        if not re.fullmatch(r"\d{8}_.+", self.software_id):
+            raise ValueError(
+                "Die Software-ID muss dem BrandMeister-Format "
+                "JJJJMMTT_Name entsprechen, zum Beispiel 20260728_CarenDMR."
+            )
+        if not self.package_id.startswith("MMDVM"):
+            raise ValueError(
+                "Die Package-ID muss für BrandMeister mit MMDVM beginnen."
+            )
         if self.timeout_seconds <= 0:
             raise ValueError("Das Zeitlimit muss größer als null sein.")
 
@@ -62,11 +72,11 @@ class BrandMeisterConfig:
             latitude=float(data.get("latitude", 0.0)),
             longitude=float(data.get("longitude", 0.0)),
             location=str(data.get("location", "")),
-            description=str(data.get("description", "CarenDMR")),
+            description=str(data.get("description", "CarenDMR Digital Voice Client")),
             frequency_hz=int(data.get("frequency_hz", 0)),
             url=str(data.get("url", "")),
-            software_id=str(data.get("software_id", "CarenDMR")),
-            package_id=str(data.get("package_id", "CarenDMR")),
+            software_id=str(data.get("software_id", "20260728_CarenDMR")),
+            package_id=str(data.get("package_id", "MMDVM_CarenDMR_PC")),
             timeout_seconds=float(data.get("timeout_seconds", 5.0)),
         )
         config.validate()
