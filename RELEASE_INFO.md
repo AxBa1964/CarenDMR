@@ -1,37 +1,50 @@
-# Release-Information – CarenDMR 0.0.4
+# Release-Information – CarenDMR 0.0.5.1
 
 ## Ziel
 
-Version 0.0.4 schafft die erste ausführbare Architekturgrundlage für alle
-späteren Komponenten. Sie verbindet noch kein Funknetz und greift noch nicht
-auf Audiohardware zu.
+Version 0.0.5.1 behebt ausschließlich den fehlerhaften direkten Start des
+Audio-Werkzeugs.
 
-## Enthalten
+## Behobener Fehler
 
-- `carendmr/core/events.py`
-- `carendmr/core/status.py`
-- `carendmr/accessibility/messages.py`
-- `carendmr/accessibility/speech.py`
-- `docs/TECHNICAL_DESIGN.md`
-- erweiterte `docs/DECISIONS.md`
-- neue automatisierte Tests
+Dieser Befehl aus `DEPLOY.md` schlug in 0.0.5 fehl:
+
+```powershell
+python tools\audio_check.py --diagnose-only
+```
+
+Fehlermeldung:
+
+```text
+ModuleNotFoundError: No module named 'carendmr'
+```
+
+Das Werkzeug ergänzt nun vor dem Paketimport automatisch das
+Projektverzeichnis im Python-Suchpfad.
 
 ## Abnahmekriterien
 
-- Alle bisherigen und neuen Tests laufen erfolgreich.
-- `python main.py` startet weiterhin wie zuvor.
-- EventBus verteilt Ereignisse genau einmal je Registrierung.
-- StatusManager veröffentlicht nur echte Änderungen.
-- Statusänderungen können unabhängig von echter TTS verständlich ausgegeben
-  werden.
-- Es wird keine neue externe Python-Abhängigkeit benötigt.
-- Nach dem Commit ist der Git-Arbeitsbaum sauber.
+Beide Startvarianten funktionieren:
+
+```powershell
+python tools\audio_check.py --help
+python -m tools.audio_check --help
+```
+
+Danach funktionieren auch:
+
+```powershell
+python tools\audio_check.py --diagnose-only
+python tools\audio_check.py
+```
+
+Alle automatisierten Tests enden mit `OK`.
 
 ## Bewusst nicht enthalten
 
-- Audio-Gerätesuche
-- Audio-Selbsttest
-- echte Sprachausgabe
-- BrandMeister-Verbindung
-- DMR-Pakete
-- Vocoder
+- keine Änderung der Geräteauswahl
+- keine Änderung des Aufnahme-/Wiedergabeablaufs
+- kein Netzwerk
+- kein BrandMeister
+- kein DMR
+- kein Vocoder

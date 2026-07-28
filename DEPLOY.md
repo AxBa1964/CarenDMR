@@ -1,6 +1,6 @@
-# DEPLOY – CarenDMR 0.0.4
+# DEPLOY – CarenDMR 0.0.5.1
 
-Diese Anleitung vollständig und in der angegebenen Reihenfolge ausführen.
+Alle Schritte in dieser Reihenfolge ausführen.
 
 Projektpfad:
 
@@ -8,127 +8,128 @@ Projektpfad:
 C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 ```
 
-## 1. In das Projekt wechseln
+## 1. Projekt öffnen und Ausgangszustand prüfen
 
 ```powershell
 cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
-```
-
-## 2. Sauberen Ausgangszustand prüfen
-
-```powershell
 git status
 ```
 
-Vor dem Einspielen muss erscheinen:
+Vor dem Update muss erscheinen:
 
 ```text
 nothing to commit, working tree clean
 ```
 
-Falls dort bereits andere Änderungen stehen, das Update nicht darüberkopieren.
+Falls 0.0.5 noch nicht committed wurde, zuerst den dortigen Arbeitsstand
+abschließen.
 
-## 3. Update entpacken
+## 2. Update einspielen
 
-`CarenDMR_0.0.4_Update.zip` entpacken und den enthaltenen Ordnerinhalt direkt
-über das vorhandene Projekt kopieren.
+`CarenDMR_0.0.5.1_Update.zip` entpacken und den Inhalt direkt über das
+vorhandene Projekt kopieren. Vorhandene Dateien ersetzen.
 
-Dabei vorhandene Dateien ersetzen lassen.
-
-Wichtig: Nicht den Ordner `CarenDMR_0.0.4_Update` als zusätzlichen Unterordner
-in das Projekt kopieren. Im Projekt müssen danach beispielsweise diese Pfade
-existieren:
-
-```text
-CarenDMR\carendmr\core\events.py
-CarenDMR\carendmr\accessibility\speech.py
-CarenDMR\docs\TECHNICAL_DESIGN.md
-```
-
-## 4. Änderungen kontrollieren
+## 3. Änderungen kontrollieren
 
 ```powershell
 git status
 ```
 
-Erwartet werden geänderte Dokumentations- und Versionsdateien sowie neue
-Dateien unter:
+Erwartete geänderte beziehungsweise neue Dateien:
 
 ```text
-carendmr\core
-carendmr\accessibility
-tests
-docs
+carendmr\version.py
+tools\audio_check.py
+tests\test_audio_check_entrypoint.py
+CHANGELOG.md
+RELEASE_INFO.md
+DEPLOY.md
 ```
 
-Dieser nicht saubere Arbeitsbaum ist jetzt korrekt, weil das Update noch nicht
-committed wurde.
-
-## 5. Alle Tests ausführen
+## 4. Alle Tests ausführen
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-Alle Tests müssen mit `OK` enden. Die genaue Testanzahl kann höher sein als in
-diesem Update, weil die Tests der Vorversionen erhalten bleiben.
+Alle Tests müssen mit `OK` enden.
 
-Bei einem Fehler nicht committen.
+## 5. Direkten Skriptstart prüfen
 
-## 6. Anwendung starten
+```powershell
+python tools\audio_check.py --help
+```
+
+Der Befehl muss die Hilfe anzeigen. Diese Fehlermeldung darf nicht mehr
+auftreten:
+
+```text
+ModuleNotFoundError: No module named 'carendmr'
+```
+
+## 6. Modulstart zusätzlich prüfen
+
+```powershell
+python -m tools.audio_check --help
+```
+
+Auch dieser Befehl muss weiterhin funktionieren.
+
+## 7. Audio-Diagnose direkt starten
+
+```powershell
+python tools\audio_check.py --diagnose-only
+```
+
+Bei Mikrofon und Wiedergabegerät jeweils Enter drücken, um die bereits
+gespeicherten Geräte zu verwenden.
+
+Erwartetes Ende:
+
+```text
+Audio-Diagnose abgeschlossen.
+```
+
+## 8. Versionsstart prüfen
 
 ```powershell
 python main.py
 ```
 
-Die Anwendung muss weiterhin normal starten und Version `0.0.4` melden.
-Danach das Programm regulär beenden.
+Die Anwendung muss Version `0.0.5.1` melden. Danach regulär beenden.
 
-## 7. Optionaler Core-Selbsttest
-
-```powershell
-python -c "from carendmr.core import EventBus, StatusManager, AppStatus; from carendmr.accessibility import SpeechManager, ConsoleSpeechOutput; b=EventBus(); s=SpeechManager(b, ConsoleSpeechOutput()); m=StatusManager(b); s.start(); m.set_status(AppStatus.READY)"
-```
-
-Erwartete Ausgabe:
-
-```text
-CarenDMR ist bereit.
-```
-
-## 8. Release-ZIP erzeugen
+## 9. Release-ZIP erzeugen
 
 ```powershell
 python tools\create_release_zip.py
 ```
 
-Erwartet wird:
+Erwartet:
 
 ```text
-release\CarenDMR_0.0.4.zip
+release\CarenDMR_0.0.5.1.zip
 ```
 
-## 9. Änderungen für den Commit vormerken
+## 10. Änderungen vormerken
 
 ```powershell
 git add .
 git status
 ```
 
-Alle Dateien der Version 0.0.4 müssen jetzt unter `Changes to be committed`
-stehen.
+Kontrollieren:
 
-Kontrollieren, dass weder Logdateien noch ein fremdes ZIP im Projektstamm
-vorgemerkt sind. Das Release-ZIP im ausgeschlossenen Release-Ordner darf nicht
-im Commit erscheinen.
+- die sechs Update-Dateien sind vorgemerkt
+- `config/audio.local.json` ist nicht enthalten
+- Release-ZIP und Logs sind nicht enthalten
 
-## 10. Commit erstellen
+## 11. Commit erstellen
 
 ```powershell
-git commit -m "CarenDMR 0.0.4 Core und technisches Design"
+git commit -m "CarenDMR 0.0.5.1 Audio-Startfehler behoben"
 ```
 
-## 11. Abschluss prüfen
+## 12. Abschluss prüfen
 
 ```powershell
 git status
@@ -142,5 +143,5 @@ nothing to commit, working tree clean
 
 ## Ergebnis
 
-Version 0.0.4 ist abgeschlossen. Die nächste Version 0.0.5 darf anschließend
-die echte Audio-Geräteerkennung auf Basis von `sounddevice` implementieren.
+0.0.5.1 ist abgeschlossen, wenn beide Startvarianten funktionieren, alle Tests
+erfolgreich sind und der Arbeitsbaum nach dem Commit sauber ist.

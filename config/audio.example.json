@@ -1,0 +1,12 @@
+{
+  "input": {
+    "name": "Beispielmikrofon",
+    "host_api": "Windows WASAPI",
+    "direction": "input"
+  },
+  "output": {
+    "name": "Beispiellautsprecher",
+    "host_api": "Windows WASAPI",
+    "direction": "output"
+  }
+}

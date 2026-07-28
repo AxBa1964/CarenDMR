@@ -25,3 +25,4 @@ Desktop.ini
 
 # Lokale Konfiguration
 config/config.local.json
+config/audio.local.json
