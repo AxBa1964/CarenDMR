@@ -26,3 +26,6 @@ Desktop.ini
 # Lokale Konfiguration
 config/config.local.json
 config/audio.local.json
+config/network.local.json
+config/network.example.json
+config/brandmeister.local.json

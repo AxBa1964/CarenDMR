@@ -1,50 +1,37 @@
-# Release-Information – CarenDMR 0.0.5.1
+# Release-Information – CarenDMR 0.0.7.1
 
 ## Ziel
 
-Version 0.0.5.1 behebt ausschließlich den fehlerhaften direkten Start des
-Audio-Werkzeugs.
+0.0.7.1 korrigiert die bytegenaue Formatierung von Breiten- und Längengrad im RPTC-Stationsdatenpaket.
 
-## Behobener Fehler
+## Erfolgsfall
 
-Dieser Befehl aus `DEPLOY.md` schlug in 0.0.5 fehl:
-
-```powershell
-python tools\audio_check.py --diagnose-only
-```
-
-Fehlermeldung:
+Das Werkzeug meldet:
 
 ```text
-ModuleNotFoundError: No module named 'carendmr'
+OK: BrandMeister-Anmeldung erfolgreich.
+OK: MSTPONG empfangen.
+UDP-Kanal geschlossen.
 ```
 
-Das Werkzeug ergänzt nun vor dem Paketimport automatisch das
-Projektverzeichnis im Python-Suchpfad.
+## Fehlerfälle
 
-## Abnahmekriterien
+Verständliche Meldungen werden ausgegeben bei:
 
-Beide Startvarianten funktionieren:
+- DNS-Fehler
+- UDP-Timeout
+- `MSTNAK`
+- unerwarteter Antwort
+- falscher oder unvollständiger Konfiguration
 
-```powershell
-python tools\audio_check.py --help
-python -m tools.audio_check --help
-```
+## Nicht enthalten
 
-Danach funktionieren auch:
+- dauerhaft verbundener Client
+- automatischer Wiederverbindungsversuch
+- DMRD-Daten
+- AMBE-/Vocoder-Verarbeitung
+- Sprachempfang oder Sprachsendung
 
-```powershell
-python tools\audio_check.py --diagnose-only
-python tools\audio_check.py
-```
+## Fehlerkorrektur 0.0.7.1
 
-Alle automatisierten Tests enden mit `OK`.
-
-## Bewusst nicht enthalten
-
-- keine Änderung der Geräteauswahl
-- keine Änderung des Aufnahme-/Wiedergabeablaufs
-- kein Netzwerk
-- kein BrandMeister
-- kein DMR
-- kein Vocoder
+Version 0.0.7 verwendete vier Nachkommastellen. DroidStar verwendet sechs Nachkommastellen und übernimmt anschließend exakt 8 beziehungsweise 9 Bytes. Die abweichenden Felder führten zu `MSTNAK`.

@@ -1,4 +1,4 @@
-# DEPLOY – CarenDMR 0.0.5.1
+# DEPLOY – CarenDMR 0.0.7.1
 
 Alle Schritte in dieser Reihenfolge ausführen.
 
@@ -8,45 +8,51 @@ Projektpfad:
 C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 ```
 
-## 1. Projekt öffnen und Ausgangszustand prüfen
+## 1. Ausgangszustand prüfen
 
 ```powershell
 cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 git status
 ```
 
-Vor dem Update muss erscheinen:
+Erwartet:
 
 ```text
 nothing to commit, working tree clean
 ```
 
-Falls 0.0.5 noch nicht committed wurde, zuerst den dortigen Arbeitsstand
-abschließen.
-
 ## 2. Update einspielen
 
-`CarenDMR_0.0.5.1_Update.zip` entpacken und den Inhalt direkt über das
-vorhandene Projekt kopieren. Vorhandene Dateien ersetzen.
+`CarenDMR_0.0.7.1_Update.zip` entpacken und den Inhalt direkt über das bestehende
+Projekt kopieren. Vorhandene Dateien ersetzen.
 
-## 3. Änderungen kontrollieren
+Die lokale Datei `config\\brandmeister.local.json` bleibt dabei unverändert.
+
+## 3. Lokale Konfiguration von Git ausschließen
+
+`.gitignore` öffnen:
+
+```powershell
+notepad .gitignore
+```
+
+Diese Zeile ergänzen, falls sie fehlt:
+
+```text
+config/brandmeister.local.json
+```
+
+Speichern und schließen.
+
+## 4. Änderungen prüfen
 
 ```powershell
 git status
 ```
 
-Erwartete geänderte beziehungsweise neue Dateien:
+Die neue lokale Konfiguration darf später nicht in Git erscheinen.
 
-```text
-carendmr\version.py
-tools\audio_check.py
-tests\test_audio_check_entrypoint.py
-CHANGELOG.md
-RELEASE_INFO.md
-DEPLOY.md
-```
-
-## 4. Alle Tests ausführen
+## 5. Alle Tests ausführen
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -54,51 +60,71 @@ python -m unittest discover -s tests -v
 
 Alle Tests müssen mit `OK` enden.
 
-## 5. Direkten Skriptstart prüfen
+## 6. BrandMeister-Konfiguration erzeugen
 
 ```powershell
-python tools\audio_check.py --help
+Copy-Item config\brandmeister.example.json config\brandmeister.local.json
+notepad config\brandmeister.local.json
 ```
 
-Der Befehl muss die Hilfe anzeigen. Diese Fehlermeldung darf nicht mehr
-auftreten:
+Folgende Werte eintragen:
 
-```text
-ModuleNotFoundError: No module named 'carendmr'
-```
+- `host`: der von Dir verwendete BrandMeister-Master
+- `port`: normalerweise `62031`
+- `dmr_id`: Deine persönliche numerische DMR-ID
+- `password`: das in BrandMeister SelfCare gesetzte **Hotspot Security Password**
+- `callsign`: Dein Rufzeichen, bei Dir `DO1DPL`
 
-## 6. Modulstart zusätzlich prüfen
+Breiten-/Längengrad, Ort und URL dürfen für den ersten Test leer beziehungsweise
+null bleiben.
+
+Wichtig: Nicht das normale BrandMeister-Webkennwort verwenden.
+
+Speichern und Editor schließen.
+
+## 7. Git-Ausschluss kontrollieren
 
 ```powershell
-python -m tools.audio_check --help
+git status
 ```
 
-Auch dieser Befehl muss weiterhin funktionieren.
+`config/brandmeister.local.json` darf nicht angezeigt werden.
 
-## 7. Audio-Diagnose direkt starten
+## 8. Einmaligen Login-Test starten
 
 ```powershell
-python tools\audio_check.py --diagnose-only
+python tools\brandmeister_check.py
 ```
 
-Bei Mikrofon und Wiedergabegerät jeweils Enter drücken, um die bereits
-gespeicherten Geräte zu verwenden.
+Das Werkzeug:
 
-Erwartetes Ende:
+1. meldet sich an,
+2. prüft `RPTPING`/`MSTPONG`,
+3. sendet `RPTCL`,
+4. schließt den UDP-Kanal.
 
-```text
-Audio-Diagnose abgeschlossen.
+Es sendet noch keine Sprache und keine DMRD-Funkdaten.
+
+## 9. Bei Timeout ohne Ping erneut nur den Login prüfen
+
+Nur falls die Anmeldung erfolgreich gemeldet wird, aber die Ping-Prüfung
+scheitert:
+
+```powershell
+python tools\brandmeister_check.py --login-only
 ```
 
-## 8. Versionsstart prüfen
+Die vollständige Ausgabe für die Fehleranalyse aufbewahren.
+
+## 10. Versionsstart prüfen
 
 ```powershell
 python main.py
 ```
 
-Die Anwendung muss Version `0.0.5.1` melden. Danach regulär beenden.
+Die Anwendung muss Version `0.0.7.1` melden. Danach regulär beenden.
 
-## 9. Release-ZIP erzeugen
+## 11. Release-ZIP erzeugen
 
 ```powershell
 python tools\create_release_zip.py
@@ -107,10 +133,10 @@ python tools\create_release_zip.py
 Erwartet:
 
 ```text
-release\CarenDMR_0.0.5.1.zip
+release\CarenDMR_0.0.7.1.zip
 ```
 
-## 10. Änderungen vormerken
+## 12. Änderungen vormerken
 
 ```powershell
 git add .
@@ -119,17 +145,18 @@ git status
 
 Kontrollieren:
 
-- die sechs Update-Dateien sind vorgemerkt
-- `config/audio.local.json` ist nicht enthalten
+- BrandMeister-Module sind enthalten
+- Tests und Dokumentation sind enthalten
+- `config/brandmeister.local.json` ist nicht enthalten
 - Release-ZIP und Logs sind nicht enthalten
 
-## 11. Commit erstellen
+## 13. Commit erstellen
 
 ```powershell
-git commit -m "CarenDMR 0.0.5.1 Audio-Startfehler behoben"
+git commit -m "CarenDMR 0.0.7.1 BrandMeister Login"
 ```
 
-## 12. Abschluss prüfen
+## 14. Abschluss prüfen
 
 ```powershell
 git status
@@ -143,5 +170,6 @@ nothing to commit, working tree clean
 
 ## Ergebnis
 
-0.0.5.1 ist abgeschlossen, wenn beide Startvarianten funktionieren, alle Tests
-erfolgreich sind und der Arbeitsbaum nach dem Commit sauber ist.
+0.0.7 ist abgeschlossen, wenn alle Tests erfolgreich sind und der reale
+Login-Test entweder erfolgreich endet oder eine eindeutig auswertbare
+BrandMeister-Fehlermeldung liefert.

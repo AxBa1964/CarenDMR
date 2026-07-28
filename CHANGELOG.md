@@ -1,45 +1,48 @@
+# 0.0.7.1
+
+- RPTC-Koordinatenformat bytegenau an DroidStar angepasst.
+- Regressionstest für `52.31000` und `10.470000` ergänzt.
+- Lokale Konfigurationsdateien werden nicht im Update-Paket ausgeliefert.
+
 # Änderungsverlauf
 
-## 0.0.5.1 – Direkter Start des Audio-Werkzeugs
+## 0.0.7 – BrandMeister-Login
 
-- `python tools\audio_check.py` funktioniert jetzt direkt aus dem
-  Projektverzeichnis.
-- Der Projektpfad wird vor dem Import des Pakets `carendmr` sauber ergänzt.
-- Der weiterhin mögliche Modulstart
-  `python -m tools.audio_check` bleibt unverändert erhalten.
-- Regressionstest für den direkten Skriptstart ergänzt.
-- Keine neue Audio-, Netzwerk-, BrandMeister- oder DMR-Funktion.
+- DroidStar-kompatiblen DMR-Master-Handshake implementiert
+- `RPTL`, `RPTK`, `RPTC`, `RPTPING` und `RPTCL` implementiert
+- SHA-256-Authentifizierung aus vier Byte Challenge plus Hotspot-Passwort
+  implementiert
+- `RPTACK`, `MSTNAK` und `MSTPONG` ausgewertet
+- explizite Login-Zustände ergänzt
+- lokales, von Git auszuschließendes BrandMeister-Konfigurationsformat ergänzt
+- einmaliges Diagnosewerkzeug `tools/brandmeister_check.py` ergänzt
+- Protokoll- und Clienttests ergänzt
+- noch keine DMRD- oder Sprachdatenübertragung
 
-## 0.0.5 – Audiogeräte und lokale Diagnose
+## 0.0.6 – Netzwerkgrundlage
 
-- Audio-Gerätemodell mit stabilerer Identität eingeführt.
-- AudioBackend-Schnittstelle für hardwareunabhängige Tests ergänzt.
-- sounddevice-Backend für Windows und macOS implementiert.
-- Eingabe- und Wiedergabegeräte werden erkannt und getrennt aufgelistet.
-- Betriebssystem-Standardgeräte werden markiert.
-- Geräteauswahl wird ohne veränderliche PortAudio-Indizes gespeichert.
-- Fehlende gespeicherte Geräte fallen verständlich auf ein Standardgerät
-  zurück.
-- Lokaler Aufnahme-/Wiedergabe-Selbsttest ergänzt.
-- Interaktives Werkzeug `tools/audio_check.py` ergänzt.
-- Erste AudioDiagnostics mit handlungsorientierten Ergebnissen ergänzt.
-- Tests für Geräteerkennung, Auswahl, Speicherung, Rückfall, Selbsttest und
-  Diagnose ergänzt.
-- `sounddevice` und `numpy` als Audioabhängigkeiten aufgenommen.
-- Noch keine BrandMeister-, DMR- oder Vocoder-Funktion.
+- UDP-Transport, DNS-Auflösung, Netzwerkdiagnose und Heartbeat-Grundlage
 
-## 0.0.4 – Core und technisches Design
+## 0.0.5.1 – Audio-Startfehler
 
-- EventBus, StatusManager und Accessibility-Grundlage eingeführt.
+- direkter Skriptstart korrigiert
 
-## 0.0.3 – DroidStar-Architekturanalyse
+## 0.0.5 – Audio
 
-- Architektur und relevante BrandMeister-/DMR-Abläufe dokumentiert.
+- Gerätescan, Speicherung und Selbsttest
+
+## 0.0.4 – Core
+
+- EventBus, StatusManager und Accessibility-Grundlage
+
+## 0.0.3 – DroidStar-Analyse
+
+- Architektur- und Protokollanalyse
 
 ## 0.0.2 – Release-Werkzeug
 
-- Plattformübergreifende Release-Erzeugung mit Python ergänzt.
+- Release-Erzeugung
 
 ## 0.0.1 – Projektgrundgerüst
 
-- Erstes Projektgrundgerüst erstellt.
+- Projektstart
