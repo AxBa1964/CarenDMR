@@ -1,30 +1,37 @@
-# Release 0.0.3
+# Release-Information – CarenDMR 0.0.4
 
 ## Ziel
 
-Die für CarenDMR relevanten Bestandteile des offiziellen DroidStar-
-DMR-Quellcodes verstehen und eine bewusst kleine Zielarchitektur festlegen.
+Version 0.0.4 schafft die erste ausführbare Architekturgrundlage für alle
+späteren Komponenten. Sie verbindet noch kein Funknetz und greift noch nicht
+auf Audiohardware zu.
 
 ## Enthalten
 
-- dokumentierter BrandMeister-Verbindungsablauf
-- dokumentierte DMRD-Paketstruktur
-- dokumentierter Empfangs- und Sendepfad
-- Trennung von Netzwerk, DMR-Rahmen, Vocoder und Audio
-- Architekturentscheidungen
-- klare Abgrenzung aller nicht benötigten Betriebsarten
+- `carendmr/core/events.py`
+- `carendmr/core/status.py`
+- `carendmr/accessibility/messages.py`
+- `carendmr/accessibility/speech.py`
+- `docs/TECHNICAL_DESIGN.md`
+- erweiterte `docs/DECISIONS.md`
+- neue automatisierte Tests
 
-## Ergebnis
+## Abnahmekriterien
 
-CarenDMR wird kein verkleinertes DroidStar und keine allgemeine
-Digitalfunk-Plattform. Es wird ein eigenständiger BrandMeister-DMR-Client.
+- Alle bisherigen und neuen Tests laufen erfolgreich.
+- `python main.py` startet weiterhin wie zuvor.
+- EventBus verteilt Ereignisse genau einmal je Registrierung.
+- StatusManager veröffentlicht nur echte Änderungen.
+- Statusänderungen können unabhängig von echter TTS verständlich ausgegeben
+  werden.
+- Es wird keine neue externe Python-Abhängigkeit benötigt.
+- Nach dem Commit ist der Git-Arbeitsbaum sauber.
 
-## Noch nicht enthalten
+## Bewusst nicht enthalten
 
-- Audio-Geräteerkennung
-- Audio-Test
-- TTS
-- PTT
-- echte BrandMeister-Verbindung
-- AMBE-Verarbeitung
-- USB-Bedieneinheit
+- Audio-Gerätesuche
+- Audio-Selbsttest
+- echte Sprachausgabe
+- BrandMeister-Verbindung
+- DMR-Pakete
+- Vocoder

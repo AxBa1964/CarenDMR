@@ -1,67 +1,71 @@
-# CarenDMR – Architekturentscheidungen
+# Architekturentscheidungen
 
-## ADR-001: Eigenständiges Projekt
+Dieses Dokument ergänzt die in Version 0.0.3 begonnenen Entscheidungen.
 
-**Entscheidung:** CarenDMR bleibt vollständig von SmartHomeLab und
-CarenPDFText getrennt.
+## ADR-0008 – Core vor Audio und Netzwerk
 
-**Begründung:** Die Projekte haben unterschiedliche Nutzer, Laufzeiten,
-Abhängigkeiten, Sicherheitsanforderungen und Entwicklungsziele.
+**Status:** beschlossen  
+**Version:** 0.0.4
 
-## ADR-002: Nur BrandMeister-DMR
+CarenDMR erhält vor Audio und Netzwerk eine kleine, unabhängige Kernschicht aus
+EventBus und StatusManager.
 
-**Entscheidung:** CarenDMR unterstützt ausschließlich DMR über
-BrandMeister.
+**Grund:** Spätere Komponenten dürfen nicht direkt voneinander abhängig werden.
+Audiofehler, Netzwerkzustände und Bedienaktionen sollen denselben
+nachvollziehbaren Kommunikationsweg verwenden.
 
-**Begründung:** Weitere digitale Betriebsarten erhöhen Komplexität und
-erschweren die barrierefreie Bedienung, ohne Carens konkreten Anwendungsfall
-zu verbessern.
+## ADR-0009 – EventBus bleibt zunächst synchron
 
-## ADR-003: DroidStar nur als technische Referenz
+**Status:** beschlossen  
+**Version:** 0.0.4
 
-**Entscheidung:** CarenDMR übernimmt DroidStar nicht als eingebettetes
-Gesamtprogramm und kopiert keine Qt-Oberfläche.
+Der EventBus arbeitet zunächst synchron und ohne Threads.
 
-**Begründung:** DroidStar ist eine Mehrprotokoll-Anwendung. CarenDMR benötigt
-nur einen kleinen Teil der Architektur. Die relevanten Abläufe werden sauber
-neu implementiert.
+**Grund:** Einfachheit, reproduzierbare Tests und leichte Fehlersuche. Threads
+werden erst an den Grenzen von Audio und UDP eingeführt.
 
-## ADR-004: Keine allgemeine Mode-Basisklasse
+## ADR-0010 – Verständliche Meldungen sind eigene Fachlogik
 
-**Entscheidung:** Es wird keine generische Abstraktion für DMR, D-Star, YSF,
-P25 oder andere Modi gebaut.
+**Status:** beschlossen  
+**Version:** 0.0.4
 
-**Begründung:** Eine solche Abstraktion hätte für CarenDMR keinen praktischen
-Nutzen und würde das Projekt unnötig vergrößern.
+Technische Zustände und deutschsprachige Rückmeldungen werden getrennt.
 
-## ADR-005: Netzwerk, DMR-Rahmen, Vocoder und Audio trennen
+**Grund:** Ein Netzwerkmodul darf nicht entscheiden, was Caren hört.
+Formulierungen, Wiederholungen und Prioritäten gehören zur
+Accessibility-Schicht.
 
-**Entscheidung:** Diese vier Bereiche erhalten getrennte Schnittstellen.
+## ADR-0011 – Keine feste TTS-Abhängigkeit in 0.0.4
 
-**Begründung:** Der Vocoder kann sich aus technischen oder rechtlichen
-Gründen ändern. Audio- und Netzwerklogik müssen unabhängig testbar bleiben.
+**Status:** beschlossen  
+**Version:** 0.0.4
 
-## ADR-006: Barrierefreiheit ist Kernfunktion
+Die erste Speech-Ausgabe nutzt die Konsole hinter einer austauschbaren
+Schnittstelle.
 
-**Entscheidung:** Sprachausgabe, Tastaturbedienung und verständliche
-Statusmeldungen werden nicht nachträglich ergänzt, sondern gehören zur
-Grundarchitektur.
+**Grund:** Native Windows- und macOS-Ausgabe soll praktisch geprüft werden,
+bevor eine Bibliothek zur dauerhaften Projektabhängigkeit wird. Die verfügbaren
+öffentlichen pyttsx3-Unterlagen nennen überwiegend sehr alte getestete
+Betriebssystemversionen.
 
-**Begründung:** Caren ist die Hauptnutzerin. Eine rein visuelle Oberfläche
-würde das Projektziel verfehlen.
+## ADR-0012 – sounddevice ist bevorzugte Audio-Basis
 
-## ADR-007: Erst Audio, dann Netzwerk
+**Status:** vorgesehen für 0.0.5  
+**Version:** 0.0.4
 
-**Entscheidung:** Vor der BrandMeister-Anbindung werden Mikrofon,
-Lautsprecher und lokale Audioverarbeitung geprüft.
+Für Audio-Geräte, Aufnahme und Wiedergabe wird `sounddevice` bevorzugt.
 
-**Begründung:** Audiofehler und Netzwerkfehler müssen getrennt diagnostiziert
-werden können.
+**Grund:** Plattformunterstützung für Windows und macOS, PortAudio-Basis,
+Geräteabfrage sowie Callback-Streams für spätere Echtzeitanforderungen.
 
-## ADR-008: Keine inoffizielle Vocoder-Datei im Repository
+Die endgültige Freigabe erfolgt erst nach dem praktischen Gerätetest in 0.0.5.
 
-**Entscheidung:** Vocoder-Binärdateien werden nicht in Git oder in normale
-Release-ZIPs aufgenommen.
+## ADR-0013 – Keine vorgezogene BrandMeister-Funktion
 
-**Begründung:** Herkunft, Lizenz und Plattformabhängigkeit müssen separat
-behandelt werden.
+**Status:** beschlossen  
+**Version:** 0.0.4
+
+Version 0.0.4 enthält weder UDP noch Login-Simulationen.
+
+**Grund:** Jede Version soll eine kleine, vollständig prüfbare Verantwortung
+haben. Netzwerkcode würde die Abnahme des Core unnötig vermischen.

@@ -1,32 +1,30 @@
-# Changelog
+# Änderungsverlauf
 
-## 0.0.3
+## 0.0.4 – Core und technisches Design
 
-- Offiziellen DroidStar-DMR-Quellcode analysiert.
-- BrandMeister-/MMDVM-Anmeldeablauf dokumentiert.
-- DMRD-Paketstruktur und RX-/TX-Pipeline dokumentiert.
-- Zielarchitektur für CarenDMR festgelegt.
-- Nicht benötigte DroidStar-Komponenten abgegrenzt.
-- `docs/ARCHITECTURE.md` ergänzt.
-- `docs/DECISIONS.md` ergänzt.
-- Versionsnummer auf 0.0.3 erhöht.
+- Technisches Design für Core, Accessibility, Audio, TTS, Konfiguration,
+  Logging und Tests dokumentiert.
+- Synchronen, typisierten EventBus eingeführt.
+- Zentralen StatusManager mit klar definierten Anwendungszuständen eingeführt.
+- Statusänderungen werden als Ereignisse veröffentlicht.
+- Wiederholte identische Zustände werden zur Vermeidung unnötiger Ansagen
+  unterdrückt.
+- Accessibility-Schicht mit verständlichen deutschen Statusmeldungen ergänzt.
+- Austauschbare SpeechOutput-Schnittstelle und Konsolenausgabe eingeführt.
+- Automatisierte Tests für EventBus, StatusManager und Accessibility ergänzt.
+- `sounddevice` als bevorzugte Grundlage für Version 0.0.5 festgehalten.
+- Noch keine Audio-, TTS-, BrandMeister- oder DMR-Funktion implementiert.
 
-## 0.0.2
+## 0.0.3 – DroidStar-Architekturanalyse
 
-- Plattformunabhängiges Release-Werkzeug ergänzt.
-- Versionsnummer wird automatisch aus `carendmr/version.py` gelesen.
-- Release-ZIP wird im Ordner `release` erzeugt.
-- ZIP-Dateien, Logs, Git-Daten, Cache- und Build-Dateien werden ausgeschlossen.
-- Pflichtdateien werden vor der Release-Erstellung geprüft.
-- Automatische Tests für die Release-Erstellung ergänzt.
-- `.gitignore` bereinigt und um Release-Artefakte erweitert.
+- Architektur und relevante BrandMeister-/DMR-Abläufe dokumentiert.
+- Grundlegende Projektentscheidungen festgehalten.
 
-## 0.0.1
+## 0.0.2 – Release-Werkzeug
 
-- Projektgrundgerüst angelegt.
-- Versionsverwaltung eingeführt.
-- JSON-Konfiguration ergänzt.
-- Logging ergänzt.
-- Betriebssystem- und Python-Erkennung ergänzt.
-- Standard-Talkgroup auf TG 91 festgelegt.
-- Erste automatische Tests ergänzt.
+- Plattformübergreifende Release-Erzeugung mit Python ergänzt.
+- Release-Ausschlüsse und Tests ergänzt.
+
+## 0.0.1 – Projektgrundgerüst
+
+- Erstes Projektgrundgerüst erstellt.

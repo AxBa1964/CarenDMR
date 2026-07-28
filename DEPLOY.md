@@ -1,4 +1,6 @@
-# CarenDMR 0.0.3 – Aktualisierung und Prüfung unter Windows
+# DEPLOY – CarenDMR 0.0.4
+
+Diese Anleitung vollständig und in der angegebenen Reihenfolge ausführen.
 
 Projektpfad:
 
@@ -12,88 +14,133 @@ C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 ```
 
-## 2. Aktuellen Git-Stand prüfen
+## 2. Sauberen Ausgangszustand prüfen
 
 ```powershell
 git status
-git log --oneline -3
 ```
 
-Version 0.0.2 muss committed sein und der Arbeitsbaum sollte sauber sein.
+Vor dem Einspielen muss erscheinen:
 
-## 3. Update übernehmen
+```text
+nothing to commit, working tree clean
+```
 
-Den Inhalt des Update-Pakets über den vorhandenen Projektordner kopieren.
-Vorhandene Dateien ersetzen.
+Falls dort bereits andere Änderungen stehen, das Update nicht darüberkopieren.
 
-## 4. Tests ausführen
+## 3. Update entpacken
+
+`CarenDMR_0.0.4_Update.zip` entpacken und den enthaltenen Ordnerinhalt direkt
+über das vorhandene Projekt kopieren.
+
+Dabei vorhandene Dateien ersetzen lassen.
+
+Wichtig: Nicht den Ordner `CarenDMR_0.0.4_Update` als zusätzlichen Unterordner
+in das Projekt kopieren. Im Projekt müssen danach beispielsweise diese Pfade
+existieren:
+
+```text
+CarenDMR\carendmr\core\events.py
+CarenDMR\carendmr\accessibility\speech.py
+CarenDMR\docs\TECHNICAL_DESIGN.md
+```
+
+## 4. Änderungen kontrollieren
+
+```powershell
+git status
+```
+
+Erwartet werden geänderte Dokumentations- und Versionsdateien sowie neue
+Dateien unter:
+
+```text
+carendmr\core
+carendmr\accessibility
+tests
+docs
+```
+
+Dieser nicht saubere Arbeitsbaum ist jetzt korrekt, weil das Update noch nicht
+committed wurde.
+
+## 5. Alle Tests ausführen
 
 ```powershell
 python -m unittest discover -s tests -v
 ```
 
-Erwartetes Ergebnis:
+Alle Tests müssen mit `OK` enden. Die genaue Testanzahl kann höher sein als in
+diesem Update, weil die Tests der Vorversionen erhalten bleiben.
 
-```text
-Ran 8 tests
-OK
-```
+Bei einem Fehler nicht committen.
 
-## 5. Anwendung starten
+## 6. Anwendung starten
 
 ```powershell
 python main.py
 ```
 
-Erwartete Kernausgabe:
+Die Anwendung muss weiterhin normal starten und Version `0.0.4` melden.
+Danach das Programm regulär beenden.
 
-```text
-Version             : 0.0.3
-Standard-Talkgroup  : 91
-Status              : Grundsystem bereit
-```
-
-## 6. Neue Dokumente prüfen
+## 7. Optionaler Core-Selbsttest
 
 ```powershell
-notepad docs\ARCHITECTURE.md
-notepad docs\DECISIONS.md
+python -c "from carendmr.core import EventBus, StatusManager, AppStatus; from carendmr.accessibility import SpeechManager, ConsoleSpeechOutput; b=EventBus(); s=SpeechManager(b, ConsoleSpeechOutput()); m=StatusManager(b); s.start(); m.set_status(AppStatus.READY)"
 ```
 
-Beide Dateien müssen vorhanden und lesbar sein.
+Erwartete Ausgabe:
 
-## 7. Release-ZIP erzeugen
+```text
+CarenDMR ist bereit.
+```
+
+## 8. Release-ZIP erzeugen
 
 ```powershell
 python tools\create_release_zip.py
 ```
 
-Erwartete Datei:
+Erwartet wird:
 
 ```text
-release\CarenDMR_0.0.3.zip
+release\CarenDMR_0.0.4.zip
 ```
 
-## 8. Git-Status prüfen
-
-```powershell
-git status
-```
-
-Die Datei unter `release` darf nicht angezeigt werden.
-
-## 9. Version committen
+## 9. Änderungen für den Commit vormerken
 
 ```powershell
 git add .
-git commit -m "CarenDMR 0.0.3 DroidStar Architektur-Analyse"
+git status
 ```
 
-## 10. Abschlussprüfung
+Alle Dateien der Version 0.0.4 müssen jetzt unter `Changes to be committed`
+stehen.
+
+Kontrollieren, dass weder Logdateien noch ein fremdes ZIP im Projektstamm
+vorgemerkt sind. Das Release-ZIP im ausgeschlossenen Release-Ordner darf nicht
+im Commit erscheinen.
+
+## 10. Commit erstellen
+
+```powershell
+git commit -m "CarenDMR 0.0.4 Core und technisches Design"
+```
+
+## 11. Abschluss prüfen
 
 ```powershell
 git status
-git log --oneline -3
 ```
 
-Erwartet wird ein sauberer Arbeitsbaum.
+Erwartet:
+
+```text
+nothing to commit, working tree clean
+```
+
+## Ergebnis
+
+Version 0.0.4 ist abgeschlossen. Die nächste Version 0.0.5 darf anschließend
+die echte Audio-Geräteerkennung auf Basis von `sounddevice` implementieren.
