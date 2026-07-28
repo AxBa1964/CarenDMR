@@ -1,0 +1,19 @@
+{
+  "application": {
+    "name": "CarenDMR",
+    "language": "de-DE"
+  },
+  "dmr": {
+    "default_talkgroup": 91,
+    "callsign": "",
+    "dmr_id": 0,
+    "brandmeister_password": ""
+  },
+  "audio": {
+    "input_device": "",
+    "output_device": ""
+  },
+  "logging": {
+    "directory": "logs"
+  }
+}
