@@ -1,10 +1,27 @@
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
 venv/
+
+# Logs
 logs/
-dist/
+
+# Build / Release
 build/
+dist/
+release/
+*.zip
 *.spec
+
+# IDE
+.vscode/
+.idea/
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Lokale Konfiguration
 config/config.local.json
