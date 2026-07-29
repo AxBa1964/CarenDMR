@@ -19,7 +19,7 @@ class BrandMeisterConfigTests(unittest.TestCase):
         config = self.make_config()
         config.validate()
         self.assertEqual("20260728_CarenDMR", config.software_id)
-        self.assertEqual("MMDVM_CarenDMR_PC", config.package_id)
+        self.assertEqual("MMDVM_HS_Hat", config.package_id)
         self.assertEqual("CarenDMR Digital Voice Client", config.description)
 
     def test_invalid_software_id_is_rejected(self):

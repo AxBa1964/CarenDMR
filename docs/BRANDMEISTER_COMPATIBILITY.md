@@ -13,7 +13,7 @@ CarenDMR verwendet produktiv:
 
 ```text
 Software-ID: 20260728_CarenDMR
-Package-ID:  MMDVM_CarenDMR_PC
+Package-ID:  MMDVM_HS_Hat
 Description: CarenDMR Digital Voice Client
 ```
 
@@ -39,6 +39,7 @@ acht Ziffern + Unterstrich + Bezeichnung
 
 ```text
 MMDVM_MMDVM_HS_Hat          -> RPTACK
+MMDVM_HS_Hat                -> RPTACK
 CarenDMR_CarenDMR_HS_Hat    -> MSTNAK
 MMDVM_CarenDMR_HS_Hat       -> RPTACK
 MMDVM_MMDVM_CarenDMR        -> RPTACK

@@ -36,12 +36,14 @@ REQUIRED_FILES = {
     ".gitignore",
     "CHANGELOG.md",
     "DEPLOY.md",
+    "LICENSE",
     "README.md",
     "RELEASE_INFO.md",
     "main.py",
     "requirements.txt",
     "carendmr/version.py",
     "config/config.json",
+    "docs/UPSTREAM_PROVENANCE.md",
 }
 
 
