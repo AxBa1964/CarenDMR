@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.0.9 – Deterministische DMR-Stummruf-Fixture
+
+- Projektlizenz bewusst als GPLv3-or-later festgelegt.
+- Herkunft und Lizenzgrenze der minimal adaptierten DroidStar-DMR-Hilfen
+  dokumentiert.
+- Offline-Kodierung für Voice-LC-Header, einen aus sechs Bursts bestehenden
+  AMBE-Stummrahmen und Terminator-with-LC ergänzt.
+- Ziel unverändert fest auf Gruppenruf TG91, Timeslot 2 und Color Code 1
+  begrenzt.
+- Alle 33-Byte-Payloads bytegenau gegen einen unabhängigen DroidStar-C++-
+  Referenzgenerator geprüft.
+- Separates, fest auf eine einzige Acht-Paket-Sequenz begrenztes
+  Live-Diagnosewerkzeug mit Anmeldung, 60-ms-Taktung, Empfangsmonitor und
+  garantiertem Schließen ergänzt.
+- Erfolgreicher kontrollierter Einmaltest ohne Wiederholung bestätigt.
+- Keine allgemeine Laufzeit-Sendeschnittstelle, kein Audio und keine
+  BrandMeister-Konfigurationsänderung ergänzt.
+
+## 0.0.8.1 – BrandMeister-Gerätekennung
+
+- Produktive Package-ID von der projektspezifischen Kennung auf
+  `MMDVM_HS_Hat` umgestellt.
+- Software-ID `20260728_CarenDMR` unverändert beibehalten.
+- Beispielkonfiguration, lokale Laufzeitkonfiguration, Tests und
+  Kompatibilitätsdokumentation angeglichen.
+- Login-only-Prüfung mit `MMDVM_HS_Hat` erfolgreich gegen BrandMeister
+  bestätigt.
+- DMRD-Paketdomäne aus 0.0.8 bleibt unverändert und weiterhin ohne
+  Netzwerksendeschnittstelle.
+
+## 0.0.8 – DMRD-Paketdomäne
+
+- Unveränderliches Modell für vollständige 55-Byte-DMRD-Pakete ergänzt.
+- Strikte Empfangsprüfung für Kennung, Länge, IDs, Timeslot, Ruftyp,
+  Rahmenklasse, Stream-ID und 33-Byte-DMR-Nutzdaten implementiert.
+- Sprach-LC-Header, Sprach-Synchronrahmen, Sprachrahmen 0 bis 5 und
+  Terminator-with-LC als getrennte Konstruktionsprimitive ergänzt.
+- Zielbetrieb auf Gruppenruf TG91, Timeslot 2, als explizite und getestete
+  Konstante festgelegt.
+- Netzwerkversand, Talkgroup-Aktivierung, LC-Kodierung, AMBE und Audio bleiben
+  bewusst außerhalb dieses Meilensteins.
+
 ## 0.0.7.6 – Eigene BrandMeister-Kennung
 
 - Produktive Software-ID auf `20260728_CarenDMR` gesetzt.

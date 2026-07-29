@@ -18,21 +18,25 @@ CarenDMR soll:
 CarenDMR ist kein allgemeines Digitalfunk-Framework. Andere Betriebsarten
 wie D-Star, YSF, P25 oder NXDN gehören ausdrücklich nicht zum Projektumfang.
 
-## Version 0.0.2
+## Aktueller Entwicklungsstand
 
-Diese Version ergänzt das Release-Werkzeug:
+CarenDMR 0.0.9 enthält:
 
-```text
-python tools/create_release_zip.py
-```
+- den bestätigten BrandMeister-Login,
+- Empfang und strikte Modellierung von DMRD-Paketen,
+- eine bytegenau gegen DroidStar geprüfte stumme TG91/Timeslot-2-Fixture,
+- ein ausschließlich für einen einzelnen kontrollierten Einmaltest
+  vorgesehenes, sicherheitsbegrenztes Diagnosewerkzeug.
 
-Das Werkzeug erzeugt:
+Eine allgemeine PTT-Schnittstelle, Sprachkodierung und die spätere
+Benutzeroberfläche sind noch nicht enthalten.
 
-```text
-release/CarenDMR_0.0.2.zip
-```
+## Lizenz
 
-Git-Daten, Logs, Caches, virtuelle Umgebungen und bereits vorhandene
-ZIP-Dateien werden nicht in das Release übernommen.
+CarenDMR wird unter der GNU General Public License, Version 3 oder später,
+bereitgestellt. Der vollständige Lizenztext steht in `LICENSE`.
 
-Eine BrandMeister-Verbindung ist noch nicht enthalten.
+Die auf DroidStar zurückgehenden DMR-Kodierhilfen und ihre Herkunft sind in
+`docs/UPSTREAM_PROVENANCE.md` dokumentiert. Bei Weitergabe müssen der
+vollständige korrespondierende Quellcode, Lizenztext und Urheberhinweise
+erhalten bleiben.

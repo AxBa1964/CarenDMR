@@ -63,12 +63,14 @@ class ReleaseZipTests(unittest.TestCase):
                 ".gitignore": "*.zip\n",
                 "CHANGELOG.md": "# Changelog\n",
                 "DEPLOY.md": "# Deploy\n",
+                "LICENSE": "GPL-3.0-or-later\n",
                 "README.md": "# README\n",
                 "RELEASE_INFO.md": "# Release\n",
                 "main.py": "print('ok')\n",
                 "requirements.txt": "\n",
                 "carendmr/version.py": '__version__ = "9.9.9"\n',
                 "config/config.json": "{}\n",
+                "docs/UPSTREAM_PROVENANCE.md": "# Provenienz\n",
             }
 
             for relative_path, content in required_files.items():
@@ -89,7 +91,9 @@ class ReleaseZipTests(unittest.TestCase):
                 names = set(archive.namelist())
 
             self.assertIn("main.py", names)
+            self.assertIn("LICENSE", names)
             self.assertIn("carendmr/version.py", names)
+            self.assertIn("docs/UPSTREAM_PROVENANCE.md", names)
             self.assertNotIn("logs/carendmr.log", names)
             self.assertNotIn("old.zip", names)
 
