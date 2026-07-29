@@ -1,230 +1,154 @@
 # CarenDMR – Technische Architektur
 
-Stand: Version 0.0.3
+Stand: Version 0.0.13.1
 
-## 1. Projektziel
+## 1. Ziel und Grenzen
 
-CarenDMR ist ein eigenständiger, barrierearmer DMR-Client ausschließlich
-für das BrandMeister-Netzwerk.
+CarenDMR ist ein eigenständiger, barrierefrei entwickelter DMR-Client
+ausschließlich für BrandMeister. Oberfläche, Protokoll, Audio und
+Accessibility bleiben getrennt, damit jeder Bereich isoliert getestet werden
+kann.
 
-Das Projekt übernimmt keinen DroidStar-Code. DroidStar dient als technische
-Referenz, um das verwendete DMR-Netzwerkprotokoll und die Audio-/Vocoder-
-Pipeline zu verstehen.
+Nicht zum Projektumfang gehören andere digitale Betriebsarten,
+Hotspot-/Repeaterbetrieb oder ein allgemeines Mehrprotokoll-Framework.
 
-Nicht zum Projektumfang gehören:
+## 2. Komponenten
 
-- D-Star
-- YSF/FCS
-- P25
-- NXDN
-- M17
-- AllStar/IAX
-- MMDVM-Hotspotbetrieb
-- allgemeine Digitalfunk-Plattform
+```text
+Bedienoberfläche (zukünftig)
+        |
+Accessibility Layer
+        |
+Application Core / Ereignisse / Status
+        |
++-------------------+---------------------+
+| BrandMeister      | Audio               |
+| Login, UDP, DMRD  | Geräte, PCM-Ausgabe |
++-------------------+---------------------+
+        |                      |
+DMR Frame Model         Vocoder Adapter
+                               |
+                    nativer mbelib-Decoder
+```
 
-## 2. Erkenntnisse aus dem offiziellen DroidStar-Quellcode
+### Application Core
 
-DroidStar kapselt DMR in einer Klasse `DMR`, die von einer gemeinsamen
-Basisklasse `Mode` erbt.
+`carendmr/core` verwaltet Ereignisse und Zustände, ohne eine konkrete
+Oberfläche zu kennen. Technische Komponenten veröffentlichen strukturierte
+Informationen; Benutzertexte entstehen in der Accessibility-Schicht.
 
-Die DMR-Klasse enthält unter anderem:
+### Accessibility
 
-- UDP-Kommunikation
-- DMR-Anmeldezustände
-- Passwort-Challenge mit SHA-256
-- Konfigurationsübertragung
-- Heartbeat/Ping
-- Disconnect
-- Empfang und Versand von 55-Byte-DMRD-Paketen
-- Talkgroup-, Slot- und Color-Code-Auswahl
-- DMR-Rahmenbildung
-- AMBE-Rahmenübergabe
-- Audio-Aufnahme und Audio-Wiedergabe
+`carendmr/accessibility` übersetzt Zustände in verständliche Meldungen und
+kapselt lokale Sprachausgabe. Die verbindliche Definition of Done steht in
+`docs/ACCESSIBILITY_REQUIREMENTS.md`.
 
-## 3. BrandMeister-Verbindungsablauf
+### Netzwerk
 
-Der im DroidStar-Code erkennbare Ablauf entspricht dem MMDVM-
-Masterprotokoll:
+`carendmr/network` enthält DNS-Endpunkte, UDP-Transport, Heartbeat,
+Netzwerkkonfiguration und optionalen Paket-Logger. Der Transport kennt keine
+DMR-Audiologik.
 
-1. DNS-Auflösung des ausgewählten Masters.
-2. UDP-Socket öffnen.
-3. `RPTL` mit DMR-ID/ESSID senden.
-4. `RPTACK` mit vier Byte Challenge empfangen.
-5. Challenge und Hotspot-Passwort mit SHA-256 verarbeiten.
-6. `RPTK` mit DMR-ID/ESSID und Hash senden.
-7. Weiteres `RPTACK` empfangen.
-8. `RPTC` mit Stations- und Programminformationen senden.
-9. Optional `RPTO` mit Netzwerkoptionen senden.
-10. Status auf verbunden setzen.
-11. Alle fünf Sekunden `RPTPING` senden.
-12. `MSTPONG` als Lebenszeichen empfangen.
-13. Beim Beenden `RPTCL` senden.
+### BrandMeister
 
-Servermeldungen `MSTNAK` und `MSTCL` führen in DroidStar zu einem
-Verbindungsabbruch und zeitversetztem Neuaufbau.
+`carendmr/brandmeister` enthält:
 
-## 4. Empfangspfad
+- validierte lokale Konfiguration,
+- `RPTL`/`RPTK`/`RPTC`-Login, Ping und sauberes Schließen,
+- striktes DMRD-Paketmodell,
+- payloadfreie Empfangsereignisse,
+- begrenzten Live-Empfang,
+- offline erzeugte DMR-Rahmen-Fixtures,
+- ein getrenntes, hart verriegeltes privates Parrot-Testprofil.
 
-Ein DMR-Sprachpaket besteht im untersuchten Code aus 55 Bytes und beginnt
-mit `DMRD`.
+Die experimentell bestätigten Kennungsregeln stehen in
+`docs/BRANDMEISTER_COMPATIBILITY.md`.
 
-Relevante Felder:
+### Vocoder
 
-- Byte 0–3: Kennung `DMRD`
-- Byte 4: laufende Rahmennummer
-- Byte 5–7: Quell-DMR-ID
-- Byte 8–10: Ziel-ID bzw. Talkgroup
-- Byte 11–14: Gateway-/ESSID
-- Byte 15: Slot, Gruppen-/Privatruf und Rahmentyp
-- Byte 16–19: Stream-ID
-- Byte 20–52: DMR-Nutzdaten
-- Byte 53–54: BER/RSSI-Felder
+`carendmr/vocoder` definiert eine austauschbare, empfangsseitige Grenze:
 
-Bei Sprachrahmen werden aus den 33 Nutzdatenbytes drei AMBE-Rahmen zu je
-neun Bytes extrahiert. Diese werden an den Vocoder weitergegeben. Das
-dekodierte PCM-Audio wird anschließend über die Audioausgabe abgespielt.
+1. drei AMBE+2-Codewörter aus einem Sprachburst extrahieren,
+2. Codewörter zustandsbehaftet in PCM dekodieren,
+3. Fehlerzahlen und exakt 160 Samples pro Codewort liefern,
+4. keine Encode- oder Sendefunktion exponieren.
 
-## 5. Sendepfad
+Der native Adapter lädt die lokal gebaute Bibliothek aus `native/`. Herkunft,
+Lizenz und die bewusst ausgeschlossenen Komponenten sind in
+`docs/UPSTREAM_PROVENANCE.md` dokumentiert.
 
-Der Sendepfad besteht aus:
+### Audio
 
-1. PTT gedrückt.
-2. Audioaufnahme starten.
-3. PCM-Audio in AMBE umwandeln.
-4. Drei AMBE-Rahmen zu einem DMR-Sprachrahmen bündeln.
-5. Voice-LC-Header erzeugen.
-6. Stream-ID erzeugen.
-7. 55-Byte-DMRD-Paket aufbauen.
-8. Pakete per UDP an den Master senden.
-9. Beim Loslassen der PTT Terminator-with-LC erzeugen.
-10. Audioaufnahme stoppen und in Empfang zurückkehren.
+`carendmr/audio` trennt Geräteerkennung, lokale Auswahl, Backend und
+gepufferte PCM-Ausgabe. Der Wiedergabepuffer ist begrenzt, füllt Underruns mit
+Stille und blockiert den Netzwerkempfang nicht.
 
-## 6. CarenDMR-Zielarchitektur
+## 3. Datenfluss beim Empfang
 
-### 6.1 Application Core
+```text
+BrandMeister UDP
+  -> Paketidentifikation
+  -> striktes DMRD-Modell
+  -> gefiltertes Empfangsereignis
+  -> Sequenz-/Jitterpuffer
+  -> drei AMBE+2-Codewörter je Sprachburst
+  -> nativer Empfangsdecoder
+  -> PCM-Puffer
+  -> Standard-Wiedergabegerät
+```
 
-Verwaltet ausschließlich die Zustände:
+Live-Empfang ist derzeit bewusst auf TG91 und Timeslot 2 begrenzt.
+Paketnutzdaten gelangen nicht in Status- oder Accessibility-Ereignisse.
 
-- getrennt
-- verbindet
-- verbunden
-- empfängt
-- sendet
-- Fehler
+## 4. BrandMeister-Verbindung
 
-Der Core kennt keine konkrete GUI.
+1. DNS-Auflösung und UDP-Socket
+2. `RPTL` mit DMR-ID
+3. `RPTACK` mit Challenge
+4. SHA-256 über Challenge plus Hotspot-Passwort
+5. `RPTK` und zweites `RPTACK`
+6. `RPTC` mit validierten Stationsdaten
+7. periodisches `RPTPING` / `MSTPONG`
+8. `RPTCL` beim kontrollierten Schließen
 
-### 6.2 BrandMeister Client
+Passwörter bleiben ausschließlich in ignorierten lokalen
+Konfigurationsdateien.
 
-Aufgaben:
+## 5. Sendesicherheit
 
-- Masteradresse auflösen
-- UDP-Verbindung verwalten
-- Login-Zustandsmaschine
-- Heartbeats
-- automatischer Neuaufbau
-- DMRD-Pakete empfangen und senden
-- saubere Trennung von Netzwerk und Audio
+Eine allgemeine Laufzeit-Sendeschnittstelle existiert nicht.
 
-### 6.3 DMR Frame Codec
+Das einzige vorhandene Live-Testprofil ist unveränderlich auf privaten
+BrandMeister-Parrot-Ruf 9990, Timeslot 2, maximal zehn Sekunden Sendezeit und
+15 Sekunden Echo-Wartezeit begrenzt. Es besitzt keine Ziel-, Ruftyp-,
+Timeslot- oder Dauerparameter, keinen Retry und keinen öffentlichen Fallback.
 
-Aufgaben:
+Automatisierte Sendetests auf öffentlichen Gruppen-Talkgroups sind dauerhaft
+verboten.
 
-- DMRD-Pakete lesen und schreiben
-- IDs, Talkgroup, Slot und Stream-ID verarbeiten
-- AMBE-Nutzdaten extrahieren und einsetzen
-- Header, Voice-Rahmen und Enderahmen erzeugen
+## 6. Konfiguration und Geheimnisse
 
-Dieser Bestandteil ist nicht der Sprachvocoder. Er verarbeitet nur die
-DMR-Rahmenstruktur.
+- verteilbare Beispiele: `config/*.example.json`
+- lokale Werte: `config/*.local.json`
+- lokale Dateien werden von Git und Release-ZIP ausgeschlossen
+- Logs und UI dürfen Passwörter oder unnötige persönliche Stationsdaten nicht
+  wiederholen
 
-### 6.4 Vocoder Adapter
+## 7. Abhängigkeiten und Build
 
-Ein einheitlicher Adapter kapselt später entweder:
+Python-Laufzeit:
 
-- einen legal verfügbaren Software-Vocoder oder
-- ein unterstütztes AMBE-USB-Gerät
+- `numpy` für PCM-Daten,
+- `sounddevice` für lokale Audio-Ein-/Ausgabe,
+- Standardbibliothek für Netzwerk, Hashing, Konfiguration und Tests.
 
-Der restliche CarenDMR-Code darf nicht von einem konkreten Vocoder
-abhängen.
+Der native Decoder wird mit `native/Makefile` gebaut. Er exportiert nur die
+kleine CarenDMR-Decoder-ABI; Encoder-Symbole sind ausgeschlossen.
 
-### 6.5 Audio Engine
+## 8. Nächste Architekturgrenze
 
-Aufgaben:
+Der nächste Produktmeilenstein ist ein read-only VoiceOver-Grundfenster. Es
+verbraucht ausschließlich bestehende Status- und Empfangsereignisse und führt
+keine neue PTT-, Encoder- oder freie Sendefläche ein.
 
-- Mikrofon auswählen
-- Lautsprecher auswählen
-- PCM aufnehmen
-- PCM wiedergeben
-- Pegel und Fehler melden
-- Echo und doppelte Wiedergabe vermeiden
-
-### 6.6 Accessibility Layer
-
-Aufgaben:
-
-- alle Zustände per Sprache melden
-- vollständige Tastaturbedienung
-- semantische Rollen, Namen und Zustände für VoiceOver bereitstellen
-- eine kompakte, gezielt abrufbare Zustandszusammenfassung für Verbindung,
-  Talkgroup, Timeslot, Empfang/Senden und aktuelle Aktivität bilden
-- wichtige Änderungen priorisiert ankündigen und redundante Meldungen
-  unterdrücken
-- eine stabile Fokusreihenfolge und ein zugängliches textuelles
-  Gesprächs-/Ereignisprotokoll unterstützen
-- Fehler einschließlich Auswirkung und nächster Aktion nicht-visuell
-  verständlich machen
-- später USB-Tastenbedienung
-- PTT-Signaltöne
-- Talkgroup und Anrufer ansagen
-- Fehler verständlich und ohne Fachjargon ausgeben
-
-Die vollständigen, für jede spätere Oberfläche verbindlichen
-Abnahmekriterien stehen in `docs/ACCESSIBILITY_REQUIREMENTS.md`. Keine
-Information darf allein durch Farbe, Wellenform oder Position vermittelt
-werden. GUI-Technologie und Layout müssen sich diesen Anforderungen
-unterordnen.
-
-## 7. Bewusst nicht übernommene DroidStar-Bestandteile
-
-- Qt/QML-Oberfläche
-- gemeinsame Mehrprotokoll-Basisklasse
-- alle Nicht-DMR-Betriebsarten
-- MMDVM-Modemsteuerung
-- Hotspot- und Direct-Mode
-- komplexe allgemeine Einstellungsoberfläche
-- plattformspezifische Oberfläche von DroidStar
-
-## 8. Abhängigkeiten und Risiken
-
-### AMBE
-
-DMR verwendet AMBE+2. Die rechtliche und technische Verfügbarkeit eines
-Software-Vocoders muss vor einer Veröffentlichung gesondert geprüft
-werden. Die Projektarchitektur darf deshalb keinen bestimmten inoffiziellen
-Vocoder fest voraussetzen.
-
-### Netzwerkprotokoll
-
-Die Anmeldung ist nicht mit einer normalen Web-API vergleichbar. Sie
-verwendet UDP und das MMDVM-Masterprotokoll. Verbindungszustände,
-Zeitüberschreitungen und Heartbeats müssen zuverlässig behandelt werden.
-
-### Audio-Latenz
-
-DMR arbeitet mit zeitlich eng aufeinanderfolgenden Sprachrahmen. Aufnahme,
-Vocoder und Netzwerk dürfen den Sendepfad nicht blockieren.
-
-## 9. Nächster technischer Schritt
-
-Version 0.0.4 soll noch keine BrandMeister-Verbindung herstellen.
-
-Sie soll:
-
-- verfügbare Audio-Eingänge erkennen,
-- verfügbare Audio-Ausgänge erkennen,
-- Standardgeräte bestimmen,
-- die Auswahl in der Konfiguration speichern,
-- die Ergebnisse barrierefrei in Textform ausgeben.
-
-Damit wird zuerst die lokale Audio-Grundlage verifiziert.
+Die geplante Reihenfolge steht in der [Roadmap](../ROADMAP.md).

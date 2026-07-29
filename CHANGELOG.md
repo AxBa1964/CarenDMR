@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.13.1 – Project Foundation
+
+- README als zentralen Einstieg für Ziel, Stand, Sicherheit, Installation,
+  Dokumentation und Lizenz überarbeitet.
+- Roadmap und Beitragsrichtlinien ergänzt.
+- getrennte Installationsanleitungen für macOS, Windows und Linux ergänzt.
+- Architektur auf den tatsächlichen Stand mit BrandMeister, DMRD-Empfang,
+  Software-Vocoder, Jitterpuffer und verriegeltem Parrot-Test aktualisiert.
+- Release-, Test-, Commit- und Pull-Request-Ablauf vereinheitlicht.
+- Keine DMR-, Netzwerk-, Audio- oder Sendefunktion geändert.
+
 ## 0.0.13 – Verriegeltes privates Parrot-Testprofil
 
 - Dauerhafte Sicherheitsregel ergänzt: automatisierte Sendetests dürfen
