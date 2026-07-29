@@ -1,94 +1,111 @@
-# DEPLOY – CarenDMR 0.0.13
+# Release- und Deployment-Ablauf – CarenDMR 0.0.13.1
 
-Alle Schritte in dieser Reihenfolge ausführen.
+Dieses Dokument beschreibt den verbindlichen Ablauf für einen
+Entwicklungsmeilenstein. Installationen stehen getrennt in
+[INSTALL_MACOS.md](INSTALL_MACOS.md),
+[INSTALL_WINDOWS.md](INSTALL_WINDOWS.md) und
+[INSTALL_LINUX.md](INSTALL_LINUX.md).
 
-Projektpfad:
-
-```text
-C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
-```
-
-## 1. Aktuellen Stand sichern
-
-```powershell
-cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
-git status
-python -m unittest discover -s tests -v
-git add .
-git status
-git commit -m "CarenDMR 0.0.7.5 BrandMeister Kennungstests"
-git push
-```
-
-Falls `git status` schon einen sauberen Stand meldet, entfallen `git add` und der
-Commit.
-
-## 2. Update einspielen
-
-`CarenDMR_0.0.13_Update.zip` direkt über das bestehende Projekt entpacken und
-vorhandene Dateien ersetzen.
-
-`config\brandmeister.local.json` ist nicht im ZIP enthalten und wird nicht
-überschrieben.
-
-## 3. Lokale BrandMeister-Kennung anpassen
-
-```powershell
-notepad config\brandmeister.local.json
-```
-
-Diese Werte eintragen:
-
-```json
-"description": "CarenDMR Digital Voice Client",
-"software_id": "20260728_CarenDMR",
-"package_id": "MMDVM_HS_Hat"
-```
-
-Die vorhandenen Zugangsdaten, Koordinaten und die Frequenz unverändert lassen.
-Datei speichern und schließen.
-
-## 4. Tests ausführen
-
-```powershell
-python -m unittest discover -s tests -v
-```
-
-Alle Tests müssen mit `OK` enden.
-
-## 5. Reale BrandMeister-Anmeldung prüfen
-
-```powershell
-python tools\brandmeister_check.py --login-only
-```
-
-Erwartet:
+## 1. Ausgangszustand prüfen
 
 ```text
-RPTL -> RPTACK
-RPTK -> RPTACK
-RPTC -> RPTACK
-OK: BrandMeister-Anmeldung erfolgreich.
+git status
+git branch --show-current
+git pull --ff-only
 ```
 
-## 6. Version prüfen
+Der Arbeitsbaum muss vor Beginn sauber sein. Releases entstehen nie direkt
+auf `master`, sondern auf einem eigenen Branch.
 
-```powershell
+## 2. Version und Dokumentation
+
+Die verbindliche Versionsquelle ist:
+
+```text
+carendmr/version.py
+```
+
+Bei einem Release müssen mindestens diese Stellen übereinstimmen:
+
+- `carendmr/version.py`
+- `README.md`
+- `CHANGELOG.md`
+- `RELEASE_INFO.md`
+- Überschrift dieses Dokuments
+
+Technische oder nutzerrelevante Änderungen werden zusätzlich in Architektur,
+Roadmap, Accessibility-Anforderungen oder Entscheidungen dokumentiert.
+
+## 3. Abhängigkeiten und nativer Build
+
+In aktivierter virtueller Umgebung:
+
+```text
+python -m pip install -r requirements.txt
+```
+
+Auf macOS:
+
+```text
+make -C native check
+```
+
+Auf Linux:
+
+```text
+make -C native all
+```
+
+Native Bibliotheken bleiben lokale Build-Artefakte.
+
+## 4. Vollständige Tests
+
+```text
+python -m unittest discover -s tests -v
 python main.py
 ```
 
-Die Anwendung muss Version `0.0.13` melden.
+Alle Tests müssen mit `OK` enden und die Anwendung muss die geplante Version
+melden. Netzwerk- oder Audio-Livetests werden nur durchgeführt, wenn sie zum
+Meilenstein gehören und ausdrücklich freigegeben sind.
 
-## 7. Änderungen committen
+Automatisierte Sendetests auf öffentlichen Talkgroups sind verboten.
 
-```powershell
-git status
-git add .
-git status
-git commit -m "CarenDMR 0.0.13 Parrot-Sicherheitsprofil"
-git push
-git status
+## 5. Release-ZIP prüfen
+
+```text
+python tools/create_release_zip.py
 ```
 
-`config\brandmeister.local.json`, Logs, Cache-Dateien und ZIP-Dateien dürfen nicht
-im Commit erscheinen.
+Das ZIP wird unter `release/` erzeugt und nicht committed. Es darf insbesondere
+nicht enthalten:
+
+- `.git`, virtuelle Umgebungen oder Caches,
+- `config/*.local.json`,
+- Logs, Mitschnitte oder lokale Audioinhalte,
+- native Build-Artefakte.
+
+## 6. Diff, Commit und Push
+
+```text
+git status
+git diff --check
+git diff
+git add <gezielte Dateien>
+git status
+git diff --cached
+git commit -m "CarenDMR <Version> <kurzer Meilenstein>"
+git push -u origin <branch>
+```
+
+Anschließend wird ein Draft Pull Request gegen `master` eröffnet. Der PR nennt
+Umfang, Motivation, Auswirkungen und ausgeführte Prüfungen.
+
+## 7. Merge und Nachkontrolle
+
+Nach Review und erfolgreichen Prüfungen:
+
+1. Pull Request mergen.
+2. Lokalen `master` per Fast-forward aktualisieren.
+3. Tests aus dem gemergten Stand erneut ausführen.
+4. Erst danach bei Bedarf ein GitHub Release aus dem geprüften Stand erstellen.

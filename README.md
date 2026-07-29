@@ -1,68 +1,92 @@
 # CarenDMR
 
-CarenDMR ist ein bewusst einfacher, barrierearmer DMR-Client für das
-BrandMeister-Netzwerk. Das Programm wird zunächst für Caren entwickelt.
+> Ein freier, konsequent barrierefrei entwickelter DMR-Client für
+> BrandMeister.
 
-CarenDMR ist nach einer blinden Person benannt. Vollständige
-VoiceOver-Bedienbarkeit ist eine verbindliche Produktanforderung für jede
-zukünftige Oberfläche, nicht nur eine ergänzende Funktion. Die prüfbaren
-Anforderungen stehen in `docs/ACCESSIBILITY_REQUIREMENTS.md`.
+CarenDMR entsteht für blinde und sehbehinderte Funkamateure. Das konkrete
+Ziel ist ein kleiner, zuverlässiger Client, mit dem Caren weltweit – besonders
+auf Talkgroup 91 – englischsprachige Funkgespräche führen kann.
 
-## Festes Projektziel
+Barrierefreiheit ist keine spätere Ergänzung. Eine Funktion gilt erst als
+fertig, wenn sie ohne Maus, ohne visuelle Orientierung und mit verständlichen
+akustischen beziehungsweise Screenreader-Rückmeldungen bedienbar ist.
 
-CarenDMR soll:
+## Projektumfang
 
-- sich mit BrandMeister verbinden,
-- Talkgroup 91 hörbar empfangen,
-- per gedrückter PTT verständlich auf Talkgroup 91 senden,
-- vollständig per Tastatur und später per externer USB-Bedieneinheit
-  bedienbar sein,
-- wichtige Zustände akustisch melden,
-- unter Windows und später unter macOS laufen.
+CarenDMR konzentriert sich ausschließlich auf:
 
-CarenDMR ist kein allgemeines Digitalfunk-Framework. Andere Betriebsarten
-wie D-Star, YSF, P25 oder NXDN gehören ausdrücklich nicht zum Projektumfang.
+- DMR über das BrandMeister-Netzwerk,
+- Empfang und später kontrolliertes Senden von Sprache,
+- vollständige Tastaturbedienung,
+- VoiceOver unter macOS sowie später NVDA und JAWS unter Windows,
+- verständliche Status-, Fehler- und Sicherheitsmeldungen,
+- Windows und macOS; Linux bleibt eine unterstützte Entwicklungsplattform.
 
-## Aktueller Entwicklungsstand
+D-Star, YSF, P25, NXDN, M17, AllStar und ein allgemeines
+Digitalfunk-Framework gehören nicht zum Projektumfang.
 
-CarenDMR 0.0.13 enthält:
+## Aktueller Stand: 0.0.13.1
 
-- den bestätigten BrandMeister-Login,
-- Empfang und strikte Modellierung von DMRD-Paketen,
-- eine bytegenau gegen DroidStar geprüfte stumme TG91/Timeslot-2-Fixture,
-- eine payloadfreie Empfangsereignisgrenze für spätere Statusverbraucher,
-- eine austauschbare, empfangsseitige Software-Vocoder-Grenze,
-- einen auf AMBE+2 2450/1150 begrenzten nativen mbelib-Decoder und
-  deterministisch geprüfte PCM-Referenzvektoren,
-- einen begrenzten, rein empfangenden TG91/Timeslot-2-Live-Monitor mit
-  Jitterpuffer und Ausgabe auf das Standard-Wiedergabegerät,
-- ein ausschließlich offline vorbereitetes, hart auf privaten BrandMeister-
-  Parrot-Ruf 9990/Timeslot 2 verriegeltes Testprofil.
+Der technische Stand umfasst:
 
-Eine allgemeine PTT-Schnittstelle, Sprachkodierung und die spätere
-Benutzeroberfläche sind noch nicht enthalten. Die technische Live-Wiedergabe
-ist bestätigt; die subjektive Sprachverständlichkeit muss die Nutzerin noch
-praktisch beurteilen.
+- bestätigten BrandMeister-Login und Heartbeat,
+- striktes Parsen und Modellieren von DMRD-Paketen,
+- empfangsseitige AMBE+2-Extraktion und einen nativen, nur dekodierenden
+  mbelib-Adapter,
+- Jitterpuffer und begrenzte PCM-Wiedergabe,
+- bestätigten TG91-Live-Empfang,
+- ein hart verriegeltes privates Parrot-Testprofil für 9990 auf Timeslot 2,
+- lokale Sprachausgabe unter macOS,
+- 122 automatisierte Tests auf macOS.
 
-Automatisierte Sendetests auf öffentlichen Gruppen-Talkgroups sind dauerhaft
-verboten. Ein späterer kontrollierter Test darf ausschließlich Parrot als
-Privatruf auf 9990/Timeslot 2 verwenden, höchstens 10 Sekunden senden und
-höchstens 15 Sekunden auf das Echo warten. Der getrennte Live-Executor besitzt
-keine Ziel- oder Zeitparameter, keinen Retry und keinen öffentlichen Fallback.
-Der einmalig autorisierte private Test wurde erfolgreich abgeschlossen; die
-gesendete Fixture war stumm und das zurückkehrende Echo wurde lokal über den
-Software-Empfangspfad ausgegeben.
+Noch nicht enthalten sind eine allgemeine PTT-Schnittstelle, ein
+Sprachencoder und die spätere Bedienoberfläche. Öffentliche automatisierte
+Sendetests sind dauerhaft verboten.
 
-Der lokale native Decoder wird auf macOS mit `make -C native check` gebaut.
-Die erzeugte Bibliothek ist ein ignoriertes Build-Artefakt und wird nicht in
-Git aufgenommen.
+## Schnellstart
+
+Repository klonen und die Anleitung für das Betriebssystem verwenden:
+
+- [macOS](INSTALL_MACOS.md)
+- [Windows](INSTALL_WINDOWS.md)
+- [Linux](INSTALL_LINUX.md)
+
+Der kürzeste plattformunabhängige Prüfablauf nach aktivierter virtueller
+Umgebung ist:
+
+```text
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests -v
+```
+
+Für den nativen Empfangsdecoder ist zusätzlich ein C-Compiler erforderlich.
+Die betriebssystemspezifischen Anleitungen beschreiben den Build.
+
+## Dokumentation
+
+- [Roadmap](ROADMAP.md)
+- [Mitarbeiten](CONTRIBUTING.md)
+- [Architektur](docs/ARCHITECTURE.md)
+- [Verbindliche Accessibility-Anforderungen](docs/ACCESSIBILITY_REQUIREMENTS.md)
+- [BrandMeister-Kompatibilität](docs/BRANDMEISTER_COMPATIBILITY.md)
+- [Upstream-Provenienz und Lizenzgrenzen](docs/UPSTREAM_PROVENANCE.md)
+- [Release- und Deployment-Ablauf](DEPLOY.md)
+- [Änderungsverlauf](CHANGELOG.md)
+
+## Sicherheit und sensible Daten
+
+Lokale Dateien `config/*.local.json` dürfen Zugangsdaten enthalten und werden
+von Git sowie vom Release-ZIP ausgeschlossen. Passwörter, DMR-Zugangsdaten,
+Paketmitschnitte mit persönlichen Inhalten und lokale Audioaufnahmen gehören
+niemals in Issues, Commits oder Logs.
+
+Sendefunktionen werden fail-closed entwickelt: keine freie Zielwahl, keine
+unbegrenzten Wiederholungen und keine automatisierten Tests auf öffentlichen
+Talkgroups.
 
 ## Lizenz
 
-CarenDMR wird unter der GNU General Public License, Version 3 oder später,
-bereitgestellt. Der vollständige Lizenztext steht in `LICENSE`.
-
-Die auf DroidStar zurückgehenden DMR-Kodierhilfen und ihre Herkunft sind in
-`docs/UPSTREAM_PROVENANCE.md` dokumentiert. Bei Weitergabe müssen der
-vollständige korrespondierende Quellcode, Lizenztext und Urheberhinweise
-erhalten bleiben.
+CarenDMR steht unter
+[GNU GPL Version 3 oder später](LICENSE). Herkunft und Lizenzgrenzen
+adaptierter Referenzbestandteile sind in
+[UPSTREAM_PROVENANCE.md](docs/UPSTREAM_PROVENANCE.md) dokumentiert.

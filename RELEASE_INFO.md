@@ -1,50 +1,38 @@
-# CarenDMR 0.0.13
+# CarenDMR 0.0.13.1 – Project Foundation
 
-Offline-Implementierungsstand einer deterministischen, stummen DMRD-
-Gruppenruf-Fixture für TG91 auf Timeslot 2 mit BrandMeister-Gerätekennung
-`MMDVM_HS_Hat`.
+## Zweck
 
-Enthalten sind:
+Dieser Meilenstein vereinheitlicht Projekt-, Installations- und
+Entwicklungsdokumentation. Er ändert keine DMR-, Netzwerk-, Audio- oder
+Sendefunktion.
 
-- striktes Parsen vollständiger 55-Byte-DMRD-Pakete,
-- unveränderliche Paketmodelle,
-- Serialisierung für Voice-LC-Header, Voice Sync, Sprachrahmen und
-  Terminator-with-LC,
-- explizite Zielprüfung auf TG91 und Timeslot 2,
-- LC-, FEC-, Slot-Type- und Embedded-LC-Kodierung für genau eine Fixture,
-- ein festes, upstream dokumentiertes AMBE-Stummmuster,
-- GPLv3-or-later-Lizenztext und vollständige Upstream-Provenienz.
-- kompatibles Parsing empfangener Stream-ID-null-Pakete ohne Lockerung der
-  lokalen Sendekonstruktion,
-- payloadfreie Empfangsereignisse für Rufbeginn, Sprache, Rufende und
-  Signalisierung,
-- verbindliche VoiceOver- und Konfigurationstrennungs-Anforderungen.
-- empfangsseitige, austauschbare Software-Vocoder-Grenze,
-- nativer AMBE+2-2450/1150-Decoder ohne Encode-/Sendeoberfläche,
-- deterministische AMBE-zu-PCM-Referenzprüfung.
-- begrenzte, rein empfangende TG91/Timeslot-2-Audioausgabe mit Jitterpuffer.
-- verriegeltes, nur offline vorbereitetes privates Parrot-Testprofil für
-  Ziel 9990/Timeslot 2 mit festen 10-/15-Sekunden-Grenzen.
+## Enthalten
 
-Das frühere automatisierte TG91-Gruppenrufwerkzeug ist dauerhaft deaktiviert
-und besitzt keinen Sendeloop mehr. Der neue Parrot-Executor ist ausschließlich
-auf das verriegelte private Profil begrenzt.
+- README als zentraler, barrierefrei formulierter Projekteinstieg
+- Roadmap mit abgeschlossenen und nächsten Produktmeilensteinen
+- Beitrags- und Sicherheitsregeln
+- getrennte Installationsanleitungen für macOS, Windows und Linux
+- aktueller Architekturüberblick bis einschließlich Empfangsdecoder,
+  Jitterpuffer und verriegeltem Parrot-Test
+- reproduzierbarer Release- und Pull-Request-Ablauf
+- konsistente Verknüpfung von Lizenz, Provenienz, Accessibility,
+  BrandMeister-Kompatibilität und Änderungsverlauf
 
-Nicht enthalten sind Aufnahme/Persistenz, ein allgemeiner AMBE-Encoder,
-Audioübertragung oder eine Laufzeit-PTT-Schnittstelle. Die bestehende
-BrandMeister-Anmeldung bleibt unverändert. Die Nutzerin muss die subjektive
-Sprachverständlichkeit noch praktisch bestätigen.
+## Unveränderter Funktionsstand
 
-Die produktive Software-ID bleibt `20260728_CarenDMR`.
-Die BrandMeister-Login-only-Prüfung mit `MMDVM_HS_Hat` war erfolgreich.
+- bestätigter BrandMeister-Login
+- strikter DMRD-Empfang
+- nativer, nur empfangender AMBE+2/mbelib-Decoder
+- begrenzte PCM-Wiedergabe und TG91-Live-Empfang
+- verriegeltes privates Parrot-Profil
+- keine allgemeine PTT- oder Encoderoberfläche
 
-Die acht Payloads wurden bytegenau gegen DroidStar-Referenzcode geprüft.
-Historische Live-Diagnosen ändern diese neue dauerhafte Sicherheitsregel nicht.
-Der genau einmal autorisierte private Parrot-Test wurde erfolgreich
-abgeschlossen: acht Pakete in 0,440 Sekunden, sechs Echo-Sprachbursts,
-18 dekodierte AMBE-Codewörter, 2.880 lokale PCM-Samples, keine Dekodier- oder
-DMRD-Fehler, kein Timeout und vollständige Bereinigung. Es gab keinen Retry.
-Die ausgehende Fixture enthielt nur das validierte Stummmuster.
+## Validierung
 
-Teststatus: 122 Tests erfolgreich; nativer macOS-Build und Symbolprüfung
-erfolgreich.
+- vollständige Python-Testreihe
+- nativer macOS-Build mit Symbolprüfung
+- Versions- und Linkkonsistenz der Projektdokumentation
+- Kontrolle, dass keine lokale Konfiguration oder Build-Artefakte im Diff
+  enthalten sind
+
+Die verbindliche Versionsquelle bleibt `carendmr/version.py`.
