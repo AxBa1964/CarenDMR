@@ -1,4 +1,4 @@
-# DEPLOY – CarenDMR 0.0.9
+# DEPLOY – CarenDMR 0.0.13
 
 Alle Schritte in dieser Reihenfolge ausführen.
 
@@ -25,7 +25,7 @@ Commit.
 
 ## 2. Update einspielen
 
-`CarenDMR_0.0.9_Update.zip` direkt über das bestehende Projekt entpacken und
+`CarenDMR_0.0.13_Update.zip` direkt über das bestehende Projekt entpacken und
 vorhandene Dateien ersetzen.
 
 `config\brandmeister.local.json` ist nicht im ZIP enthalten und wird nicht
@@ -77,7 +77,7 @@ OK: BrandMeister-Anmeldung erfolgreich.
 python main.py
 ```
 
-Die Anwendung muss Version `0.0.9` melden.
+Die Anwendung muss Version `0.0.13` melden.
 
 ## 7. Änderungen committen
 
@@ -85,7 +85,7 @@ Die Anwendung muss Version `0.0.9` melden.
 git status
 git add .
 git status
-git commit -m "CarenDMR 0.0.9 DMR-Stummruf-Fixture"
+git commit -m "CarenDMR 0.0.13 Parrot-Sicherheitsprofil"
 git push
 git status
 ```

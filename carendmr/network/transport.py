@@ -81,6 +81,14 @@ class UdpTransport:
                 "Beim Empfang eines UDP-Pakets ist ein Fehler aufgetreten."
             ) from exc
 
+    def set_receive_timeout(self, seconds: float) -> None:
+        """Bound a later receive without reopening or changing its endpoint."""
+        if seconds <= 0:
+            raise ValueError("Das Empfangszeitlimit muss größer als null sein.")
+        sock = self._require_socket()
+        sock.settimeout(seconds)
+        self.timeout_seconds = seconds
+
     def close(self) -> None:
         sock, self._socket = self._socket, None
         if sock is not None:

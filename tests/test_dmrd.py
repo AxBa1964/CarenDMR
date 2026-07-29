@@ -174,6 +174,33 @@ class DmrdPacketTests(unittest.TestCase):
                 payload=self.PAYLOAD,
             )
 
+    def test_parser_accepts_zero_stream_id_as_missing_receive_metadata(self):
+        packet = bytearray(
+            build_tg91_voice_sync(
+                sequence=1,
+                source_id=self.SOURCE_ID,
+                repeater_id=self.REPEATER_ID,
+                stream_id=self.STREAM_ID,
+                payload=self.PAYLOAD,
+            ).to_bytes()
+        )
+        packet[16:20] = b"\x00\x00\x00\x00"
+
+        parsed = parse_dmrd_packet(bytes(packet))
+
+        self.assertEqual(0, parsed.stream_id)
+        self.assertFalse(parsed.has_stream_id)
+
+    def test_local_builder_still_rejects_zero_stream_id(self):
+        with self.assertRaisesRegex(ValueError, "Stream-ID"):
+            build_tg91_voice_sync(
+                sequence=1,
+                source_id=self.SOURCE_ID,
+                repeater_id=self.REPEATER_ID,
+                stream_id=0,
+                payload=self.PAYLOAD,
+            )
+
     def test_packet_model_is_immutable(self):
         packet = build_tg91_voice_sync(
             sequence=1,

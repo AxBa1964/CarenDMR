@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+import subprocess
+from typing import Callable, Protocol
 
 from carendmr.core.events import EventBus
 from carendmr.core.status import StatusChangedEvent
@@ -22,6 +23,32 @@ class ConsoleSpeechOutput:
 
     def speak(self, text: str) -> None:
         print(text)
+
+
+class MacOSSpeechOutput:
+    """Local macOS speech using the system `say` command without a shell."""
+
+    def __init__(
+        self,
+        runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    ) -> None:
+        self._runner = runner
+
+    def speak(self, text: str) -> None:
+        cleaned = text.strip()
+        if not cleaned:
+            return
+        try:
+            self._runner(
+                ["say", cleaned],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as error:
+            raise RuntimeError(
+                "Die lokale macOS-Sprachausgabe ist nicht verfügbar."
+            ) from error
 
 
 class SpeechManager:

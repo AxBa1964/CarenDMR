@@ -44,9 +44,10 @@ GPLv3-or-later lizenziert.
 
 ## Bewusst nicht übernommen
 
-Nicht übernommen wurden Qt/UI, Audioaufnahme oder -wiedergabe, AMBE-Geräte- und
-Software-Vocoder, Netzwerktransport, BrandMeister-Anmeldung, Modemsteuerung,
-Timer, PTT/Keying sowie alle anderen Digitalfunkarten.
+Für die Stummruf-Fixture wurden Qt/UI, Audioaufnahme oder -wiedergabe,
+AMBE-Geräte- und Software-Vocoder, Netzwerktransport, BrandMeister-Anmeldung,
+Modemsteuerung, Timer, PTT/Keying sowie alle anderen Digitalfunkarten nicht
+übernommen.
 
 Der übernommene AMBE-Inhalt ist ausschließlich das feste 33-Byte-Stummmuster
 aus `DMRDefines.h`. CarenDMR enthält damit keinen allgemeinen AMBE-Encoder.
@@ -62,3 +63,31 @@ aus `DMRDefines.h`. CarenDMR enthält damit keinen allgemeinen AMBE-Encoder.
 - Alle acht 33-Byte-Payloads wurden mit Dummy-IDs bytegenau gegen einen
   separat kompilierten C++-Referenzgenerator aus den oben genannten
   Upstream-Komponenten verglichen.
+
+## Empfangsdecoder ab 0.0.11
+
+Für den rein empfangsseitigen AMBE+2-Decoder wurden aus demselben geprüften
+DroidStar-Commit zusätzlich isoliert:
+
+- `mbe/ambe3600x2450.c` und zugehörige Konstanten: AMBE 2450/1150
+  Fehlerkorrektur, Parameterdekodierung und Frame-Verarbeitung;
+- `mbe/ecc.c` und Konstanten: Golay-/Hamming-Fehlerkorrektur;
+- `mbe/mbelib.c`, `mbelib.h` und Konstanten: Parameterspeicher und
+  Sprachsynthese;
+- ausschließlich die vier 36 Einträge langen DMR-Bit-Mapping-Tabellen aus
+  `mbe/mbevocoder.cpp`.
+
+Diese Dateien tragen die ISC-Erlaubnis und ihre vorhandenen Hinweise bleiben
+im Quellbaum erhalten. Die CarenDMR-C-ABI-Hülle ist GPLv3-or-later. Die
+ISC-Lizenz ist mit GPLv3 vereinbar; bei Weitergabe bleiben dennoch beide
+Hinweissätze erhalten.
+
+Nicht übernommen wurden die Encode-Methoden von `MBEVocoder`, der
+IMBE-Encoder, MD380-Firmware oder -Emulation, Codec2, USB-Vocoder-Code,
+Qt-/Audio-Code sowie Netzwerk- und Sendefunktionen.
+
+Die urheberrechtliche Lizenzkompatibilität beantwortet nicht selbstständig
+Fragen zu Patenten oder proprietären Codec-Rechten. Vor öffentlicher
+Verteilung eines Software-AMBE-Decoders ist deshalb eine gesonderte Prüfung
+für die vorgesehenen Länder und Vertriebswege erforderlich. Die lokale
+technische Validierung trifft keine rechtliche Freigabeentscheidung.

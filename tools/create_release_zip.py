@@ -28,6 +28,8 @@ EXCLUDED_PATTERNS = {
     "*.spec",
     "*.zip",
     "*.local.json",
+    "*.dylib",
+    "*.so",
     "Desktop.ini",
     "Thumbs.db",
 }

@@ -1,5 +1,62 @@
 # Changelog
 
+## 0.0.13 – Verriegeltes privates Parrot-Testprofil
+
+- Dauerhafte Sicherheitsregel ergänzt: automatisierte Sendetests dürfen
+  niemals eine öffentliche Gruppen-Talkgroup verwenden.
+- Offline-Profil hart auf BrandMeister Parrot, Ziel 9990, Privatruf und
+  Timeslot 2 verriegelt.
+- Maximale zukünftige Sendezeit auf 10 Sekunden und Echo-Beobachtung auf
+  exakt 15 Sekunden festgesetzt, ohne Laufzeitparameter.
+- Privatrufbit und Voice-LC-FLCO bytegenau mit Referenzpayloads geprüft.
+- Früheres automatisiertes TG91-Gruppenrufwerkzeug dauerhaft fail-closed
+  deaktiviert und seinen Sendeloop entfernt.
+- Genau einen autorisierten privaten Live-Test ausgeführt: acht Pakete in
+  0,440 Sekunden, sechs Echo-Sprachbursts, keine Wiederholung und vollständige
+  Bereinigung.
+- Lokale gesprochene Phasenansagen und Echoausgabe über den bestehenden
+  Software-Empfangspfad bestätigt; die gesendete Fixture blieb stumm.
+
+## 0.0.12 – Begrenzte Live-Empfangswiedergabe
+
+- Callback-gesteuerte, auf zwei Sekunden begrenzte PCM-Ausgabe für das
+  Standard-Wiedergabegerät ergänzt.
+- DMRD-Sequenzpuffer mit drei Bursts Vorlauf, kleiner Umsortierung und
+  Stille-Verdeckung fehlender Bursts ergänzt.
+- Empfangsdecoder ausschließlich für TG91/Timeslot 2 an die lokale
+  Audioausgabe angebunden.
+- 180-ms-Syntheseprüfung sowie begrenzten 60-s-Live-Empfang erfolgreich
+  ausgeführt.
+- Im Live-Test 407 Sprachbursts und 1.221 AMBE-Codewörter ohne Dekodierfehler
+  verarbeitet; kein DMRD-Paket gesendet.
+- Keine Aufnahme-, Persistenz-, Upload-, Dashboard- oder TX-Funktion ergänzt.
+
+## 0.0.11 – Empfangsseitiger Software-Vocoder
+
+- Austauschbare, zustandsbehaftete Empfangs-Vocoder-Grenze ergänzt.
+- Drei AMBE+2-Codewörter evidenzgetreu aus jedem DMR-Sprachburst extrahiert.
+- Minimalen nativen DroidStar/mbelib-Decoder für AMBE 2450/1150 auf macOS
+  isoliert; Encoder, MD380-Firmware und Codec2 bleiben ausgeschlossen.
+- Nicht-personalen Stummvektor deterministisch in 480 PCM-Samples dekodiert
+  und Ergebnis, Fehleranzahl sowie ungültige Eingaben automatisiert geprüft.
+- ISC-Hinweise, geprüften Upstream-Commit und getrennte Patentprüfung
+  dokumentiert.
+- Keine Wiedergabe, Live-Sprachbewertung, Netzwerk- oder Sendefunktion ergänzt.
+
+## 0.0.10 – Empfangsereignisse und Accessibility-Anforderungen
+
+- Live beobachtete DMRD-Ablehnungen strukturell und ohne Nutzdaten untersucht:
+  gültige 55-Byte-Pakete mit Stream-ID null statt Transportmüll.
+- Empfangsparser akzeptiert Stream-ID null als fehlende Metainformation;
+  lokale Paketkonstruktion verlangt weiterhin eine von null verschiedene ID.
+- Payloadfreie, unveränderliche `DmrdReceiveEvent`-Grenze für Rufbeginn,
+  Sprache, Rufende und Signalisierung ergänzt.
+- Vollständige VoiceOver-Bedienbarkeit und die Trennung sensibler
+  Verbindungseinrichtung von der Betriebsansicht als verbindliche
+  Produktanforderungen dokumentiert.
+- Empfangsverifikation nach der Änderung ohne Parserablehnung abgeschlossen.
+- Keine GUI, Audio-/AMBE-Dekodierung oder neue Sendefunktion ergänzt.
+
 ## 0.0.9 – Deterministische DMR-Stummruf-Fixture
 
 - Projektlizenz bewusst als GPLv3-or-later festgelegt.
@@ -69,7 +126,7 @@
 # 0.0.7.1
 
 - RPTC-Koordinatenformat bytegenau an DroidStar angepasst.
-- Regressionstest für `52.31000` und `10.470000` ergänzt.
+- Regressionstest für das nicht-personale Koordinatenformat ergänzt.
 - Lokale Konfigurationsdateien werden nicht im Update-Paket ausgeliefert.
 
 # Änderungsverlauf
@@ -119,4 +176,5 @@
 
 - Neuer Referenztest mit den exakt aus dem funktionierenden DroidStar-Mitschnitt ermittelten RPTC-Metadaten.
 - Der Test verändert `config/brandmeister.local.json` nicht und übernimmt daraus nur Zugangsdaten und Rufzeichen.
-- Exakte Referenzwerte: leere Beschreibung, `www.qrz.com`, `20181107_Pi-Star`, `MMDVM_MMDVM_HS_Hat`, 52.36999 / 10.47.
+- Referenzprofil mit nicht-personalen Testwerten für Beschreibung, URL,
+  Software-/Package-ID und Koordinaten ergänzt.

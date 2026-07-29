@@ -65,6 +65,14 @@ Sprachausgabe nicht unnötig wiederholen.
 Technische Zustände werden zunächst in verständliche deutsche Texte übersetzt.
 Die Ausgabe erfolgt in 0.0.4 ausschließlich auf der Konsole.
 
+Für jede spätere Oberfläche ist vollständige Bedienbarkeit mit macOS
+VoiceOver eine verbindliche Abnahmebedingung. Dazu gehören semantisch
+beschriftete Tastatursteuerung, vorhersehbare Fokusführung, eine kompakte
+Zustandszusammenfassung, priorisierte Live-Ankündigungen, ein zugängliches
+textuelles Ereignisprotokoll und nicht-visuell vollständige Fehlerhinweise.
+Farbe, Wellenform oder Position dürfen nie alleinige Informationsträger sein.
+Die detaillierten Kriterien stehen in `docs/ACCESSIBILITY_REQUIREMENTS.md`.
+
 Wichtig: Die Konsolenausgabe ist kein Provisorium im Sinne einer Sackgasse.
 Sie implementiert bereits dieselbe Schnittstelle, die später von nativer
 Sprachausgabe verwendet wird.

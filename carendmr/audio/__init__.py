@@ -7,6 +7,7 @@ from .manager import (
     AudioManager,
     AudioUnavailableError,
 )
+from .pcm_output import BufferedPcmOutput, PcmOutputError
 
 __all__ = [
     "AudioBackend",
@@ -16,5 +17,7 @@ __all__ = [
     "AudioManager",
     "AudioSelection",
     "AudioUnavailableError",
+    "BufferedPcmOutput",
+    "PcmOutputError",
     "SoundDeviceBackend",
 ]

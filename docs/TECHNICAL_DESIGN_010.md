@@ -1,5 +1,9 @@
 # CarenDMR 0.0.9 – Offline-Stummruf-Fixture
 
+> Historischer Stand: Die damalige TG91-Live-Diagnose ist seit 0.0.13
+> dauerhaft deaktiviert. Automatisierte Sendetests dürfen nur noch das
+> private, verriegelte Parrot-Profil 9990/Timeslot 2 verwenden.
+
 ## Zweck
 
 Dieser Meilenstein schließt die Lücke zwischen der vorhandenen DMRD-
