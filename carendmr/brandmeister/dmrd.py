@@ -73,7 +73,11 @@ class DmrdPacket:
         _require_range("Ziel-ID", self.destination_id, 1, 0xFFFFFF)
         _require_range("Repeater-ID", self.repeater_id, 1, 0xFFFFFFFF)
         _require_range("Zeitschlitz", self.timeslot, 1, 2)
-        _require_range("Stream-ID", self.stream_id, 1, 0xFFFFFFFF)
+        # Homebrew senders normally use a non-zero random Stream-ID. Inbound
+        # BrandMeister traffic can nevertheless carry zero; upstream
+        # DroidStar accepts it and MMDVMHost does not validate this field on
+        # receive. Zero is therefore modeled as unavailable receive metadata.
+        _require_range("Stream-ID", self.stream_id, 0, 0xFFFFFFFF)
         _require_range("BER", self.ber, 0, 0xFF)
         _require_range("RSSI", self.rssi, 0, 0xFF)
 
@@ -120,6 +124,10 @@ class DmrdPacket:
             and self.destination_id == TARGET_TALKGROUP
             and self.timeslot == TARGET_TIMESLOT
         )
+
+    @property
+    def has_stream_id(self) -> bool:
+        return self.stream_id != 0
 
     @property
     def is_voice_lc_header(self) -> bool:
@@ -311,6 +319,9 @@ def _build_target_packet(
     voice_frame_number: int | None = None,
     data_type: int | None = None,
 ) -> DmrdPacket:
+    # All locally constructed/transmittable packets retain the stronger
+    # non-zero requirement even though the receive parser accepts zero.
+    _require_range("Stream-ID", stream_id, 1, 0xFFFFFFFF)
     return DmrdPacket(
         sequence=sequence,
         source_id=source_id,

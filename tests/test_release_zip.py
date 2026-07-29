@@ -35,6 +35,8 @@ class ReleaseZipTests(unittest.TestCase):
         self.assertTrue(should_exclude(Path("config/config.local.json")))
         self.assertTrue(should_exclude(Path("config/brandmeister.local.json")))
         self.assertTrue(should_exclude(Path("config/audio.local.json")))
+        self.assertTrue(should_exclude(Path("native/libcarendmr_mbe.dylib")))
+        self.assertTrue(should_exclude(Path("native/libcarendmr_mbe.so")))
         self.assertFalse(should_exclude(Path("carendmr/app.py")))
 
     def test_collect_release_files_skips_zip_and_logs(self):

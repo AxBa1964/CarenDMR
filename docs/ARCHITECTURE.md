@@ -165,10 +165,25 @@ Aufgaben:
 
 - alle Zustände per Sprache melden
 - vollständige Tastaturbedienung
+- semantische Rollen, Namen und Zustände für VoiceOver bereitstellen
+- eine kompakte, gezielt abrufbare Zustandszusammenfassung für Verbindung,
+  Talkgroup, Timeslot, Empfang/Senden und aktuelle Aktivität bilden
+- wichtige Änderungen priorisiert ankündigen und redundante Meldungen
+  unterdrücken
+- eine stabile Fokusreihenfolge und ein zugängliches textuelles
+  Gesprächs-/Ereignisprotokoll unterstützen
+- Fehler einschließlich Auswirkung und nächster Aktion nicht-visuell
+  verständlich machen
 - später USB-Tastenbedienung
 - PTT-Signaltöne
 - Talkgroup und Anrufer ansagen
 - Fehler verständlich und ohne Fachjargon ausgeben
+
+Die vollständigen, für jede spätere Oberfläche verbindlichen
+Abnahmekriterien stehen in `docs/ACCESSIBILITY_REQUIREMENTS.md`. Keine
+Information darf allein durch Farbe, Wellenform oder Position vermittelt
+werden. GUI-Technologie und Layout müssen sich diesen Anforderungen
+unterordnen.
 
 ## 7. Bewusst nicht übernommene DroidStar-Bestandteile
 
