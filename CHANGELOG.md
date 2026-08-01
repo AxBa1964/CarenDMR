@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.0.18.3 – Audio-Komfort
+
+- Empfangslautstärke auf 0 bis 400 Prozent erweitert.
+- Zuschaltbare langsame AGC für gleichmäßigere Sprachlautheit ergänzt.
+- Soft-Limiter und DMR-Ausgangspegelanzeige ergänzt.
+- DMR-Audio während der lokalen Testwiedergabe automatisch stummgeschaltet und danach wieder freigegeben.
+- Mikrofonverstärkung, Ausgabelautstärke, Benutzer-Mute und AGC lokal gespeichert.
+- Samplegenaue fünfsekündige Testaufnahme und verzögertes Speichern der Reglerwerte beibehalten.
+- Keine PTT, kein AMBE-Encoder und keine DMRD-Sendefunktion ergänzt.
+
+## 0.0.18 – Lokaler Audio-Sendepfad
+
+- Eigenen, von Empfang und GUI getrennten `AudioSendService` ergänzt.
+- Mikrofone in der GUI einlesen und auswählen.
+- Fünfsekündige PCM-Testaufnahme mit 16 kHz, Mono und Pegelanzeige ergänzt.
+- Lokale Wiedergabe der Testaufnahme und viersekündigen Loopback-Test ergänzt.
+- Diagnose für Gerät, Samplerate, Kanalzahl, Sampleanzahl und Spitzenpegel ergänzt.
+- Keine PTT, kein AMBE-Encoder und keine DMRD-Sendefunktion ergänzt.
+- Vollständige Testreihe auf 157 Tests erweitert.
+
+## 0.0.17 – Dauerempfang und QSO-Historie
+
+- Periodischen BrandMeister-Heartbeat während des Live-Empfangs ergänzt; MSTPONG-Antworten werden im gemeinsamen Empfangskanal sicher verarbeitet.
+- GUI-Empfang läuft ohne feste Zeitgrenze bis Trennen oder Programmende.
+- Eigenen barrierefrei per Tastatur erreichbaren Reiter „QSO-Historie“ ergänzt.
+- Abgeschlossene Sprechdurchgänge lokal in `data/qso_history.db` gespeichert.
+- Historie zeigt Zeit, Rufzeichen, Name, Land, DMR-ID, Talkgroup/Timeslot und Dauer.
+- SQLite-Verbindungen werden explizit geschlossen; lokale Historie bleibt aus Git und Release ausgeschlossen.
+- Keine Sendefunktion ergänzt.
+
+## 0.0.15 – Aktuelle Station und Live-QSO-Informationen
+
+- Aktuellen DMR-Sprecher als UI-unabhängiges Domain-Modell ergänzt.
+- Sprechbeginn, Sprecherwechsel und Sprechende aus dem vorhandenen DMRD-Empfang abgeleitet.
+- DMR-ID, Talkgroup, Timeslot und laufende Sprechdauer im Hauptfenster angezeigt.
+- Sprecherwechsel und beendete Sprechdurchgänge im zugänglichen Ereignisprotokoll ergänzt.
+- Identische Sprecherinformationen im Konsolenempfang ausgegeben.
+- Application-Service zwischen Bedienoberfläche und Empfangstechnik ergänzt; keine GUI-Abhängigkeit in Netzwerk, Decoder oder Audio.
+- Keine externe Kontaktdatenbank, keine neue Sendefunktion und keine Änderung der Projektstruktur.
+
 ## 0.0.14.1 – Konsistente Betriebszustände
 
 - BrandMeister-Verbindung, Empfang und Audio in der GUI getrennt dargestellt.

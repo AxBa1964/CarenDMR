@@ -54,6 +54,7 @@ class AppEntrypointTests(unittest.TestCase):
                 unittest.mock.ANY,
                 seconds=600.0,
                 progress_callback=app._print_progress,
+                call_activity_callback=app._print_call_activity,
             )
             self.assertIn("DMRD gesendet:              0", output.getvalue())
             self.assertIn("Beendigung:                Strg+C", output.getvalue())

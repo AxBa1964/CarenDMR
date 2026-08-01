@@ -1,150 +1,98 @@
-# Deployment CarenDMR 0.0.13.5
+# Deployment CarenDMR 0.0.18.3
 
-## Windows
+Dieses Dokument ist die verbindliche chronologische Anleitung für Version 0.0.18.3.
+Lokale Zugangsdaten und produktive Datenbanken dürfen dabei nicht überschrieben
+oder committed werden.
+
+## 1. Projektstand prüfen
 
 ```powershell
 cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
-.\.venv\Scripts\Activate.ps1
-Get-ChildItem -Recurse -File | Unblock-File
-.\native\build_windows.ps1
-python -m unittest discover -s tests -v
-python main.py --listen
-```
-
-Der Empfang läuft bis Strg+C. Für zehn Minuten:
-
-```powershell
-python main.py --listen --duration 600
-```
-
-`config\brandmeister.local.json` bleibt lokal und darf nicht überschrieben oder committed werden.
-
-# Release- und Deployment-Ablauf – CarenDMR 0.0.13.4
-
-Dieses Dokument beschreibt den verbindlichen Ablauf für einen
-Entwicklungsmeilenstein. Installationen stehen getrennt in
-[INSTALL_MACOS.md](INSTALL_MACOS.md),
-[INSTALL_WINDOWS.md](INSTALL_WINDOWS.md) und
-[INSTALL_LINUX.md](INSTALL_LINUX.md).
-
-## 1. Ausgangszustand prüfen
-
-```text
 git status
 git branch --show-current
 git pull --ff-only
 ```
 
-Der Arbeitsbaum muss vor Beginn sauber sein. Releases entstehen nie direkt
-auf `master`, sondern auf einem eigenen Branch.
+## 2. Dateien unter Windows entsperren
 
-## 2. Version und Dokumentation
-
-Die verbindliche Versionsquelle ist:
-
-```text
-carendmr/version.py
+```powershell
+Get-ChildItem -Recurse -File | Unblock-File
 ```
 
-Bei einem Release müssen mindestens diese Stellen übereinstimmen:
+## 3. Virtuelle Umgebung aktivieren
 
-- `carendmr/version.py`
-- `README.md`
-- `CHANGELOG.md`
-- `RELEASE_INFO.md`
-- Überschrift dieses Dokuments
-
-Technische oder nutzerrelevante Änderungen werden zusätzlich in Architektur,
-Roadmap, Accessibility-Anforderungen oder Entscheidungen dokumentiert.
-
-## 3. Abhängigkeiten und nativer Build
-
-In aktivierter virtueller Umgebung:
-
-```text
+```powershell
+.\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
 
-Auf macOS:
+## 4. Nativen Empfangsdecoder bauen
 
-```text
-make -C native check
+```powershell
+.\native\build_windows.ps1
 ```
 
-Auf Linux:
+## 5. Vollständige Tests ausführen
 
-```text
-make -C native check
-```
-
-Auf Windows PowerShell:
-
-```text
-powershell -ExecutionPolicy Bypass -File .\native\build_windows.ps1
-```
-
-Native Bibliotheken bleiben lokale Build-Artefakte.
-
-## 4. Vollständige Tests
-
-```text
+```powershell
 python -m unittest discover -s tests -v
-python main.py
 ```
 
-Alle Tests müssen mit `OK` enden und die Anwendung muss die geplante Version
-melden. Netzwerk- oder Audio-Livetests werden nur durchgeführt, wenn sie zum
-Meilenstein gehören und ausdrücklich freigegeben sind.
+Erwartet werden 168 erfolgreiche Tests und `OK`.
 
-Automatisierte Sendetests auf öffentlichen Talkgroups sind verboten.
+## 6. Anwendung starten
 
-## 5. Release-ZIP prüfen
-
-```text
-python tools/create_release_zip.py
+```powershell
+python main.py --gui
 ```
 
-Das ZIP wird unter `release/` erzeugt und nicht committed. Es darf insbesondere
-nicht enthalten:
+## 7. Empfang praktisch prüfen
 
-- `.git`, virtuelle Umgebungen oder Caches,
-- `config/*.local.json`,
-- Logs, Mitschnitte oder lokale Audioinhalte,
-- native Build-Artefakte.
+- Mit „Verbinden und empfangen“ verbinden.
+- TG91-Empfang bleibt ohne feste Zeitgrenze aktiv.
+- Aktuelle Station und QSO-Historie werden aktualisiert.
+- „Trennen“ beendet Empfang und Audio sauber.
 
-## 6. Diff, Commit und Push
+## 8. Lokalen Audio-Sendepfad prüfen
 
-```text
+Im Reiter **„Senden – lokaler Audiotest“**:
+
+1. Mikrofon auswählen oder Standardmikrofon übernehmen.
+2. „5 Sekunden Testaufnahme“ ausführen.
+3. Prüfen, ob sich die Pegelanzeige bewegt.
+4. „Testaufnahme wiedergeben“ ausführen und Sprache beurteilen.
+5. Ausgabelautstärke zwischen 0 und 400 Prozent prüfen.
+6. AGC ein- und ausschalten und verschiedene Gegenstationen vergleichen.
+7. Während „Testaufnahme wiedergeben“ prüfen, dass DMR-Audio lokal stumm bleibt.
+8. Optional „4 Sekunden Loopback“ ausführen.
+
+Version 0.0.18.3 sendet dabei keine DMRD-Pakete. Es gibt keine PTT und keinen
+AMBE-Encoder.
+
+## 9. Release-ZIP erzeugen
+
+```powershell
+python tools\create_release_zip.py
+```
+
+Das ZIP darf insbesondere nicht enthalten:
+
+- `.git`, `.venv` oder Cache-Verzeichnisse,
+- `config\*.local.json`,
+- `data\contacts.db` oder `data\qso_history.db`,
+- Audioaufnahmen, Logs oder Paketmitschnitte,
+- `*.dll`, `*.so` oder `*.dylib`.
+
+## 10. Git prüfen, committen und pushen
+
+```powershell
 git status
 git diff --check
 git diff
 git add <gezielte Dateien>
 git status
+git diff --cached --check
 git diff --cached
-git commit -m "CarenDMR <Version> <kurzer Meilenstein>"
+git commit -m "CarenDMR 0.0.18.3 Audiopegel und samplegenaue Aufnahme"
 git push -u origin <branch>
 ```
-
-Anschließend wird ein Draft Pull Request gegen `master` eröffnet. Der PR nennt
-Umfang, Motivation, Auswirkungen und ausgeführte Prüfungen.
-
-## 7. Merge und Nachkontrolle
-
-Nach Review und erfolgreichen Prüfungen:
-
-1. Pull Request mergen.
-2. Lokalen `master` per Fast-forward aktualisieren.
-3. Tests aus dem gemergten Stand erneut ausführen.
-4. Erst danach bei Bedarf ein GitHub Release aus dem geprüften Stand erstellen.
-## TG91-Live-Empfang prüfen
-
-Voraussetzungen: `.venv` ist aktiviert, `config/brandmeister.local.json` ist
-vorhanden und der native Decoder wurde gemäß Betriebssystemanleitung gebaut.
-
-```powershell
-python main.py --listen
-```
-
-Der Lauf endet automatisch nach spätestens 60 Sekunden. Er ist fest auf TG91
-und Timeslot 2 begrenzt und sendet keine DMRD-Pakete.
-

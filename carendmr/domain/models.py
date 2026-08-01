@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from enum import Enum
 
+from .current_call import CurrentCall
+
 
 class ConnectionState(str, Enum):
     DISCONNECTED = "Getrennt"
@@ -38,6 +40,7 @@ class ApplicationState:
     audio_active: bool = False
     message: str = "Bereit"
     statistics: ReceiveStatistics = ReceiveStatistics()
+    current_call: CurrentCall | None = None
 
     def with_changes(self, **changes: object) -> "ApplicationState":
         return replace(self, **changes)

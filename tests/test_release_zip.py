@@ -38,6 +38,8 @@ class ReleaseZipTests(unittest.TestCase):
         self.assertTrue(should_exclude(Path("native/libcarendmr_mbe.dylib")))
         self.assertTrue(should_exclude(Path("native/libcarendmr_mbe.so")))
         self.assertTrue(should_exclude(Path("native/carendmr_mbe.dll")))
+        self.assertTrue(should_exclude(Path("data/contacts.db")))
+        self.assertTrue(should_exclude(Path("data/radioid_user.csv.part")))
         self.assertFalse(should_exclude(Path("native/build_windows.ps1")))
         self.assertFalse(should_exclude(Path("carendmr/app.py")))
 

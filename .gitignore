@@ -36,3 +36,6 @@ config/brandmeister.local.json
 config/*.local.json
 
 native/carendmr_mbe.dll
+
+# Lokal heruntergeladene RadioID-Kontaktdaten
+data/

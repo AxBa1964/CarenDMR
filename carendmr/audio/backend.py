@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol, Sequence
+from typing import Any, Callable, Protocol, Sequence
 
 from .devices import AudioDevice
 
@@ -12,6 +12,26 @@ class AudioBackend(Protocol):
 
     def query_devices(self) -> list[AudioDevice]:
         """Liefert alle verfügbaren Geräte."""
+
+    def record_input(
+        self,
+        *,
+        input_index: int,
+        duration_seconds: float,
+        sample_rate: int,
+        channels: int,
+        level_callback: Callable[[float], None] | None = None,
+    ) -> Any:
+        """Nimmt PCM lokal auf und liefert die Samples."""
+
+    def play_samples(
+        self,
+        samples: Any,
+        *,
+        output_index: int,
+        sample_rate: int,
+    ) -> None:
+        """Spielt zuvor aufgenommene PCM-Samples lokal ab."""
 
     def record_and_play(
         self,
@@ -76,6 +96,63 @@ class SoundDeviceBackend:
         if isinstance(value, (list, tuple)) and len(value) >= 2:
             return int(value[0]), int(value[1])
         return -1, -1
+
+    def record_input(
+        self,
+        *,
+        input_index: int,
+        duration_seconds: float,
+        sample_rate: int,
+        channels: int,
+        level_callback: Callable[[float], None] | None = None,
+    ) -> Any:
+        if duration_seconds <= 0:
+            raise ValueError("Die Aufnahmedauer muss größer als null sein.")
+        sd = self._module()
+        import numpy as np
+
+        target_frames = int(round(duration_seconds * sample_rate))
+        blocks: list[Any] = []
+        captured = 0
+
+        def callback(indata: Any, frames: int, _time: Any, status: Any) -> None:
+            nonlocal captured
+            del status
+            remaining = target_frames - captured
+            if remaining <= 0:
+                raise sd.CallbackStop
+            block = indata[:remaining].copy()
+            blocks.append(block)
+            captured += int(block.shape[0])
+            if level_callback is not None and block.size:
+                rms = float(np.sqrt(np.mean(np.square(block, dtype=np.float64))))
+                level_callback(min(100.0, rms * 200.0))
+            if captured >= target_frames:
+                raise sd.CallbackStop
+
+        with sd.InputStream(
+            samplerate=sample_rate,
+            channels=channels,
+            dtype="float32",
+            device=input_index,
+            callback=callback,
+        ):
+            while captured < target_frames:
+                sd.sleep(20)
+        if not blocks:
+            return np.empty((0, channels), dtype="float32")
+        return np.concatenate(blocks, axis=0)[:target_frames]
+
+    def play_samples(
+        self,
+        samples: Any,
+        *,
+        output_index: int,
+        sample_rate: int,
+    ) -> None:
+        sd = self._module()
+        sd.play(samples, samplerate=sample_rate, device=output_index)
+        sd.wait()
 
     def record_and_play(
         self,

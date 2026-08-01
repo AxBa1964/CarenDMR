@@ -124,6 +124,15 @@ class BrandMeisterClient:
             self.close(send_close=False)
             raise
 
+
+    def send_ping(self) -> None:
+        """Sendet einen Heartbeat, ohne synchron eine Antwort zu verbrauchen."""
+        if self.state is not LoginState.CONNECTED or self.transport is None:
+            raise BrandMeisterLoginError(
+                "Ein Heartbeat ist erst nach erfolgreicher Anmeldung möglich."
+            )
+        self._send("RPTPING", build_ping_packet(self.config.dmr_id))
+
     def ping(self) -> bool:
         if self.state is not LoginState.CONNECTED or self.transport is None:
             raise BrandMeisterLoginError(

@@ -15,11 +15,21 @@ from carendmr.vocoder.playout import DmrJitterBuffer
 from .client import BrandMeisterClient
 from .config import BrandMeisterConfig
 from .dmrd import DmrdFrameClass, parse_dmrd_packet
-from .protocol import LoginState
+from .protocol import LoginState, is_master_pong
 
 
 MAX_LISTEN_SECONDS = 3600.0
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
+DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 5.0
+
+
+@dataclass(frozen=True, slots=True)
+class LiveCallActivity:
+    active: bool
+    source_id: int
+    talkgroup: int
+    timeslot: int
+    stream_id: int | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,8 +77,14 @@ def listen_receive_only(
     *,
     seconds: float | None,
     progress_callback: Callable[[LiveListenProgress], None] | None = None,
+    call_activity_callback: Callable[[LiveCallActivity], None] | None = None,
     progress_interval: float = DEFAULT_PROGRESS_INTERVAL_SECONDS,
+    heartbeat_interval: float = DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
     stop_requested: Callable[[], bool] | None = None,
+    output_muted: Callable[[], bool] | None = None,
+    output_volume: Callable[[], float] | None = None,
+    output_agc_enabled: Callable[[], bool] | None = None,
+    output_level_callback: Callable[[float], None] | None = None,
     client_factory=BrandMeisterClient,
     output_factory=BufferedPcmOutput,
     decoder_factory=NativeMbeReceiveVocoder,
@@ -81,9 +97,14 @@ def listen_receive_only(
         raise ValueError("Die Empfangsdauer muss zwischen 1 und 3600 Sekunden liegen.")
     if progress_interval <= 0:
         raise ValueError("Das Diagnoseintervall muss größer als null sein.")
+    if heartbeat_interval <= 0:
+        raise ValueError("Das Heartbeat-Intervall muss größer als null sein.")
 
     client = client_factory(config)
-    output = output_factory(sample_rate=8000)
+    output = output_factory(
+        sample_rate=8000, muted=output_muted, volume=output_volume,
+        agc_enabled=output_agc_enabled, level_callback=output_level_callback,
+    )
     decoder = None
     jitter = DmrJitterBuffer()
     authenticated = audio_started = closed = interrupted = False
@@ -91,12 +112,14 @@ def listen_receive_only(
     decode_errors = corrected = concealed = invalid = 0
     started_at = monotonic()
     next_progress = started_at + progress_interval
+    next_heartbeat = started_at + heartbeat_interval
 
     try:
         output.start()
         audio_started = True
         synthetic = _synthetic_samples()
-        output.write(synthetic)
+        if output_muted is None or not output_muted():
+            output.write(synthetic)
         synthetic_count = len(synthetic)
         sleep(0.25)
 
@@ -112,6 +135,9 @@ def listen_receive_only(
                 if stop_requested is not None and stop_requested():
                     break
                 now = monotonic()
+                if now >= next_heartbeat:
+                    client.send_ping()
+                    next_heartbeat = now + heartbeat_interval
                 if progress_callback is not None and now >= next_progress:
                     progress_callback(
                         LiveListenProgress(
@@ -132,6 +158,8 @@ def listen_receive_only(
                 except NetworkReceiveTimeout:
                     continue
                 datagrams += 1
+                if is_master_pong(datagram, config.dmr_id):
+                    continue
                 if not datagram.startswith(b"DMRD"):
                     continue
                 try:
@@ -142,15 +170,30 @@ def listen_receive_only(
                 if not packet.is_target_group:
                     continue
                 if packet.is_voice_lc_header:
+                    if call_activity_callback is not None:
+                        call_activity_callback(
+                            LiveCallActivity(
+                                True, packet.source_id, packet.destination_id,
+                                packet.timeslot, packet.stream_id or None,
+                            )
+                        )
                     decoder.close()
                     decoder = decoder_factory()
                     jitter.reset(first_voice_sequence=(packet.sequence + 1) & 0xFF)
                     continue
                 if packet.is_terminator_with_lc:
+                    if call_activity_callback is not None:
+                        call_activity_callback(
+                            LiveCallActivity(
+                                False, packet.source_id, packet.destination_id,
+                                packet.timeslot, packet.stream_id or None,
+                            )
+                        )
                     batch = jitter.flush()
                     for frame in batch.frames:
-                        output.write(frame)
-                        samples += len(frame)
+                        if output_muted is None or not output_muted():
+                            output.write(frame)
+                            samples += len(frame)
                     concealed += batch.concealed_bursts
                     jitter.reset()
                     continue
@@ -160,6 +203,13 @@ def listen_receive_only(
                 ):
                     continue
 
+                if call_activity_callback is not None:
+                    call_activity_callback(
+                        LiveCallActivity(
+                            True, packet.source_id, packet.destination_id,
+                            packet.timeslot, packet.stream_id or None,
+                        )
+                    )
                 voice += 1
                 decoded: list[int] = []
                 try:
@@ -174,16 +224,18 @@ def listen_receive_only(
 
                 batch = jitter.push(packet.sequence, tuple(decoded))
                 for frame in batch.frames:
-                    output.write(frame)
-                    samples += len(frame)
+                    if output_muted is None or not output_muted():
+                        output.write(frame)
+                        samples += len(frame)
                 concealed += batch.concealed_bursts
         except KeyboardInterrupt:
             interrupted = True
 
         batch = jitter.flush()
         for frame in batch.frames:
-            output.write(frame)
-            samples += len(frame)
+            if output_muted is None or not output_muted():
+                output.write(frame)
+                samples += len(frame)
         concealed += batch.concealed_bursts
         sleep(0.25)
     finally:

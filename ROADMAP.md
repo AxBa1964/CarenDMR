@@ -7,6 +7,12 @@ abgenommen werden.
 
 ## Abgeschlossen
 
+### 0.0.17 – Dauerempfang und QSO-Historie
+
+- periodischer BrandMeister-Heartbeat im Live-Empfang
+- unbegrenzter GUI-Empfang bis zur Benutzeraktion
+- lokaler, eigener Reiter für abgeschlossene Sprechdurchgänge
+
 ### Fundament und BrandMeister
 
 - Projekt-, Test- und Release-Grundlage
@@ -17,42 +23,47 @@ abgenommen werden.
 ### DMR-Empfang
 
 - striktes DMRD-Paketmodell
-- Empfangsereignisse ohne Sprachpayload
 - AMBE+2-Empfangsgrenze und nativer mbelib-Decoder
-- Jitterpuffer und begrenzte PCM-Wiedergabe
-- bestätigter TG91-Live-Empfang
+- Jitterpuffer und PCM-Wiedergabe
+- bestätigter TG91-Live-Empfang auf Timeslot 2
 
-### Sendesicherheit
+### 0.0.14 und 0.0.14.1 – Read-only-Hauptfenster
 
-- öffentliche automatisierte Gruppenruf-Tests dauerhaft deaktiviert
-- privates Parrot-Profil auf 9990, Timeslot 2 und feste Zeitgrenzen verriegelt
-- einmaliger stummer Parrot-Test erfolgreich abgeschlossen
+- getrennte Anzeige von BrandMeister, Empfang und Audio
+- Verbinden und Trennen ohne PTT
+- zugängliches Ereignisprotokoll
+- vollständige Tastaturbedienung der Kernaktionen
+
+### 0.0.15 – Aktuelle Station
+
+- DMR-ID, Talkgroup und Timeslot des aktuellen Sprechers
+- Sprechbeginn, Sprecherwechsel und Sprechende
+- laufende Sprechdauer
+- gemeinsame Application-Schicht für GUI und Konsole
+
+### 0.0.18.x – Lokaler Audiopfad
+
+- Mikrofonwahl, Testaufnahme, Wiedergabe und Loopback
+- samplegenaue Aufnahme und lokale Mikrofonverstärkung
+- Empfangslautstärke bis 400 Prozent, Mute, AGC und Ausgangspegel
+- weiterhin keine Funkübertragung
 
 ## Nächste Meilensteine
 
-### 0.0.14.1 – Read-only VoiceOver-Grundfenster
-
-- Verbindungsstatus, TG91, Timeslot 2 und Audiozustand
-- aktuelle Aktivität und zugängliches Ereignisprotokoll
-- Verbinden/Trennen ohne PTT
-- stabile Fokusreihenfolge und priorisierte Ankündigungen
-- praktische Abnahme mit VoiceOver
-
-### 0.0.15 – Zugängliche Einrichtung
+### 0.0.16 – Zugängliche Einrichtung
 
 - getrennter Bereich „Einrichtung und Verbindung“
 - Audio-Ein- und Ausgabegeräte
 - BrandMeister-Konfiguration ohne Offenlegung von Geheimnissen
 - Speichern und Verbindungstest als getrennte Aktionen
 
-### 0.0.16 – Nutzbarer Empfang
+### 0.0.17 – Nutzbarer Empfang
 
-- laufende QSOs verständlich darstellen
-- DMR-ID, Rufzeichen und Talkgroup ansagen, soweit zuverlässig vorhanden
+- lokale Rufzeichen- und Kontaktauflösung aus einer rechtlich geklärten Quelle
 - robuste Wiederverbindung und verständliche Diagnose
 - subjektive Sprachverständlichkeit mit der Nutzerin abnehmen
 
-### 0.0.17 – Kontrollierte PTT
+### 0.0.18 – Kontrollierte PTT
 
 - Mikrofon-PCM und rechtlich geklärte Encoderstrategie
 - eindeutig bedienbare PTT mit akustischer Sende-/Empfangsrückmeldung

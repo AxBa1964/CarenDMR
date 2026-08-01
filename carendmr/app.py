@@ -9,7 +9,7 @@ from typing import Sequence
 from carendmr.brandmeister.config import BrandMeisterConfigStore
 from carendmr.brandmeister.listen import (
     MAX_LISTEN_SECONDS,
-    LiveListenProgress,
+    LiveCallActivity, LiveListenProgress,
     listen_receive_only,
 )
 from carendmr.config import ConfigError, load_config
@@ -91,6 +91,16 @@ def _print_progress(progress: LiveListenProgress) -> None:
     )
 
 
+def _print_call_activity(activity: LiveCallActivity) -> None:
+    if activity.active:
+        print(
+            f"Neuer Sprecher: DMR-ID {activity.source_id}, "
+            f"Talkgroup {activity.talkgroup}, Timeslot {activity.timeslot}."
+        )
+    else:
+        print(f"Sprechdurchgang von DMR-ID {activity.source_id} beendet.")
+
+
 def _run_live_listen(project_root: Path, *, seconds: float | None) -> int:
     config_path = project_root / "config" / "brandmeister.local.json"
 
@@ -113,6 +123,7 @@ def _run_live_listen(project_root: Path, *, seconds: float | None) -> int:
             config,
             seconds=seconds,
             progress_callback=_print_progress,
+            call_activity_callback=_print_call_activity,
         )
     except Exception as error:
         print(f"Live-Empfang abgebrochen: {type(error).__name__}: {error}", file=sys.stderr)

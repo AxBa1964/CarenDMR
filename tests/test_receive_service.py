@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from carendmr.application import ReceiveService
-from carendmr.brandmeister.listen import LiveListenProgress, LiveListenResult
+from carendmr.brandmeister.listen import LiveCallActivity, LiveListenProgress, LiveListenResult
 from carendmr.domain import ConnectionState
 
 
@@ -16,8 +16,14 @@ class ReceiveServiceTests(unittest.TestCase):
         def fake_listen(_config, **kwargs):
             captured.update(kwargs)
             time.sleep(0.05)
+            kwargs["call_activity_callback"](
+                LiveCallActivity(True, 2_632_198, 91, 2, 77)
+            )
             kwargs["progress_callback"](
                 LiveListenProgress(2.0, 5, 3, 9, 0, 0, 0, 0)
+            )
+            kwargs["call_activity_callback"](
+                LiveCallActivity(False, 2_632_198, 91, 2, 77)
             )
             return LiveListenResult(
                 True, True, 1440, 2.0, 5, 3, 9, 1440,
@@ -44,6 +50,8 @@ class ReceiveServiceTests(unittest.TestCase):
         messages = [event.message for event in service.events.snapshot()]
         self.assertEqual(1, messages.count("Anmeldung bei BrandMeister erfolgreich."))
         self.assertEqual(1, messages.count("Empfang auf Talkgroup 91, Timeslot 2 gestartet."))
+        self.assertIn("DMR-ID 2632198 spricht auf Talkgroup 91, Timeslot 2.", messages)
+        self.assertTrue(any("Sprechdurchgang von DMR-ID 2632198 beendet" in message for message in messages))
         self.assertIn("stop_requested", captured)
         self.assertFalse(captured["stop_requested"]())
 

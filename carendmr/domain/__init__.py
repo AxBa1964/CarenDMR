@@ -1,7 +1,11 @@
+from .current_call import CurrentCall
 from .events import ApplicationEvent, EventLevel
 from .models import ApplicationState, ConnectionState, ReceiveStatistics
+from .radio_contact import RadioContact
+from .qso_history import QsoHistoryEntry
 
 __all__ = [
     "ApplicationEvent", "EventLevel", "ApplicationState",
-    "ConnectionState", "ReceiveStatistics",
+    "ConnectionState", "ReceiveStatistics", "CurrentCall", "RadioContact",
+    "QsoHistoryEntry",
 ]

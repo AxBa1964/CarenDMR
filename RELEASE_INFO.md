@@ -1,20 +1,26 @@
-# CarenDMR 0.0.14.1 – Konsistente Betriebszustände
+# CarenDMR 0.0.18.3 – Audio-Komfort
 
 ## Zweck
 
-Dieses Korrekturrelease trennt in der Oberfläche den BrandMeister-Verbindungsstatus vom Empfangs- und Audiozustand.
+Dieses Release schließt den lokalen Audiopfad vor dem privaten Parrot-Sendezweig ab. Es verändert keine DMR-Sendefunktion und sendet keine DMRD-Pakete.
 
-## Änderungen
+## Enthalten
 
-- BrandMeister: Getrennt, Verbindung wird hergestellt, Verbunden oder Fehler
-- Empfang: Inaktiv oder Aktiv
-- Audioausgabe: Inaktiv oder Aktiv
-- Ereignis nach erfolgreicher Anmeldung
-- Ereignis nach Start des Empfangs auf Talkgroup 91, Timeslot 2
+- Empfangslautstärke von 0 bis 400 Prozent
+- zuschaltbare, langsam regelnde AGC für gleichmäßigere Sprachlautheit
+- Soft-Limiter gegen harte Übersteuerung bei Verstärkung
+- sichtbarer DMR-Ausgangspegel
+- DMR-Audio wird während lokaler Testwiedergabe stummgeschaltet
+- Mikrofonverstärkung, Ausgabelautstärke, Mute und AGC werden lokal gespeichert
+- samplegenaue fünfsekündige Testaufnahme mit 80.000 Samples bei 16 kHz
+- 168 automatisierte Tests
 
-## Unverändert
+## Sicherheitsgrenze
 
-- rein empfangender Betrieb
-- keine PTT
-- keine öffentliche oder automatische Aussendung
-- vorhandener Decoder-, Netzwerk- und Audiopfad
+Version 0.0.18.3 enthält keine PTT, keinen AMBE-Encoder und keine DMRD-Sendefunktion. Alle neuen Audiofunktionen wirken ausschließlich lokal auf Aufnahme und Wiedergabe.
+
+## Start
+
+```powershell
+python main.py --gui
+```

@@ -25,7 +25,7 @@ CarenDMR konzentriert sich ausschließlich auf:
 D-Star, YSF, P25, NXDN, M17, AllStar und ein allgemeines
 Digitalfunk-Framework gehören nicht zum Projektumfang.
 
-## Aktueller Stand: 0.0.13.2
+## Aktueller Stand: 0.0.18.3
 
 Der technische Stand umfasst:
 
@@ -37,11 +37,17 @@ Der technische Stand umfasst:
 - bestätigten TG91-Live-Empfang,
 - ein hart verriegeltes privates Parrot-Testprofil für 9990 auf Timeslot 2,
 - lokale Sprachausgabe unter macOS,
-- 122 automatisierte Tests auf macOS.
+- barrierefreies Read-only-Hauptfenster mit Live-QSO-Anzeige,
+- aktuelle DMR-ID, Talkgroup, Timeslot und Sprechdauer,
+- lokaler Mikrofon-Sendepfad mit Pegelanzeige, Testaufnahme, Wiedergabe und Loopback,
+- Empfangslautstärke bis 400 Prozent, zuschaltbare langsame AGC und Ausgangspegelanzeige,
+- 168 automatisierte Tests im aktuellen Prüfstand.
 
 Noch nicht enthalten sind eine allgemeine PTT-Schnittstelle, ein
-Sprachencoder und die spätere Bedienoberfläche. Öffentliche automatisierte
+Sprachencoder und Talkgroup-Wechsel. Öffentliche automatisierte
 Sendetests sind dauerhaft verboten.
+
+Zusätzlich führt die GUI eine lokale QSO-Historie abgeschlossener empfangener Sprechdurchgänge.
 
 ## Schnellstart
 
@@ -72,9 +78,27 @@ bereits vorhandene, rein empfangende Live-Test mit:
 python main.py --listen
 ```
 
-Der Lauf ist fest auf TG91, Timeslot 2 und maximal 60 Sekunden begrenzt. Er
-sendet keine DMRD-Pakete. Vor dem Netzempfang wird der lokale Audioweg mit
-einem kurzen Prüfton kontrolliert.
+Der Lauf ist fest auf TG91 und Timeslot 2 begrenzt und endet mit Strg+C oder
+optional mit `--duration`. Er sendet keine DMRD-Pakete. Vor dem Netzempfang
+wird der lokale Audioweg mit einem kurzen Prüfton kontrolliert.
+
+## Read-only-Hauptfenster
+
+```text
+python main.py --gui
+```
+
+Das Fenster zeigt BrandMeister-, Empfangs- und Audiozustand sowie die aktuelle
+DMR-ID, Talkgroup, Timeslot und Sprechdauer. Strg+R startet den Empfang,
+Strg+T trennt ihn, Esc oder Strg+Q beendet das Programm.
+
+## Lokaler Audio-Sendepfad
+
+Im Reiter **„Senden – lokaler Audiotest“** können Mikrofone eingelesen und
+ausgewählt, eine fünfsekündige Testaufnahme erstellt, der Pegel beobachtet und
+die Aufnahme lokal wiedergegeben werden. Ein viersekündiger Loopback-Test prüft
+Mikrofon und Lautsprecher gemeinsam. Version 0.0.18.3 besitzt weiterhin keine PTT,
+keinen AMBE-Encoder und keine Netzwerk-Sendefunktion.
 
 ## Dokumentation
 

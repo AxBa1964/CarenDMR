@@ -17,6 +17,7 @@ EXCLUDED_DIRECTORIES = {
     "__pycache__",
     "build",
     "dist",
+    "data",
     "logs",
     "release",
     "venv",
