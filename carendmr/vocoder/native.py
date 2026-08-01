@@ -16,8 +16,14 @@ from .base import (
 
 
 def _default_library_path() -> Path:
-    suffix = ".dylib" if platform.system() == "Darwin" else ".so"
-    return Path(__file__).resolve().parents[2] / "native" / f"libcarendmr_mbe{suffix}"
+    system = platform.system()
+    if system == "Darwin":
+        filename = "libcarendmr_mbe.dylib"
+    elif system == "Windows":
+        filename = "carendmr_mbe.dll"
+    else:
+        filename = "libcarendmr_mbe.so"
+    return Path(__file__).resolve().parents[2] / "native" / filename
 
 
 class NativeMbeReceiveVocoder:

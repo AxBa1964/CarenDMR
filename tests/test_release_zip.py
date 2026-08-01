@@ -37,6 +37,8 @@ class ReleaseZipTests(unittest.TestCase):
         self.assertTrue(should_exclude(Path("config/audio.local.json")))
         self.assertTrue(should_exclude(Path("native/libcarendmr_mbe.dylib")))
         self.assertTrue(should_exclude(Path("native/libcarendmr_mbe.so")))
+        self.assertTrue(should_exclude(Path("native/carendmr_mbe.dll")))
+        self.assertFalse(should_exclude(Path("native/build_windows.ps1")))
         self.assertFalse(should_exclude(Path("carendmr/app.py")))
 
     def test_collect_release_files_skips_zip_and_logs(self):
@@ -69,6 +71,7 @@ class ReleaseZipTests(unittest.TestCase):
                 "README.md": "# README\n",
                 "RELEASE_INFO.md": "# Release\n",
                 "main.py": "print('ok')\n",
+                "native/build_windows.ps1": "Write-Host 'build'\n",
                 "requirements.txt": "\n",
                 "carendmr/version.py": '__version__ = "9.9.9"\n',
                 "config/config.json": "{}\n",
@@ -93,6 +96,7 @@ class ReleaseZipTests(unittest.TestCase):
                 names = set(archive.namelist())
 
             self.assertIn("main.py", names)
+            self.assertIn("native/build_windows.ps1", names)
             self.assertIn("LICENSE", names)
             self.assertIn("carendmr/version.py", names)
             self.assertIn("docs/UPSTREAM_PROVENANCE.md", names)

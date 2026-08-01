@@ -25,14 +25,14 @@ CarenDMR konzentriert sich ausschließlich auf:
 D-Star, YSF, P25, NXDN, M17, AllStar und ein allgemeines
 Digitalfunk-Framework gehören nicht zum Projektumfang.
 
-## Aktueller Stand: 0.0.13.1
+## Aktueller Stand: 0.0.13.2
 
 Der technische Stand umfasst:
 
 - bestätigten BrandMeister-Login und Heartbeat,
 - striktes Parsen und Modellieren von DMRD-Paketen,
 - empfangsseitige AMBE+2-Extraktion und einen nativen, nur dekodierenden
-  mbelib-Adapter,
+  mbelib-Adapter für macOS, Linux und Windows,
 - Jitterpuffer und begrenzte PCM-Wiedergabe,
 - bestätigten TG91-Live-Empfang,
 - ein hart verriegeltes privates Parrot-Testprofil für 9990 auf Timeslot 2,
@@ -62,6 +62,20 @@ python -m unittest discover -s tests -v
 Für den nativen Empfangsdecoder ist zusätzlich ein C-Compiler erforderlich.
 Die betriebssystemspezifischen Anleitungen beschreiben den Build.
 
+
+## TG91-Live-Empfang
+
+Nach aktivierter virtueller Umgebung und gebautem nativen Decoder startet der
+bereits vorhandene, rein empfangende Live-Test mit:
+
+```text
+python main.py --listen
+```
+
+Der Lauf ist fest auf TG91, Timeslot 2 und maximal 60 Sekunden begrenzt. Er
+sendet keine DMRD-Pakete. Vor dem Netzempfang wird der lokale Audioweg mit
+einem kurzen Prüfton kontrolliert.
+
 ## Dokumentation
 
 - [Roadmap](ROADMAP.md)
@@ -90,3 +104,8 @@ CarenDMR steht unter
 [GNU GPL Version 3 oder später](LICENSE). Herkunft und Lizenzgrenzen
 adaptierter Referenzbestandteile sind in
 [UPSTREAM_PROVENANCE.md](docs/UPSTREAM_PROVENANCE.md) dokumentiert.
+
+
+## Längerer TG91-Empfang
+
+`python main.py --listen` läuft rein empfangend bis Strg+C. Mit `python main.py --listen --duration 600` wird der Lauf auf zehn Minuten begrenzt. Alle 30 Sekunden werden Diagnosewerte ausgegeben.

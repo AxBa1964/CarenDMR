@@ -30,7 +30,7 @@ abgenommen werden.
 
 ## Nächste Meilensteine
 
-### 0.0.14 – Read-only VoiceOver-Grundfenster
+### 0.0.14.1 – Read-only VoiceOver-Grundfenster
 
 - Verbindungsstatus, TG91, Timeslot 2 und Audiozustand
 - aktuelle Aktivität und zugängliches Ereignisprotokoll

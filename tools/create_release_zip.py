@@ -30,6 +30,7 @@ EXCLUDED_PATTERNS = {
     "*.local.json",
     "*.dylib",
     "*.so",
+    "*.dll",
     "Desktop.ini",
     "Thumbs.db",
 }
@@ -42,6 +43,7 @@ REQUIRED_FILES = {
     "README.md",
     "RELEASE_INFO.md",
     "main.py",
+    "native/build_windows.ps1",
     "requirements.txt",
     "carendmr/version.py",
     "config/config.json",

@@ -34,3 +34,5 @@ config/brandmeister.local.json
 
 # Alle lokalen Zugangsdaten und Geräteeinstellungen
 config/*.local.json
+
+native/carendmr_mbe.dll

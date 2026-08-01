@@ -1,38 +1,20 @@
-# CarenDMR 0.0.13.1 – Project Foundation
+# CarenDMR 0.0.14.1 – Konsistente Betriebszustände
 
 ## Zweck
 
-Dieser Meilenstein vereinheitlicht Projekt-, Installations- und
-Entwicklungsdokumentation. Er ändert keine DMR-, Netzwerk-, Audio- oder
-Sendefunktion.
+Dieses Korrekturrelease trennt in der Oberfläche den BrandMeister-Verbindungsstatus vom Empfangs- und Audiozustand.
 
-## Enthalten
+## Änderungen
 
-- README als zentraler, barrierefrei formulierter Projekteinstieg
-- Roadmap mit abgeschlossenen und nächsten Produktmeilensteinen
-- Beitrags- und Sicherheitsregeln
-- getrennte Installationsanleitungen für macOS, Windows und Linux
-- aktueller Architekturüberblick bis einschließlich Empfangsdecoder,
-  Jitterpuffer und verriegeltem Parrot-Test
-- reproduzierbarer Release- und Pull-Request-Ablauf
-- konsistente Verknüpfung von Lizenz, Provenienz, Accessibility,
-  BrandMeister-Kompatibilität und Änderungsverlauf
+- BrandMeister: Getrennt, Verbindung wird hergestellt, Verbunden oder Fehler
+- Empfang: Inaktiv oder Aktiv
+- Audioausgabe: Inaktiv oder Aktiv
+- Ereignis nach erfolgreicher Anmeldung
+- Ereignis nach Start des Empfangs auf Talkgroup 91, Timeslot 2
 
-## Unveränderter Funktionsstand
+## Unverändert
 
-- bestätigter BrandMeister-Login
-- strikter DMRD-Empfang
-- nativer, nur empfangender AMBE+2/mbelib-Decoder
-- begrenzte PCM-Wiedergabe und TG91-Live-Empfang
-- verriegeltes privates Parrot-Profil
-- keine allgemeine PTT- oder Encoderoberfläche
-
-## Validierung
-
-- vollständige Python-Testreihe
-- nativer macOS-Build mit Symbolprüfung
-- Versions- und Linkkonsistenz der Projektdokumentation
-- Kontrolle, dass keine lokale Konfiguration oder Build-Artefakte im Diff
-  enthalten sind
-
-Die verbindliche Versionsquelle bleibt `carendmr/version.py`.
+- rein empfangender Betrieb
+- keine PTT
+- keine öffentliche oder automatische Aussendung
+- vorhandener Decoder-, Netzwerk- und Audiopfad

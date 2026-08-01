@@ -1,6 +1,6 @@
 # CarenDMR – Technische Architektur
 
-Stand: Version 0.0.13.1
+Stand: Version 0.0.13.2
 
 ## 1. Ziel und Grenzen
 
@@ -152,3 +152,11 @@ verbraucht ausschließlich bestehende Status- und Empfangsereignisse und führt
 keine neue PTT-, Encoder- oder freie Sendefläche ein.
 
 Die geplante Reihenfolge steht in der [Roadmap](../ROADMAP.md).
+
+## Anwendungsschicht ab 0.0.14
+
+Die Bedienoberflächen greifen nicht direkt auf BrandMeister, Netzwerk, Audio
+oder Vocoder zu. `carendmr.application` vermittelt zwischen GUI beziehungsweise
+Konsole und der Technik. `carendmr.domain` enthält unveränderliche Zustände und
+Ereignisse. Details und Abhängigkeitsregeln stehen in
+`TECHNICAL_DESIGN_014.md`.

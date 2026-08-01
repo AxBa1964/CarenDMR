@@ -1,7 +1,7 @@
 import unittest
 
 from carendmr.brandmeister.config import BrandMeisterConfig
-from carendmr.brandmeister.listen import listen_receive_only
+from carendmr.brandmeister.listen import LiveListenProgress, listen_receive_only
 from carendmr.brandmeister.protocol import LoginState
 from carendmr.brandmeister.silent_call import (
     build_tg91_ts2_silent_call_fixture,
@@ -100,7 +100,48 @@ class LiveListenTests(unittest.TestCase):
         self.assertEqual(result.decoded_samples, 6 * 480)
         self.assertEqual(result.decode_errors, 0)
         self.assertTrue(result.closed)
+        self.assertFalse(result.interrupted)
         self.assertFalse(hasattr(FakeTransport, "send"))
+
+    def test_unlimited_receive_stops_cleanly_on_keyboard_interrupt(self):
+        config = BrandMeisterConfig(
+            host="example.invalid", port=62031, dmr_id=1_234_567,
+            password="not-a-secret-fixture", callsign="N0TEST",
+        )
+        client = FakeClient(config, [])
+        output = FakeOutput()
+
+        class InterruptingTransport:
+            def receive(self):
+                raise KeyboardInterrupt
+
+        client.transport = InterruptingTransport()
+        result = listen_receive_only(
+            config, seconds=None, client_factory=lambda _: client,
+            output_factory=lambda **_: output, decoder_factory=FakeDecoder,
+            monotonic=Clock(), sleep=lambda _: None,
+        )
+
+        self.assertTrue(result.interrupted)
+        self.assertTrue(result.closed)
+        self.assertTrue(result.authenticated)
+
+    def test_progress_callback_receives_diagnostic_counts(self):
+        config = BrandMeisterConfig(
+            host="example.invalid", port=62031, dmr_id=1_234_567,
+            password="not-a-secret-fixture", callsign="N0TEST",
+        )
+        client = FakeClient(config, [])
+        progress: list[LiveListenProgress] = []
+        result = listen_receive_only(
+            config, seconds=0.2, progress_callback=progress.append,
+            progress_interval=0.01, client_factory=lambda _: client,
+            output_factory=FakeOutput, decoder_factory=FakeDecoder,
+            monotonic=Clock(), sleep=lambda _: None,
+        )
+        self.assertTrue(result.closed)
+        self.assertGreaterEqual(len(progress), 1)
+        self.assertEqual(0, progress[0].decode_errors)
 
 
 if __name__ == "__main__":

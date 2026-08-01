@@ -1,4 +1,25 @@
-# Release- und Deployment-Ablauf – CarenDMR 0.0.13.1
+# Deployment CarenDMR 0.0.13.5
+
+## Windows
+
+```powershell
+cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
+.\.venv\Scripts\Activate.ps1
+Get-ChildItem -Recurse -File | Unblock-File
+.\native\build_windows.ps1
+python -m unittest discover -s tests -v
+python main.py --listen
+```
+
+Der Empfang läuft bis Strg+C. Für zehn Minuten:
+
+```powershell
+python main.py --listen --duration 600
+```
+
+`config\brandmeister.local.json` bleibt lokal und darf nicht überschrieben oder committed werden.
+
+# Release- und Deployment-Ablauf – CarenDMR 0.0.13.4
 
 Dieses Dokument beschreibt den verbindlichen Ablauf für einen
 Entwicklungsmeilenstein. Installationen stehen getrennt in
@@ -53,7 +74,13 @@ make -C native check
 Auf Linux:
 
 ```text
-make -C native all
+make -C native check
+```
+
+Auf Windows PowerShell:
+
+```text
+powershell -ExecutionPolicy Bypass -File .\native\build_windows.ps1
 ```
 
 Native Bibliotheken bleiben lokale Build-Artefakte.
@@ -109,3 +136,15 @@ Nach Review und erfolgreichen Prüfungen:
 2. Lokalen `master` per Fast-forward aktualisieren.
 3. Tests aus dem gemergten Stand erneut ausführen.
 4. Erst danach bei Bedarf ein GitHub Release aus dem geprüften Stand erstellen.
+## TG91-Live-Empfang prüfen
+
+Voraussetzungen: `.venv` ist aktiviert, `config/brandmeister.local.json` ist
+vorhanden und der native Decoder wurde gemäß Betriebssystemanleitung gebaut.
+
+```powershell
+python main.py --listen
+```
+
+Der Lauf endet automatisch nach spätestens 60 Sekunden. Er ist fest auf TG91
+und Timeslot 2 begrenzt und sendet keine DMRD-Pakete.
+

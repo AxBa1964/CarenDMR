@@ -1,101 +1,64 @@
-# CarenDMR 0.0.13 – Verriegeltes Parrot-Testprofil
+# CarenDMR 0.0.14 – Read-only-Grundfenster und Anwendungsschicht
 
-## Dauerhafte Regel
+## Ziel
 
-Automatisierte Übertragungstests dürfen niemals eine öffentliche
-Gruppen-Talkgroup verwenden. Es gibt keinen öffentlichen Fallback.
+Version 0.0.14 trennt die Bedienoberfläche von BrandMeister-, Audio- und
+Vocoder-Technik. Der bereits bestätigte TG91-/Timeslot-2-Empfang bleibt
+fachlich unverändert und erhält zusätzlich ein erstes barrierefreies
+Read-only-Hauptfenster.
 
-Der einzige zulässige zukünftige Test ist fest definiert als:
+## Schichten
 
-- BrandMeister Parrot,
-- Ziel-ID 9990,
-- Privatruf (`FLCO_USER_USER = 3` und Homebrew-Privatrufbit gesetzt),
-- Timeslot 2,
-- höchstens 10 Sekunden Übertragung,
-- exakt höchstens 15 Sekunden Echo-Beobachtung,
-- kein Retry und keine Wiederholungsschleife.
+```text
+Benutzeroberflächen (Tk-GUI und Konsole)
+              |
+              v
+Anwendungsschicht (ReceiveService, StateStore, EventService)
+              |
+              v
+Fachmodelle (ApplicationState, Ereignisse, Statistik)
+              |
+              v
+Technik (BrandMeister, Netzwerk, Audio, Vocoder)
+```
 
-## Paket- und Profilgrenze
+Die GUI importiert keine UDP-, DMRD-, Audio- oder ctypes-Funktionen. Sie kennt
+nur den `ReceiveService`, den Anwendungszustand und neutrale Ereignisse.
 
-`LockedParrotTestProfile` enthält alle Sicherheitswerte unveränderlich.
-Die Builder nehmen ausschließlich lokale Quell-/Repeater-/Stream- und
-Sequenzwerte an. Ziel, Ruftyp, Timeslot und Zeitgrenzen sind keine
-Laufzeitparameter.
+## Anwendungsschicht
 
-`ParrotTestPlan` enthält eine validierte Acht-Paket-Stumm-Fixture und die
-festen Zeitwerte, aber absichtlich keine `send`- oder `execute`-Methode.
-Nur der getrennte Executor `execute_locked_parrot_once()` darf diesen Plan
-nach erneuter Validierung genau einmal ausführen.
+- `ApplicationStateStore` verwaltet einen unveränderlichen Gesamtzustand.
+- `EventService` hält ein begrenztes, thread-sicheres Ereignisprotokoll.
+- `ReceiveService` lädt die lokale Konfiguration, startet den vorhandenen
+  Empfang in einem Hintergrundthread und übersetzt Fortschritt und Ergebnis
+  in neutrale Zustände.
+- Das Beenden erfolgt kooperativ über `stop_requested`; Netzwerk, Decoder und
+  Audio werden weiterhin im bestehenden technischen Empfangspfad geschlossen.
 
-Das historische Werkzeug `tools/brandmeister_one_shot.py` schlägt unabhängig
-von Argumenten immer vor jeder Netzwerkaktion fehl. Sein früherer
-TG91-Sendeloop wurde entfernt.
+## GUI
 
-## Byte-Abnahme
+Start:
 
-Für Voice-LC-Header, Voice Sync, fünf nummerierte Voice Bursts und Terminator
-sind die Homebrew-Flags fest:
+```text
+python main.py --gui
+```
 
-`E1 D0 C1 C2 C3 C4 C5 E2`
+Das Fenster zeigt ausschließlich:
 
-In jedem Byte ist das Privatrufbit `0x40` gesetzt; das Timeslot-2-Bit `0x80`
-bleibt ebenfalls gesetzt. Ziel-ID, Call-Type und Timeslot werden nach
-Serialisierung erneut geparst und verglichen. Die acht 33-Byte-Payloads sind
-als nicht-personale Referenzvektoren fixiert.
+- Verbindungsstatus,
+- verbundenen Server,
+- Talkgroup 91 und Timeslot 2,
+- Audiozustand,
+- Empfangsstatistik,
+- verständliches Ereignisprotokoll.
 
-## Einmalige Live-Ausführung
+Bedienbare Aktionen sind `Verbinden und empfangen`, `Trennen` und `Beenden`.
+Die Fokusreihenfolge folgt der Erstellungsreihenfolge. Alle Zustände sind als
+Text vorhanden; Farbe und Symbole transportieren keine alleinige Information.
+Tastenkürzel: Strg+R, Strg+T, Esc und Strg+Q.
 
-### Lokale hörbare Phasen
+## Sicherheitsgrenze
 
-Die spätere Live-Ausführung muss die Phasen Start, Übertragung,
-Echo-Empfang, Erfolg, sicherer Abbruch und Timeout über eine lokale
-`ParrotTestAnnouncer`-Schnittstelle verständlich ansagen. Die Ansagen enthalten
-keine IDs, Rufzeichen, Server oder Payloaddaten. Sie können später nur im
-barrierefreien Setup ein- oder ausgeschaltet werden; sie bieten keine
-Laufzeitsteuerung für Ziel, Route oder Testdauer.
-
-Während der Übertragungsphase sagt CarenDMR ausdrücklich an, dass die derzeit
-validierte Fixture stumm ist und keine Sprache sendet. Ausgehende Sprache
-existiert erst, wenn ein separater Software-TX-Vocoder oder eine
-Mikrofonquelle implementiert, geprüft und freigegeben wurde.
-
-Während der Echo-Phase werden zurückkehrende Parrot-Sprachrahmen über den
-bestehenden Software-Empfangsdecoder, Jitterpuffer und das lokale
-Standard-Wiedergabegerät ausgegeben. Es entsteht weiterhin keine Aufnahme.
-
-Der getrennte Executor erfüllt folgende Gates:
-
-1. erneute Validierung des unveränderlichen Plans vor jedem Paket,
-2. monotone harte 10-s-Abbruchuhr; die aktuelle Stumm-Fixture dauert 0,36 s,
-3. genau acht Pakete mit sieben festen 60-ms-Abständen,
-4. Ziel 9990, privat und Timeslot 2 byteweise vor jedem Senden geprüft,
-5. kein Retry, kein öffentlicher Fallback und keine Wiederholungsschleife,
-6. anschließend höchstens 15 Sekunden receive-only Echo-Beobachtung,
-7. Echo-Dekodierung über Software-Vocoder, Jitterpuffer und Standardausgabe,
-8. Decoder, Audio und Socket werden in jedem Pfad geschlossen.
-
-Die Nutzerfreigabe gilt für genau eine kontrollierte Ausführung nach
-vollständiger Test- und lokaler Audio-/Ansageprüfung. Ein Fehler beendet den
-Versuch ohne Wiederholung.
-
-## Einmalige praktische Abnahme
-
-Nach 122 erfolgreichen Offline-Tests, nativer Build-/Symbolprüfung und realer
-lokaler Ansage-/Audio-Vorprüfung wurde genau eine autorisierte Live-Ausführung
-durchgeführt:
-
-- Authentifizierung erfolgreich,
-- exakt acht private DMRD-Pakete gesendet,
-- Übertragungszeit 0,440 Sekunden,
-- sechs Parrot-Echo-Sprachbursts empfangen,
-- 18 AMBE-Codewörter ohne Dekodierfehler verarbeitet,
-- 2.880 PCM-Samples über die lokale Standardausgabe ausgegeben,
-- null ungültige DMRD-Pakete,
-- kein Echo-Timeout,
-- kein Retry und keine Wiederholung,
-- Socket, Decoder und Audiostream geschlossen.
-
-Die ausgehende Fixture war stumm. Die Echoausgabe bestätigt daher Transport,
-Rückweg und Audiopfad, aber keine ausgehende Sprachkodierung. Es wurden keine
-Sprachinhalte, Identitäten, Payloads oder privaten Verbindungswerte
-protokolliert oder gespeichert.
+Die neue Anwendungsschicht führt keine Sendeoperation ein. Das Hauptfenster
+besitzt keine PTT, keine Zielwahl und keinen Zugriff auf eine DMRD-Sendefläche.
+Der Empfang bleibt fest auf TG91 und Timeslot 2 begrenzt.

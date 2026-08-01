@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.0.14.1 – Konsistente Betriebszustände
+
+- BrandMeister-Verbindung, Empfang und Audio in der GUI getrennt dargestellt.
+- Erfolgreiche Anmeldung und Start des TG91/TS2-Empfangs werden einmalig im Ereignisprotokoll bestätigt.
+- Veralteten Eindruck „Verbindung wird hergestellt“ bei bereits laufendem Empfang beseitigt.
+- Keine DMR-, Netzwerk-, Decoder- oder Sendefunktion geändert.
+
+## 0.0.13.5 – Längerer TG91-Empfang und Windows-Buildbereinigung
+
+- Rein empfangenden TG91-/Timeslot-2-Lauf ohne feste 60-Sekunden-Grenze ergänzt; Ende mit Strg+C.
+- Option `--duration` für begrenzte Läufe zwischen 1 und 3600 Sekunden ergänzt.
+- Laufende Diagnoseausgabe im 30-Sekunden-Intervall ergänzt.
+- Sauberes Schließen von Netzwerk, Decoder und Audio nach Strg+C automatisiert geprüft.
+- Windows-Buildskript für MSYS2-UCRT64 korrigiert: Compilererkennung, Laufzeitpfad und mathematische Konstanten.
+- Keine Sendeoberfläche und keine DMRD-Aussendung ergänzt.
+
+## 0.0.13.4 – Windows-Empfangsdecoder
+
+- Windows-DLL-Pfad für den nativen mbelib-Empfangsdecoder ergänzt.
+- Reproduzierbares PowerShell-Buildskript für MSYS2/MinGW-w64 ergänzt.
+- DLL-Exporte auf exakt drei reine Empfangsfunktionen begrenzt und geprüft.
+- Native DLLs aus Release-ZIPs ausgeschlossen.
+- Windows-Installation, Deployment und Live-Empfang dokumentiert.
+- Keine neue DMR-, Netzwerk-, Audio- oder Sendefunktion ergänzt.
+
+## 0.0.13.3 – Reproduzierbarer TG91-Live-Empfang
+
+- Vorhandenen rein empfangenden TG91-/Timeslot-2-Pfad über `python main.py --listen` eindeutig erreichbar gemacht.
+- Laufzeit weiterhin fest auf maximal 60 Sekunden begrenzt.
+- Start- und Abschlussausgabe für Authentifizierung, Audio, Sprachbursts, AMBE-Dekodierung und Ressourcenabschluss vereinheitlicht.
+- Fehlerpfad bestätigt weiterhin ausdrücklich, dass kein DMRD-Paket gesendet wurde.
+- Automatisierte Einstiegspunkt- und Fail-Closed-Tests ergänzt.
+- Keine neue DMR-, Netzwerk-, Audio- oder Sendefunktion ergänzt.
+
+## 0.0.13.2 – Verifizierbare Projektbasis
+
+- Python-Paketstruktur korrigiert: sämtliche Laufzeitmodule liegen wieder unter `carendmr/`.
+- Native mbelib-Buildprüfung für macOS und Linux portabel gemacht.
+- Veralteten Hinweis entfernt, dass noch keine BrandMeister-Verbindung existiere.
+- Startstatus an den vorhandenen BrandMeister-Login und DMR-Empfang angepasst.
+- Vollständige automatisierte Testreihe und Release-ZIP-Erstellung verifiziert.
+- Keine DMR-, Netzwerk-, Audio- oder Sendefunktion geändert.
+
 ## 0.0.13.1 – Project Foundation
 
 - README als zentralen Einstieg für Ziel, Stand, Sicherheit, Installation,
