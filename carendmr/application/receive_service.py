@@ -1,4 +1,4 @@
-"""Anwendungsschicht für den vorhandenen rein empfangenden TG91-Betrieb."""
+"""Anwendungsschicht für dynamischen Talkgroup-Empfang ohne BrandMeister-API."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from threading import Event, Lock, Thread
 from typing import Callable
 
 from carendmr.brandmeister.config import BrandMeisterConfigStore
+from carendmr.brandmeister.dynamic_subscription import validate_receive_target
 from carendmr.brandmeister.listen import (
     LiveCallActivity, LiveListenProgress, LiveListenResult, listen_receive_only,
 )
@@ -43,6 +44,8 @@ class ReceiveService:
         self._output_volume_percent = 100
         self._agc_enabled = True
         self._output_level_percent = 0.0
+        self._target_talkgroup = 91
+        self._target_timeslot = 2
         self._output_level_callback: Callable[[float], None] | None = None
         self.contacts = ContactService(self.project_root)
         self.history = QsoHistoryService(self.project_root)
@@ -50,6 +53,15 @@ class ReceiveService:
             self.state_store, self.events, contact_lookup=self.contacts.lookup,
             on_finished=self.history.add_completed_call,
         )
+
+
+    def set_receive_target(self, talkgroup: int, timeslot: int) -> None:
+        talkgroup, timeslot = validate_receive_target(talkgroup, timeslot)
+        if self.is_running:
+            raise RuntimeError("Die Talkgroup kann nur bei getrenntem Empfang geändert werden.")
+        self._target_talkgroup = talkgroup
+        self._target_timeslot = timeslot
+        self.state_store.update(talkgroup=talkgroup, timeslot=timeslot)
 
     def mute_audio_output(self) -> None:
         """Unterdrückt nur die lokale Empfangswiedergabe; Netzwerk und Decoder laufen weiter."""
@@ -150,7 +162,10 @@ class ReceiveService:
         if not self._connected_event_published:
             self._connected_event_published = True
             self.events.publish("Anmeldung bei BrandMeister erfolgreich.")
-            self.events.publish("Empfang auf Talkgroup 91, Timeslot 2 gestartet.")
+            self.events.publish(
+                f"Empfang auf Talkgroup {self._target_talkgroup}, "
+                f"Timeslot {self._target_timeslot} gestartet."
+            )
         self.current_calls.update_duration()
         self.state_store.update(
             connection=ConnectionState.RECEIVING,
@@ -183,11 +198,15 @@ class ReceiveService:
                 receive_active=False,
                 audio_active=False,
                 message="Verbindung wird hergestellt",
+                talkgroup=self._target_talkgroup,
+                timeslot=self._target_timeslot,
             )
             self.events.publish("Verbindung zu BrandMeister wird hergestellt.")
             result = self._listen(
                 config,
                 seconds=seconds,
+                target_talkgroup=self._target_talkgroup,
+                target_timeslot=self._target_timeslot,
                 progress_callback=self._on_progress,
                 call_activity_callback=self._on_call_activity,
                 progress_interval=1.0,

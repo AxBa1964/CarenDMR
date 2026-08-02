@@ -1,26 +1,25 @@
-# CarenDMR 0.0.18.3 – Audio-Komfort
+# CarenDMR 0.0.19.7 – Hold-to-Talk und Sendeoberfläche
 
 ## Zweck
 
-Dieses Release schließt den lokalen Audiopfad vor dem privaten Parrot-Sendezweig ab. Es verändert keine DMR-Sendefunktion und sendet keine DMRD-Pakete.
+Dieses Qualitätsrelease korrigiert die Hold-to-Talk-Bedienung und entfernt überholte lokale Entwicklungsfunktionen aus der Benutzeroberfläche.
 
 ## Enthalten
 
-- Empfangslautstärke von 0 bis 400 Prozent
-- zuschaltbare, langsam regelnde AGC für gleichmäßigere Sprachlautheit
-- Soft-Limiter gegen harte Übersteuerung bei Verstärkung
-- sichtbarer DMR-Ausgangspegel
-- DMR-Audio wird während lokaler Testwiedergabe stummgeschaltet
-- Mikrofonverstärkung, Ausgabelautstärke, Mute und AGC werden lokal gespeichert
-- samplegenaue fünfsekündige Testaufnahme mit 80.000 Samples bei 16 kHz
-- 168 automatisierte Tests
+- TX gedrückt halten: Aufnahme läuft
+- TX loslassen: Aufnahme endet sofort, anschließend Kodierung und Versand
+- flexibles TX-Sicherheitslimit von 5 bis 180 Sekunden; Standard 15 Sekunden
+- fest verriegelter Privatruf an DMR-ID 9990, Timeslot 2
+- bereinigte Sendeoberfläche ohne Testaufnahme-, Wiedergabe- und Loopback-Schaltflächen
+- hörbarer abgestimmter Audio-Optimizer V1
+- Sendehistorie und Parrot-Echo bleiben erhalten
+- plattformneutraler Kern für Windows, macOS, Linux und Raspberry Pi OS
 
 ## Sicherheitsgrenze
 
-Version 0.0.18.3 enthält keine PTT, keinen AMBE-Encoder und keine DMRD-Sendefunktion. Alle neuen Audiofunktionen wirken ausschließlich lokal auf Aufnahme und Wiedergabe.
+Keine freie Zielwahl, keine Gruppenrufe und keine normalen Talkgroup-Aussendungen.
 
-## Start
 
-```powershell
-python main.py --gui
-```
+## Schwerpunkt 0.0.19.7
+
+Dynamische Auswahl und Aktivierung einer Empfangs-Talkgroup über das bestehende BrandMeister-Homebrew-UDP-Protokoll. Es wird kein API-Key verwendet.

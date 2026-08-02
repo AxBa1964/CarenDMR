@@ -1,13 +1,64 @@
 # Changelog
 
-## 0.0.18.3 – Audio-Komfort
+## 0.0.19.7 – Gültiger stummer Gruppenruf zur dynamischen TG-Aktivierung
 
-- Empfangslautstärke auf 0 bis 400 Prozent erweitert.
-- Zuschaltbare langsame AGC für gleichmäßigere Sprachlautheit ergänzt.
-- Soft-Limiter und DMR-Ausgangspegelanzeige ergänzt.
-- DMR-Audio während der lokalen Testwiedergabe automatisch stummgeschaltet und danach wieder freigegeben.
-- Mikrofonverstärkung, Ausgabelautstärke, Benutzer-Mute und AGC lokal gespeichert.
-- Samplegenaue fünfsekündige Testaufnahme und verzögertes Speichern der Reglerwerte beibehalten.
+- Den wirkungslosen 2-Paket-Nullimpuls aus 0.0.19.6 entfernt.
+- Vollständigen DMR-Gruppenruf mit gültiger Voice-LC, sechs stummen Sprachbursts und Terminator erzeugt.
+- Pakete im DMR-Takt über die bestehende angemeldete UDP-Verbindung gesendet.
+- Weiterhin keine BrandMeister-API und kein API-Key.
+- PowerShell-Dateien werden gemäß DEPLOY.md direkt nach dem Entpacken mit `Unblock-File` freigeschaltet.
+
+## 0.0.19.6 – Dynamischer TG-Empfang ohne BrandMeister-API
+
+- Talkgroup und Timeslot können im Empfangsreiter vor dem Verbinden frei gewählt werden.
+- Nach erfolgreichem Homebrew-Login aktiviert CarenDMR die gewählte Talkgroup über einen kurzen DMRD-Gruppenruf-Impuls auf derselben UDP-Verbindung.
+- Kein BrandMeister-API-Key und kein HTTP-API-Aufruf erforderlich.
+- Der Impuls enthält keinen Sprachinhalt und endet unmittelbar mit einem Terminator.
+- Eingehende DMRD-Pakete werden dynamisch nach der gewählten Talkgroup und dem gewählten Timeslot gefiltert.
+- Zielwahl ist während einer laufenden Verbindung gesperrt; für einen Wechsel wird getrennt und neu verbunden.
+- Das eigenständige Test2-Referenzprogramm ist nicht Bestandteil der Version 0.0.19.6.
+- Automatische Testreihe auf 190 Tests erweitert.
+
+## 0.0.19.4 – PTT-Status korrigiert und TX-Sicherheitslimit flexibel
+
+- PTT-Loslassen beendet die Aufnahme sofort über das gemeinsame Stop-Ereignis.
+- Der Aufnahme-Timer stoppt beim Loslassen und überschreibt die Statusanzeige während Kodierung, Versand und Echo-Wartezeit nicht mehr.
+- Das TX-Sicherheitslimit ist in der GUI zwischen 5 und 180 Sekunden einstellbar.
+- Standardwert bleibt 15 Sekunden; der Wert wird lokal in `config/audio_send.local.json` gespeichert.
+- Das Limit bleibt ausschließlich eine Notbremse, falls ein Loslassen-Ereignis ausbleibt.
+- Weiterhin ausschließlich fest verriegelter Privatruf an 9990 auf Timeslot 2; keine freie Zielwahl.
+
+## 0.0.19.1
+
+- Fest verriegelter Parrot-Sprachtest: DMR-ID 9990, Privatruf, Timeslot 2.
+- Fünf Sekunden Mikrofonaufnahme, PCM→AMBE, einmalige DMRD-Übertragung und Echoempfang.
+- Harte Sendegrenze zehn Sekunden; keine freie Zielwahl und keine Gruppenrufe.
+
+
+## 0.0.19.1 – DroidStar-Plugin-ABI unter Windows korrigiert
+
+- Tatsächlichen DroidStar-Export `destroy` unterstützt; der historische Tippfehler `destry` bleibt als Fallback kompatibel.
+- Präzise Diagnose ergänzt, welcher Plugin-Export fehlt beziehungsweise ob das Vocoder-Objekt nicht erzeugt werden konnte.
+- Windows-Bridge statisch gelinkt und auf unerwünschte MSYS2-Laufzeitabhängigkeiten geprüft.
+- Weiterhin ausschließlich lokaler PCM→AMBE-Test; keine PTT und kein DMRD-Versand.
+
+## 0.0.19.0 – Optionale Vocoder-Plugin-Integration
+
+- Neutrale `AmbeEncoder`-Schnittstelle ergänzt.
+- Separat bereitgestellte DroidStar-kompatible Vocoder-Plugins über eine native C++-Bridge angebunden.
+- Plugin-Auswahl, lokaler Pfadspeicher und erneute Prüfung in der GUI ergänzt.
+- Rein lokalen PCM-zu-AMBE-Test mit 160 PCM-Samples und 9 Byte AMBE-Ausgabe ergänzt.
+- USB-AMBE-Backend als ausdrücklich noch nicht implementierte Erweiterungsgrenze vorbereitet.
+- Keine PTT, keine DMRD-Aussendung und keine freie Zielwahl ergänzt.
+
+## 0.0.18.2 – Audiopegel, Stumm und samplegenaue Aufnahme
+
+- Mikrofonverstärkung wird während des Ziehens sofort angewendet, aber erst 600 ms nach der letzten Änderung gespeichert.
+- Testaufnahmen sammeln bei 16 kHz exakt 80.000 Samples und zeigen 5,00 Sekunden an.
+- Ausgabelautstärke von 0 bis 100 Prozent für den DMR-Empfang ergänzt.
+- Benutzer-Stummschaltung mit Strg+M ergänzt; Empfang, Decoder und QSO-Historie laufen weiter.
+- Benutzer-Stumm und temporäres Aufnahme-Stumm bleiben intern getrennt.
+- Audioeinstellungen werden beim Beenden zusätzlich gesichert.
 - Keine PTT, kein AMBE-Encoder und keine DMRD-Sendefunktion ergänzt.
 
 ## 0.0.18 – Lokaler Audio-Sendepfad
@@ -272,3 +323,9 @@
 - Der Test verändert `config/brandmeister.local.json` nicht und übernimmt daraus nur Zugangsdaten und Rufzeichen.
 - Referenzprofil mit nicht-personalen Testwerten für Beschreibung, URL,
   Software-/Package-ID und Koordinaten ergänzt.
+
+
+## 0.0.19.5
+- Test2 als Referenzimplementierung integriert (tools/brandmeister_dynamic_receiver.py).
+- Dynamische TG-Umschaltung per API + UDP-Trigger übernommen.
+- Keine statische BrandMeister-Subscription erforderlich.

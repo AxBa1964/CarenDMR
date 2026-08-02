@@ -39,3 +39,7 @@ native/carendmr_mbe.dll
 
 # Lokal heruntergeladene RadioID-Kontaktdaten
 data/
+config/encoder.local.json
+native/carendmr_vocoder_bridge.dll
+native/libcarendmr_vocoder_bridge.so
+native/libcarendmr_vocoder_bridge.dylib

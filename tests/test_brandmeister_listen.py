@@ -14,6 +14,9 @@ class FakeTransport:
     def __init__(self, packets):
         self.packets = list(packets)
 
+    def send(self, packet):
+        pass
+
     def receive(self):
         if self.packets:
             return self.packets.pop(0)
@@ -111,7 +114,7 @@ class LiveListenTests(unittest.TestCase):
         self.assertEqual(result.decode_errors, 0)
         self.assertTrue(result.closed)
         self.assertFalse(result.interrupted)
-        self.assertFalse(hasattr(FakeTransport, "send"))
+        self.assertTrue(hasattr(FakeTransport, "send"))
 
 
     def test_call_activity_reports_start_and_end(self):
@@ -144,6 +147,9 @@ class LiveListenTests(unittest.TestCase):
         output = FakeOutput()
 
         class InterruptingTransport:
+            def send(self, packet):
+                pass
+
             def receive(self):
                 raise KeyboardInterrupt
 

@@ -1,4 +1,4 @@
-"""Receive-only TG91/TS2 decode and audio playout."""
+"""Dynamischer Gruppenruf-Empfang mit Audio-Decodierung und Wiedergabe."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from carendmr.vocoder.playout import DmrJitterBuffer
 from .client import BrandMeisterClient
 from .config import BrandMeisterConfig
 from .dmrd import DmrdFrameClass, parse_dmrd_packet
+from .dynamic_subscription import activate_dynamic_talkgroup, validate_receive_target
 from .protocol import LoginState, is_master_pong
 
 
@@ -76,6 +77,8 @@ def listen_receive_only(
     config: BrandMeisterConfig,
     *,
     seconds: float | None,
+    target_talkgroup: int = 91,
+    target_timeslot: int = 2,
     progress_callback: Callable[[LiveListenProgress], None] | None = None,
     call_activity_callback: Callable[[LiveCallActivity], None] | None = None,
     progress_interval: float = DEFAULT_PROGRESS_INTERVAL_SECONDS,
@@ -93,6 +96,9 @@ def listen_receive_only(
 ) -> LiveListenResult:
     """Authenticate and receive/decode/play until timeout or Ctrl+C."""
 
+    target_talkgroup, target_timeslot = validate_receive_target(
+        target_talkgroup, target_timeslot
+    )
     if seconds is not None and (seconds <= 0 or seconds > MAX_LISTEN_SECONDS):
         raise ValueError("Die Empfangsdauer muss zwischen 1 und 3600 Sekunden liegen.")
     if progress_interval <= 0:
@@ -128,6 +134,13 @@ def listen_receive_only(
         authenticated = client.state is LoginState.CONNECTED
         if not authenticated or client.transport is None:
             raise RuntimeError("Die Empfangsverbindung ist nicht eindeutig aktiv.")
+
+        activate_dynamic_talkgroup(
+            client.transport,
+            dmr_id=config.dmr_id,
+            talkgroup=target_talkgroup,
+            timeslot=target_timeslot,
+        )
 
         deadline = None if seconds is None else started_at + seconds
         try:
@@ -167,7 +180,7 @@ def listen_receive_only(
                 except (TypeError, ValueError):
                     invalid += 1
                     continue
-                if not packet.is_target_group:
+                if not packet.matches_group_target(target_talkgroup, target_timeslot):
                     continue
                 if packet.is_voice_lc_header:
                     if call_activity_callback is not None:

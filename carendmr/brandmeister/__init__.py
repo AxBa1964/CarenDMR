@@ -110,3 +110,5 @@ __all__ = [
     "parse_dmrd_packet",
     "parse_dmrd_receive_event",
 ]
+
+from .parrot_voice import ParrotVoiceError, ParrotVoiceResult, build_locked_parrot_voice_packets, execute_locked_parrot_voice_once

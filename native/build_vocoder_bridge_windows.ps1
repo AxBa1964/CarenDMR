@@ -1,5 +1,6 @@
 $ErrorActionPreference = "Stop"
 $compiler = "C:\msys64\ucrt64\bin\g++.exe"
+$env:PATH = "C:\msys64\ucrt64\bin;$env:PATH"
 if (-not (Test-Path $compiler)) {
     throw "Kein MSYS2-UCRT64-g++ gefunden. Installiere mingw-w64-ucrt-x86_64-gcc."
 }

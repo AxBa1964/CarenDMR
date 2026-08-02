@@ -54,6 +54,8 @@ class ReceiveServiceTests(unittest.TestCase):
         self.assertTrue(any("Sprechdurchgang von DMR-ID 2632198 beendet" in message for message in messages))
         self.assertIn("stop_requested", captured)
         self.assertFalse(captured["stop_requested"]())
+        self.assertEqual(91, captured["target_talkgroup"])
+        self.assertEqual(2, captured["target_timeslot"])
 
     def test_stop_sets_cooperative_cancel_signal(self):
         def fake_listen(_config, **kwargs):

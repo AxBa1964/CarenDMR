@@ -23,6 +23,9 @@ from dataclasses import dataclass
 
 from .dmrd import (
     DMRD_PAYLOAD_SIZE,
+    DmrdCallType,
+    DmrdDataType,
+    DmrdFrameClass,
     DmrdPacket,
     build_tg91_terminator_with_lc,
     build_tg91_voice_frame,
@@ -71,26 +74,33 @@ class SilentCallFixture:
         return tuple(packet.to_bytes() for packet in self.packets)
 
 
-def build_tg91_ts2_silent_call_fixture(
+def build_silent_group_call_fixture(
     *,
     source_id: int,
     repeater_id: int,
+    talkgroup: int,
+    timeslot: int,
     stream_id: int,
     first_sequence: int = 0,
 ) -> SilentCallFixture:
-    """Build one deterministic offline-only silent group-call fixture.
-
-    Sequence numbers wrap modulo 256, matching the one-byte Homebrew field.
-    Identifiers and stream ID are validated by the existing ``DmrdPacket``
-    domain model.
-    """
+    """Build a complete, valid silent group call for a dynamic TG/TS."""
 
     if not isinstance(first_sequence, int) or isinstance(first_sequence, bool):
         raise TypeError("Die erste Sequenznummer muss eine ganze Zahl sein.")
     if not 0 <= first_sequence <= 0xFF:
         raise ValueError("Die erste Sequenznummer muss zwischen 0 und 255 liegen.")
+    if not 1 <= source_id <= 0xFFFFFF:
+        raise ValueError("Quell-ID muss zwischen 1 und 16777215 liegen.")
+    if not 1 <= repeater_id <= 0xFFFFFFFF:
+        raise ValueError("Repeater-ID muss zwischen 1 und 4294967295 liegen.")
+    if not 1 <= stream_id <= 0xFFFFFFFF:
+        raise ValueError("Stream-ID muss zwischen 1 und 4294967295 liegen.")
+    if not 1 <= talkgroup <= 0xFFFFFF:
+        raise ValueError("Talkgroup muss zwischen 1 und 16777215 liegen.")
+    if timeslot not in (1, 2):
+        raise ValueError("Timeslot muss 1 oder 2 sein.")
 
-    lc = _link_control(source_id)
+    lc = bytes((0, 0, 0)) + talkgroup.to_bytes(3, "big") + source_id.to_bytes(3, "big")
     embedded = _encode_embedded_lc(lc)
     payloads = (
         _encode_full_lc_burst(lc, _VOICE_LC_HEADER),
@@ -101,41 +111,32 @@ def build_tg91_ts2_silent_call_fixture(
     sequence = tuple((first_sequence + offset) & 0xFF for offset in range(8))
 
     packets = (
-        build_tg91_voice_lc_header(
-            sequence=sequence[0],
-            source_id=source_id,
-            repeater_id=repeater_id,
-            stream_id=stream_id,
-            payload=payloads[0],
-        ),
-        build_tg91_voice_sync(
-            sequence=sequence[1],
-            source_id=source_id,
-            repeater_id=repeater_id,
-            stream_id=stream_id,
-            payload=payloads[1],
-        ),
+        DmrdPacket(sequence[0], source_id, talkgroup, repeater_id, timeslot,
+                   DmrdCallType.GROUP, DmrdFrameClass.DATA_SYNC, stream_id,
+                   payloads[0], data_type=DmrdDataType.VOICE_LC_HEADER.value),
+        DmrdPacket(sequence[1], source_id, talkgroup, repeater_id, timeslot,
+                   DmrdCallType.GROUP, DmrdFrameClass.VOICE_SYNC, stream_id, payloads[1]),
         *(
-            build_tg91_voice_frame(
-                sequence=sequence[number + 1],
-                source_id=source_id,
-                repeater_id=repeater_id,
-                stream_id=stream_id,
-                voice_frame_number=number,
-                payload=payloads[number + 1],
-            )
+            DmrdPacket(sequence[number + 1], source_id, talkgroup, repeater_id, timeslot,
+                       DmrdCallType.GROUP, DmrdFrameClass.VOICE, stream_id,
+                       payloads[number + 1], voice_frame_number=number)
             for number in range(1, 6)
         ),
-        build_tg91_terminator_with_lc(
-            sequence=sequence[7],
-            source_id=source_id,
-            repeater_id=repeater_id,
-            stream_id=stream_id,
-            payload=payloads[7],
-        ),
+        DmrdPacket(sequence[7], source_id, talkgroup, repeater_id, timeslot,
+                   DmrdCallType.GROUP, DmrdFrameClass.DATA_SYNC, stream_id,
+                   payloads[7], data_type=DmrdDataType.TERMINATOR_WITH_LC.value),
     )
     return SilentCallFixture(packets=packets)
 
+
+def build_tg91_ts2_silent_call_fixture(
+    *, source_id: int, repeater_id: int, stream_id: int, first_sequence: int = 0
+) -> SilentCallFixture:
+    """Compatibility wrapper for the original locked TG91/TS2 fixture."""
+    return build_silent_group_call_fixture(
+        source_id=source_id, repeater_id=repeater_id, talkgroup=91, timeslot=2,
+        stream_id=stream_id, first_sequence=first_sequence,
+    )
 
 def _link_control(source_id: int) -> bytes:
     if not isinstance(source_id, int) or isinstance(source_id, bool):

@@ -120,7 +120,7 @@ def execute_locked_parrot_once(
                 sleep(PACKET_INTERVAL_SECONDS)
         tx_elapsed = monotonic() - tx_start
         if tx_elapsed > PARROT_TRANSMIT_CAP_SECONDS:
-            raise ParrotSafetyError("Die Übertragung überschritt zehn Sekunden.")
+            raise ParrotSafetyError("Die Übertragung überschritt fünfzehn Sekunden.")
 
         echo_start = monotonic()
         announcer.announce(ParrotTestPhase.ECHO)

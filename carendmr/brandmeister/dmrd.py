@@ -117,13 +117,17 @@ class DmrdPacket:
                 raise ValueError("Ein Daten-Synchronrahmen benötigt einen Datentyp.")
             _require_range("DMR-Datentyp", self.data_type, 0, _SUBTYPE_MASK)
 
-    @property
-    def is_target_group(self) -> bool:
+    def matches_group_target(self, talkgroup: int, timeslot: int) -> bool:
         return (
             self.call_type is DmrdCallType.GROUP
-            and self.destination_id == TARGET_TALKGROUP
-            and self.timeslot == TARGET_TIMESLOT
+            and self.destination_id == talkgroup
+            and self.timeslot == timeslot
         )
+
+    @property
+    def is_target_group(self) -> bool:
+        """Kompatibilitätsprüfung für den bisherigen TG91/TS2-Festwert."""
+        return self.matches_group_target(TARGET_TALKGROUP, TARGET_TIMESLOT)
 
     @property
     def has_stream_id(self) -> bool:

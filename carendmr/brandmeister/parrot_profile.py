@@ -23,7 +23,7 @@ from .silent_call import (
 
 PARROT_DESTINATION_ID = 9990
 PARROT_TIMESLOT = 2
-PARROT_TRANSMIT_CAP_SECONDS = 10.0
+PARROT_TRANSMIT_CAP_SECONDS = 180.0
 PARROT_ECHO_CAP_SECONDS = 15.0
 PARROT_FIXTURE_SECONDS = SILENT_VOICE_BURST_COUNT * 0.060
 
@@ -186,8 +186,8 @@ def validate_parrot_test_plan(plan: ParrotTestPlan) -> None:
     plan.profile.validate()
     validate_locked_parrot_fixture(plan.fixture)
     if plan.transmit_seconds > PARROT_TRANSMIT_CAP_SECONDS:
-        raise ParrotSafetyError("Die feste Sendezeit überschreitet zehn Sekunden.")
+        raise ParrotSafetyError("Die feste Sendezeit überschreitet hundertachtzig Sekunden.")
     if plan.echo_observation_seconds != PARROT_ECHO_CAP_SECONDS:
-        raise ParrotSafetyError("Das Echo-Fenster ist nicht exakt auf 15 Sekunden verriegelt.")
+        raise ParrotSafetyError("Das Echo-Fenster ist nicht exakt auf 180 Sekunden verriegelt.")
     if hasattr(plan, "send") or hasattr(plan, "execute"):
         raise ParrotSafetyError("Der Offline-Plan darf keine Sendefunktion besitzen.")

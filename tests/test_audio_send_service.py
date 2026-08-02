@@ -131,6 +131,41 @@ class AudioSendServiceTests(unittest.TestCase):
         self.service.save_settings()
         self.assertTrue((self.root / "config" / "audio_send.local.json").exists())
 
+    def test_tx_safety_limit_is_validated_and_persisted(self):
+        self.service.set_tx_safety_limit_seconds(60)
+        self.service.save_settings()
+        reloaded = AudioSendService(self.root, backend=self.backend)
+        self.assertEqual(60, reloaded.tx_safety_limit_seconds)
+        with self.assertRaisesRegex(ValueError, "zwischen 5 und 180"):
+            self.service.set_tx_safety_limit_seconds(4)
+        with self.assertRaisesRegex(ValueError, "zwischen 5 und 180"):
+            self.service.set_tx_safety_limit_seconds(181)
+
 
 if __name__ == "__main__":
     unittest.main()
+
+class HoldCaptureBackend(FakeCaptureBackend):
+    def record_input_until(self, **kwargs):
+        self.record_calls.append(kwargs)
+        callback = kwargs.get("level_callback")
+        if callback:
+            callback(50.0)
+        frames = int(2.0 * kwargs["sample_rate"])
+        return np.full((frames, kwargs["channels"]), 0.1, dtype=np.float32)
+
+
+class HoldToTalkAudioTests(unittest.TestCase):
+    def test_hold_capture_returns_duration_and_optimizer_diagnostics(self):
+        import threading
+        with tempfile.TemporaryDirectory() as tmp:
+            backend = HoldCaptureBackend()
+            service = AudioSendService(Path(tmp), backend=backend)
+            service.microphones()
+            pcm, duration, hit_limit, diagnostics = service.capture_transmit_pcm_until(
+                threading.Event(), max_duration_seconds=15.0, optimize=True
+            )
+            self.assertEqual(16000, len(pcm))
+            self.assertAlmostEqual(2.0, duration)
+            self.assertFalse(hit_limit)
+            self.assertIsNotNone(diagnostics)

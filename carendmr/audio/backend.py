@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from threading import Event
 from typing import Any, Callable, Protocol, Sequence
 
 from .devices import AudioDevice
@@ -23,6 +24,18 @@ class AudioBackend(Protocol):
         level_callback: Callable[[float], None] | None = None,
     ) -> Any:
         """Nimmt PCM lokal auf und liefert die Samples."""
+
+    def record_input_until(
+        self,
+        *,
+        input_index: int,
+        stop_event: Event,
+        max_duration_seconds: float,
+        sample_rate: int,
+        channels: int,
+        level_callback: Callable[[float], None] | None = None,
+    ) -> Any:
+        """Nimmt bis zum Loslassen oder bis zum Sicherheitslimit auf."""
 
     def play_samples(
         self,
@@ -138,6 +151,50 @@ class SoundDeviceBackend:
             callback=callback,
         ):
             while captured < target_frames:
+                sd.sleep(20)
+        if not blocks:
+            return np.empty((0, channels), dtype="float32")
+        return np.concatenate(blocks, axis=0)[:target_frames]
+
+    def record_input_until(
+        self,
+        *,
+        input_index: int,
+        stop_event: Event,
+        max_duration_seconds: float,
+        sample_rate: int,
+        channels: int,
+        level_callback: Callable[[float], None] | None = None,
+    ) -> Any:
+        if max_duration_seconds <= 0:
+            raise ValueError("Die maximale Aufnahmedauer muss größer als null sein.")
+        sd = self._module()
+        import numpy as np
+
+        target_frames = int(round(max_duration_seconds * sample_rate))
+        blocks: list[Any] = []
+        captured = 0
+
+        def callback(indata: Any, _frames: int, _time: Any, status: Any) -> None:
+            nonlocal captured
+            del status
+            if stop_event.is_set() or captured >= target_frames:
+                raise sd.CallbackStop
+            remaining = target_frames - captured
+            block = indata[:remaining].copy()
+            blocks.append(block)
+            captured += int(block.shape[0])
+            if level_callback is not None and block.size:
+                rms = float(np.sqrt(np.mean(np.square(block, dtype=np.float64))))
+                level_callback(min(100.0, rms * 200.0))
+            if stop_event.is_set() or captured >= target_frames:
+                raise sd.CallbackStop
+
+        with sd.InputStream(
+            samplerate=sample_rate, channels=channels, dtype="float32",
+            device=input_index, callback=callback,
+        ):
+            while not stop_event.is_set() and captured < target_frames:
                 sd.sleep(20)
         if not blocks:
             return np.empty((0, channels), dtype="float32")
