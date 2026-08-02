@@ -19,6 +19,7 @@ from .protocol import (
     build_close_packet,
     build_config_packet,
     build_login_packet,
+    build_options_packet,
     build_ping_packet,
     extract_challenge,
     is_master_ack,
@@ -107,6 +108,15 @@ class BrandMeisterClient:
             )
             self._receive_ack(
                 "Der BrandMeister-Master hat die Stationsdaten nicht bestätigt."
+            )
+
+            # DroidStar sendet nach erfolgreicher RPTC-Anmeldung optional ein
+            # RPTO-Paket. Für CarenDMR abonnieren wir damit TG91 auf TS2
+            # ausdrücklich für diese Sitzung, statt auf eine zuvor dynamisch
+            # aktivierte Talkgroup zu vertrauen.
+            self._send(
+                "RPTO",
+                build_options_packet(self.config.dmr_id, self.config.options),
             )
 
             self.state = LoginState.CONNECTED

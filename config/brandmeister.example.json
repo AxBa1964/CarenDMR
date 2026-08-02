@@ -12,5 +12,6 @@
   "url": "",
   "software_id": "20260728_CarenDMR",
   "package_id": "MMDVM_HS_Hat",
-  "timeout_seconds": 5.0
+  "timeout_seconds": 5.0,
+  "options": "TS2=91"
 }

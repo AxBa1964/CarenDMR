@@ -5,10 +5,11 @@ from __future__ import annotations
 import queue
 import tkinter as tk
 from pathlib import Path
-from threading import Thread
-from tkinter import messagebox, ttk
+from threading import Event, Thread
+from time import monotonic
+from tkinter import filedialog, messagebox, ttk
 
-from carendmr.application import AudioSendService, EventService, ReceiveService
+from carendmr.application import AudioSendService, EncoderService, EventService, ParrotTestService, ReceiveService
 from carendmr.audio import AudioDirection
 from carendmr.domain import ApplicationEvent, ApplicationState, ConnectionState, EventLevel
 from carendmr.version import __version__
@@ -25,12 +26,23 @@ class MainWindow:
 
         self.events = EventService()
         self.receive_service = ReceiveService(self.project_root, events=self.events)
+        self.encoder_service = EncoderService(self.project_root)
         self.audio_send_service = AudioSendService(
             self.project_root,
             mute_receive=self.receive_service.mute_audio_output,
             unmute_receive=self.receive_service.unmute_audio_output,
         )
+        self.parrot_test_service = ParrotTestService(
+            self.project_root, audio_service=self.audio_send_service,
+            encoder_service=self.encoder_service,
+        )
         self._updates: queue.SimpleQueue[tuple[str, object]] = queue.SimpleQueue()
+        self._tx_stop_event: Event | None = None
+        self._resume_receive_after_tx = False
+        self._tx_started_at: float | None = None
+        self._tx_active = False
+        self._tx_recording = False
+        self._tx_pointer_grabbed = False
 
         self.brandmeister_var = tk.StringVar(value="Getrennt")
         self.receive_var = tk.StringVar(value="Inaktiv")
@@ -69,6 +81,20 @@ class MainWindow:
         self.microphone_diagnostics_var = tk.StringVar(
             value="16.000 Hz, Mono, PCM; keine Funkübertragung"
         )
+        configured_plugin = self.encoder_service.configured_plugin_path
+        self.encoder_plugin_var = tk.StringVar(
+            value=str(configured_plugin) if configured_plugin else "Noch kein Plugin ausgewählt"
+        )
+        self.encoder_status_var = tk.StringVar(
+            value="AMBE-Encoder nicht geprüft; Senden ist weiterhin gesperrt."
+        )
+        self.parrot_status_var = tk.StringVar(
+            value="Bereit für einen privaten Test, sobald Encoder und Mikrofon geprüft sind."
+        )
+        self.transmit_optimizer_var = tk.BooleanVar(value=True)
+        self.tx_safety_limit_var = tk.IntVar(
+            value=self.audio_send_service.tx_safety_limit_seconds
+        )
         self._microphone_by_label: dict[str, object] = {}
 
         self._build()
@@ -101,12 +127,15 @@ class MainWindow:
         reception = ttk.Frame(self.notebook, padding=12)
         history = ttk.Frame(self.notebook, padding=12)
         transmit = ttk.Frame(self.notebook, padding=12)
+        transmit_history = ttk.Frame(self.notebook, padding=12)
         self.notebook.add(reception, text="Empfang")
         self.notebook.add(history, text="QSO-Historie")
-        self.notebook.add(transmit, text="Senden – lokaler Audiotest")
+        self.notebook.add(transmit, text="Senden")
+        self.notebook.add(transmit_history, text="Sendehistorie")
         self._build_reception_tab(reception)
         self._build_history_tab(history)
         self._build_transmit_tab(transmit)
+        self._build_transmit_history_tab(transmit_history)
 
     def _build_reception_tab(self, outer: ttk.Frame) -> None:
         outer.columnconfigure(1, weight=1)
@@ -174,7 +203,7 @@ class MainWindow:
         frame.columnconfigure(1, weight=1)
         ttk.Label(
             frame,
-            text="Lokaler Mikrofontest – es werden keine DMR-Daten gesendet.",
+            text="Senden und Audioeinstellungen für den sicheren Parrot-Privatruf.",
             wraplength=560,
         ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
 
@@ -248,20 +277,66 @@ class MainWindow:
         ttk.Label(frame, text="Format:").grid(row=10, column=0, sticky="nw", padx=(0, 12), pady=4)
         ttk.Label(frame, textvariable=self.microphone_diagnostics_var, wraplength=480, takefocus=True).grid(row=10, column=1, sticky="w", pady=4)
 
-        controls = ttk.Frame(frame)
-        controls.grid(row=11, column=0, columnspan=2, sticky="w", pady=(14, 0))
-        self.record_button = ttk.Button(controls, text="5 Sekunden Testaufnahme", command=self._record_microphone_test)
-        self.play_button = ttk.Button(controls, text="Testaufnahme wiedergeben", command=self._play_microphone_test, state="disabled")
-        self.loopback_button = ttk.Button(controls, text="4 Sekunden Loopback", command=self._run_audio_loopback)
-        self.record_button.grid(row=0, column=0, padx=(0, 8))
-        self.play_button.grid(row=0, column=1, padx=(0, 8))
-        self.loopback_button.grid(row=0, column=2)
+        encoder_frame = ttk.LabelFrame(frame, text="Optionaler AMBE-Encoder", padding=10)
+        encoder_frame.grid(row=11, column=0, columnspan=2, sticky="ew", pady=(16, 0))
+        encoder_frame.columnconfigure(1, weight=1)
+        ttk.Label(encoder_frame, text="DroidStar-Plugin:").grid(row=0, column=0, sticky="nw", padx=(0, 12), pady=3)
+        ttk.Label(encoder_frame, textvariable=self.encoder_plugin_var, wraplength=430, takefocus=True).grid(row=0, column=1, sticky="w", pady=3)
+        ttk.Label(encoder_frame, text="Status:").grid(row=1, column=0, sticky="nw", padx=(0, 12), pady=3)
+        ttk.Label(encoder_frame, textvariable=self.encoder_status_var, wraplength=430, takefocus=True).grid(row=1, column=1, sticky="w", pady=3)
+        encoder_controls = ttk.Frame(encoder_frame)
+        encoder_controls.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        self.encoder_select_button = ttk.Button(encoder_controls, text="Plugin auswählen und prüfen", command=self._select_encoder_plugin)
+        self.encoder_verify_button = ttk.Button(encoder_controls, text="Konfiguriertes Plugin erneut prüfen", command=self._verify_encoder_plugin)
+        self.encoder_select_button.grid(row=0, column=0, padx=(0, 8))
+        self.encoder_verify_button.grid(row=0, column=1)
+
+        parrot_frame = ttk.LabelFrame(frame, text="BrandMeister-Parrot – sicherer Sprachtest", padding=10)
+        parrot_frame.grid(row=12, column=0, columnspan=2, sticky="ew", pady=(16, 0))
+        parrot_frame.columnconfigure(1, weight=1)
+        for row, (label, value) in enumerate((
+            ("Ziel", "9990"), ("Ruftyp", "Privatruf"),
+            ("Timeslot", "2"), ("Bedienung", "TX gedrückt halten; Loslassen sendet"),
+        )):
+            ttk.Label(parrot_frame, text=f"{label}:").grid(row=row, column=0, sticky="nw", padx=(0, 12), pady=2)
+            ttk.Label(parrot_frame, text=value, takefocus=True).grid(row=row, column=1, sticky="nw", pady=2)
+        ttk.Label(parrot_frame, text="TX-Sicherheitslimit:").grid(row=4, column=0, sticky="nw", padx=(0, 12), pady=2)
+        limit_frame = ttk.Frame(parrot_frame)
+        limit_frame.grid(row=4, column=1, sticky="w", pady=2)
+        self.tx_safety_limit_spinbox = ttk.Spinbox(
+            limit_frame, from_=5, to=180, increment=5, width=6,
+            textvariable=self.tx_safety_limit_var, command=self._on_tx_safety_limit_changed,
+            takefocus=True,
+        )
+        self.tx_safety_limit_spinbox.grid(row=0, column=0, padx=(0, 6))
+        self.tx_safety_limit_spinbox.bind("<FocusOut>", self._on_tx_safety_limit_changed)
+        self.tx_safety_limit_spinbox.bind("<Return>", self._on_tx_safety_limit_changed)
+        ttk.Label(limit_frame, text="Sekunden (5–180)").grid(row=0, column=1)
+        ttk.Label(parrot_frame, text="Status:").grid(row=5, column=0, sticky="nw", padx=(0, 12), pady=4)
+        ttk.Label(parrot_frame, textvariable=self.parrot_status_var, wraplength=430, takefocus=True).grid(row=5, column=1, sticky="w", pady=4)
+        ttk.Checkbutton(
+            parrot_frame, text="Sprache optimieren (Hochpass, Kompressor, Limiter)",
+            variable=self.transmit_optimizer_var, takefocus=True,
+        ).grid(row=6, column=0, columnspan=2, sticky="w", pady=(4, 4))
+        self.parrot_button = ttk.Button(
+            parrot_frame, text="TX gedrückt halten – Loslassen sendet",
+            state="disabled", takefocus=True,
+        )
+        self.parrot_button.grid(row=7, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        self.parrot_button.bind("<ButtonPress-1>", self._start_hold_to_talk)
+        self.parrot_button.bind("<ButtonRelease-1>", self._release_hold_to_talk)
+        self.parrot_button.bind("<KeyPress-space>", self._start_hold_to_talk)
+        self.parrot_button.bind("<KeyRelease-space>", self._release_hold_to_talk)
+        # Fallback auf Fensterebene: Das Loslassen wird auch erkannt, wenn
+        # der Mauszeiger die TX-Schaltfläche während des Drückens verlässt.
+        self.root.bind("<ButtonRelease-1>", self._release_hold_to_talk, add="+")
+
         ttk.Label(
             frame,
-            text=("Version 0.0.18 enthält bewusst keine PTT, keinen AMBE-Encoder "
-                  "und keine Netzwerk-Sendefunktion."),
+            text=("Version 0.0.19.4 sendet ausschließlich einen fest verriegelten "
+                  "Privatruf an 9990 auf Timeslot 2. Es gibt keine freie Zielwahl."),
             wraplength=560,
-        ).grid(row=12, column=0, columnspan=2, sticky="w", pady=(16, 0))
+        ).grid(row=13, column=0, columnspan=2, sticky="w", pady=(16, 0))
         self.root.after(0, self._scan_microphones)
 
     def _build_history_tab(self, frame: ttk.Frame) -> None:
@@ -303,6 +378,44 @@ class MainWindow:
             self.history_tree.insert("", tk.END, values=(
                 timestamp, entry.callsign or "Unbekannt", entry.name, entry.country,
                 entry.source_id, target, f"{entry.duration_seconds:.0f} s",
+            ))
+
+    def _build_transmit_history_tab(self, frame: ttk.Frame) -> None:
+        frame.rowconfigure(1, weight=1)
+        frame.columnconfigure(0, weight=1)
+        controls = ttk.Frame(frame)
+        controls.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        ttk.Label(controls, text="Abgeschlossene private Parrot-Sendetests").grid(row=0, column=0, sticky="w")
+        ttk.Button(controls, text="Aktualisieren", command=self._refresh_transmit_history).grid(row=0, column=1, padx=(12, 0))
+        columns = ("time", "target", "type", "duration", "echo", "limit", "optimizer")
+        self.transmit_history_tree = ttk.Treeview(frame, columns=columns, show="headings", takefocus=True)
+        headings = {"time":"Zeit", "target":"Ziel", "type":"Ruftyp", "duration":"Dauer", "echo":"Echo", "limit":"Limit", "optimizer":"Optimierer"}
+        widths = {"time":155, "target":90, "type":90, "duration":80, "echo":70, "limit":80, "optimizer":90}
+        for column in columns:
+            self.transmit_history_tree.heading(column, text=headings[column])
+            self.transmit_history_tree.column(column, width=widths[column], anchor="w")
+        scroll = ttk.Scrollbar(frame, orient="vertical", command=self.transmit_history_tree.yview)
+        self.transmit_history_tree.configure(yscrollcommand=scroll.set)
+        self.transmit_history_tree.grid(row=1, column=0, sticky="nsew")
+        scroll.grid(row=1, column=1, sticky="ns")
+        self._refresh_transmit_history()
+
+    def _refresh_transmit_history(self) -> None:
+        if not hasattr(self, "transmit_history_tree"):
+            return
+        for item in self.transmit_history_tree.get_children():
+            self.transmit_history_tree.delete(item)
+        from datetime import datetime
+        for entry in self.parrot_test_service.history.list_recent():
+            try:
+                timestamp = datetime.fromisoformat(entry.started_at).astimezone().strftime("%d.%m.%Y %H:%M:%S")
+            except ValueError:
+                timestamp = entry.started_at
+            self.transmit_history_tree.insert("", tk.END, values=(
+                timestamp, f"{entry.destination_id}/TS{entry.timeslot}", entry.call_type,
+                f"{entry.duration_seconds:.1f} s", "Ja" if entry.echo_received else "Nein",
+                "Ja" if entry.safety_limit_reached else "Nein",
+                "Ein" if entry.optimizer_enabled else "Aus",
             ))
 
     def _contacts_status_text(self) -> str:
@@ -390,6 +503,20 @@ class MainWindow:
         self._update_output_status()
         self._schedule_audio_settings_save()
 
+
+    def _on_tx_safety_limit_changed(self, _event: object | None = None) -> None:
+        try:
+            limit = self.audio_send_service.set_tx_safety_limit_seconds(
+                self.tx_safety_limit_var.get()
+            )
+            self.tx_safety_limit_var.set(limit)
+            self._schedule_audio_settings_save()
+        except Exception as error:
+            self.tx_safety_limit_var.set(
+                self.audio_send_service.tx_safety_limit_seconds
+            )
+            self.parrot_status_var.set(f"TX-Sicherheitslimit ist ungültig: {error}")
+
     def _update_output_status(self) -> None:
         self.output_status_var.set(
             f"AGC {'EIN' if self.output_agc_var.get() else 'AUS'}; "
@@ -413,55 +540,159 @@ class MainWindow:
         except Exception as error:
             self.microphone_status_var.set(f"Audioeinstellungen konnten nicht gespeichert werden: {error}")
 
-    def _set_audio_buttons(self, enabled: bool) -> None:
+    def _set_encoder_buttons(self, enabled: bool) -> None:
         state = "normal" if enabled else "disabled"
-        self.record_button.configure(state=state)
-        self.loopback_button.configure(state=state)
-        if not enabled:
-            self.play_button.configure(state="disabled")
+        self.encoder_select_button.configure(state=state)
+        self.encoder_verify_button.configure(state=state)
 
-    def _record_microphone_test(self) -> None:
-        self._set_audio_buttons(False)
-        self.microphone_level_var.set(0.0)
-        self.microphone_status_var.set("Testaufnahme läuft für 5 Sekunden …")
+    def _select_encoder_plugin(self) -> None:
+        selected = filedialog.askopenfilename(
+            parent=self.root,
+            title="DroidStar-kompatibles Vocoder-Plugin auswählen",
+            filetypes=(("Vocoder-Plugin", "*"), ("Alle Dateien", "*.*")),
+        )
+        if not selected:
+            return
+        self.encoder_plugin_var.set(selected)
+        self._verify_encoder_path(Path(selected), save=True)
+
+    def _verify_encoder_plugin(self) -> None:
+        plugin_path = self.encoder_service.configured_plugin_path
+        if plugin_path is None:
+            self.encoder_status_var.set("Es ist noch kein Plugin ausgewählt.")
+            return
+        self.encoder_plugin_var.set(str(plugin_path))
+        self._verify_encoder_path(plugin_path, save=False)
+
+    def _verify_encoder_path(self, plugin_path: Path, *, save: bool) -> None:
+        self._set_encoder_buttons(False)
+        self.encoder_status_var.set(
+            "Plugin wird lokal geladen und mit einem stummen PCM-Testframe geprüft …"
+        )
 
         def worker() -> None:
             try:
-                diagnostics = self.audio_send_service.record_test(
-                    duration_seconds=5.0,
-                    level_callback=lambda level: self._updates.put(("mic_level", level)),
+                if save:
+                    result = self.encoder_service.configure_and_verify(plugin_path)
+                else:
+                    result = self.encoder_service.verify_configured()
+                self._updates.put(("encoder_verified", result))
+            except Exception as error:
+                self._updates.put(("encoder_error", error))
+
+        Thread(target=worker, name="CarenDMR-Encoder-Test", daemon=True).start()
+
+    def _start_hold_to_talk(self, event=None) -> str:
+        if self._tx_active or str(self.parrot_button.cget("state")) == "disabled":
+            return "break"
+        self._resume_receive_after_tx = self.receive_service.is_running
+        if self._resume_receive_after_tx:
+            self.receive_service.stop()
+            if not self.receive_service.wait(3.0):
+                self._resume_receive_after_tx = False
+                self.parrot_status_var.set(
+                    "Der laufende Empfang konnte für den Parrot-Test nicht sauber beendet werden."
                 )
-                self._updates.put(("mic_recorded", diagnostics))
-            except Exception as error:
-                self._updates.put(("mic_error", error))
-
-        Thread(target=worker, name="CarenDMR-Microphone-Test", daemon=True).start()
-
-    def _play_microphone_test(self) -> None:
-        self._set_audio_buttons(False)
-        self.microphone_status_var.set("Testaufnahme wird lokal wiedergegeben …")
+                return "break"
+        self._tx_active = True
+        self._tx_recording = True
+        self._tx_stop_event = Event()
+        self._tx_started_at = monotonic()
+        if event is not None and getattr(event, "num", None) == 1:
+            try:
+                self.parrot_button.grab_set()
+                self._tx_pointer_grabbed = True
+            except tk.TclError:
+                self._tx_pointer_grabbed = False
+        self.parrot_button.configure(text="TX läuft – zum Senden loslassen")
+        limit = self.audio_send_service.tx_safety_limit_seconds
+        self.parrot_status_var.set(f"TX-Aufnahme läuft: 0,0 / {limit} Sekunden.")
+        self._update_tx_timer()
+        stop_event = self._tx_stop_event
+        optimize = bool(self.transmit_optimizer_var.get())
 
         def worker() -> None:
             try:
-                self.audio_send_service.play_test()
-                self._updates.put(("mic_played", None))
+                result = self.parrot_test_service.run_hold_to_talk(
+                    stop_event,
+                    level_callback=lambda level: self._updates.put(("mic_level", level)),
+                    optimize=optimize,
+                )
+                self._updates.put(("parrot_result", result))
             except Exception as error:
-                self._updates.put(("mic_error", error))
+                self._updates.put(("parrot_error", error))
 
-        Thread(target=worker, name="CarenDMR-Microphone-Playback", daemon=True).start()
+        Thread(target=worker, name="CarenDMR-Hold-To-Talk-Parrot", daemon=True).start()
+        return "break"
 
-    def _run_audio_loopback(self) -> None:
-        self._set_audio_buttons(False)
-        self.microphone_status_var.set("Loopback-Test läuft für 4 Sekunden …")
-
-        def worker() -> None:
+    def _release_hold_to_talk(self, _event=None) -> str:
+        if not self._tx_active or self._tx_stop_event is None:
+            return "break"
+        if self._tx_pointer_grabbed:
             try:
-                self.audio_send_service.run_loopback(duration_seconds=4.0)
-                self._updates.put(("mic_loopback", None))
-            except Exception as error:
-                self._updates.put(("mic_error", error))
+                self.parrot_button.grab_release()
+            except tk.TclError:
+                pass
+            self._tx_pointer_grabbed = False
+        if not self._tx_stop_event.is_set():
+            self._tx_recording = False
+            self.parrot_button.configure(text="Kodierung und Senden läuft …", state="disabled")
+            self.parrot_status_var.set(
+                "TX losgelassen. Aufnahme beendet; Sprache wird codiert und privat an 9990 gesendet …"
+            )
+            self._tx_stop_event.set()
+        return "break"
 
-        Thread(target=worker, name="CarenDMR-Audio-Loopback", daemon=True).start()
+    def _release_tx_pointer_grab(self) -> None:
+        if not self._tx_pointer_grabbed:
+            return
+        try:
+            self.parrot_button.grab_release()
+        except tk.TclError:
+            pass
+        self._tx_pointer_grabbed = False
+
+    def _update_tx_timer(self) -> None:
+        if not self._tx_active or not self._tx_recording or self._tx_started_at is None:
+            return
+        limit = float(self.audio_send_service.tx_safety_limit_seconds)
+        elapsed = min(limit, monotonic() - self._tx_started_at)
+        if elapsed >= limit and self._tx_stop_event is not None:
+            self._tx_recording = False
+            self._tx_stop_event.set()
+            self._release_tx_pointer_grab()
+            self.parrot_button.configure(text="Sicherheitslimit erreicht – Senden läuft", state="disabled")
+            self.parrot_status_var.set(
+                f"{int(limit)}-Sekunden-Sicherheitslimit erreicht. "
+                "Aufnahme beendet; Aussendung läuft …"
+            )
+            return
+        self.parrot_status_var.set(
+            f"TX-Aufnahme läuft: {elapsed:.1f} / {int(limit)} Sekunden. "
+            "Zum Senden loslassen."
+        )
+        self.root.after(100, self._update_tx_timer)
+
+
+    def _resume_receive_if_needed(self) -> None:
+        """Startet den vor dem Parrot-Test aktiven TG91-Empfang erneut."""
+        should_resume = self._resume_receive_after_tx
+        self._resume_receive_after_tx = False
+        if not should_resume:
+            return
+        if self.receive_service.start():
+            self.events.publish(
+                "TG91-Empfang nach dem Parrot-Test automatisch wieder gestartet."
+            )
+            self.connect_button.configure(state="disabled")
+            self.disconnect_button.configure(state="normal")
+        else:
+            self.events.publish(
+                "TG91-Empfang konnte nach dem Parrot-Test nicht automatisch neu gestartet werden.",
+                EventLevel.ERROR,
+            )
+            self.connect_button.configure(state="normal")
+            self.disconnect_button.configure(state="disabled")
 
     def _start(self) -> None:
         if self.receive_service.start():
@@ -506,33 +737,47 @@ class MainWindow:
                     self.microphone_level_var.set(float(value))
                 elif kind == "output_level":
                     self.output_level_var.set(float(value))
-                elif kind == "mic_recorded":
+                elif kind == "encoder_verified":
                     diagnostics = value
-                    self.microphone_status_var.set(
-                        f"Testaufnahme abgeschlossen. Spitzenpegel {diagnostics.peak_percent:.0f} Prozent."
+                    self.encoder_plugin_var.set(diagnostics.plugin_path)
+                    self.encoder_status_var.set(
+                        f"AMBE-Encoder bereit: {diagnostics.encoded_bytes} Byte erzeugt. "
+                        f"{diagnostics.message}"
                     )
-                    self.microphone_diagnostics_var.set(
-                        f"{diagnostics.sample_rate:,} Hz, Mono, PCM; "
-                        f"{diagnostics.captured_samples:,} Samples; "
-                        f"{diagnostics.captured_samples / diagnostics.sample_rate:.2f} Sekunden; "
-                        f"{diagnostics.device_name}."
-                    .replace(",", "."))
-                    self._set_audio_buttons(True)
-                    self.play_button.configure(state="normal")
-                elif kind == "mic_played":
-                    self.microphone_status_var.set("Testaufnahme wurde vollständig wiedergegeben.")
-                    self._set_audio_buttons(True)
-                    self.play_button.configure(state="normal")
-                elif kind == "mic_loopback":
-                    self.microphone_status_var.set("Loopback-Test abgeschlossen.")
-                    self._set_audio_buttons(True)
-                    if self.audio_send_service.has_recording:
-                        self.play_button.configure(state="normal")
-                elif kind == "mic_error":
-                    self.microphone_status_var.set(f"Audio-Test fehlgeschlagen: {value}")
-                    self._set_audio_buttons(True)
-                    if self.audio_send_service.has_recording:
-                        self.play_button.configure(state="normal")
+                    self._set_encoder_buttons(True)
+                    self.parrot_button.configure(state="normal")
+                elif kind == "parrot_result":
+                    result, duration, safety_limit_reached = value
+                    self._tx_active = False
+                    self._tx_recording = False
+                    self._tx_stop_event = None
+                    self._tx_started_at = None
+                    self._release_tx_pointer_grab()
+                    suffix = " Sicherheitslimit erreicht." if safety_limit_reached else ""
+                    if result.echo_received:
+                        self.parrot_status_var.set(
+                            f"Parrot-Echo erfolgreich. {duration:.1f} Sekunden TX; "
+                            f"{result.echo_voice_bursts} Echobursts empfangen.{suffix}"
+                        )
+                    else:
+                        self.parrot_status_var.set(
+                            f"{duration:.1f} Sekunden privat gesendet, aber kein Echo empfangen.{suffix}"
+                        )
+                    self.parrot_button.configure(state="normal", text="TX gedrückt halten – Loslassen sendet")
+                    self._refresh_transmit_history()
+                    self._resume_receive_if_needed()
+                elif kind == "parrot_error":
+                    self._tx_active = False
+                    self._tx_recording = False
+                    self._tx_stop_event = None
+                    self._tx_started_at = None
+                    self._release_tx_pointer_grab()
+                    self.parrot_status_var.set(f"Parrot-Test sicher abgebrochen: {value}")
+                    self.parrot_button.configure(state="normal", text="TX gedrückt halten – Loslassen sendet")
+                    self._resume_receive_if_needed()
+                elif kind == "encoder_error":
+                    self.encoder_status_var.set(f"Encoderprüfung fehlgeschlagen: {value}")
+                    self._set_encoder_buttons(True)
                 elif kind == "contacts_updated":
                     count, updated_at = value  # type: ignore[misc]
                     self.contacts_var.set(

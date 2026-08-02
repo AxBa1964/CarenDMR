@@ -13,6 +13,7 @@ from carendmr.brandmeister.protocol import (
     build_close_packet,
     build_config_packet,
     build_login_packet,
+    build_options_packet,
     build_ping_packet,
 )
 from carendmr.network import ResolvedEndpoint
@@ -111,6 +112,7 @@ class BrandMeisterClientTests(unittest.TestCase):
                     software_id=self.config.software_id,
                     package_id=self.config.package_id,
                 ),
+                build_options_packet(self.config.dmr_id, self.config.options),
             ],
             transport.sent,
         )

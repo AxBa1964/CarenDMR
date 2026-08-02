@@ -6,6 +6,7 @@ from carendmr.brandmeister.protocol import (
     build_close_packet,
     build_config_packet,
     build_login_packet,
+    build_options_packet,
     build_ping_packet,
     extract_challenge,
     is_master_ack,
@@ -68,6 +69,13 @@ class BrandMeisterProtocolTests(unittest.TestCase):
         )
         self.assertEqual(b"52.31000", packet[38:46])
         self.assertEqual(b"10.470000", packet[46:55])
+
+    def test_options_packet_matches_droidstar_rpto_format(self):
+        dmr_id = 2632198
+        self.assertEqual(
+            b"RPTO" + dmr_id.to_bytes(4, "big") + b"TS2=91",
+            build_options_packet(dmr_id, "TS2=91"),
+        )
 
     def test_ping_and_close(self):
         dmr_id = 2620000

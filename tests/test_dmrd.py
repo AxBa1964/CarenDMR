@@ -100,6 +100,21 @@ class DmrdPacketTests(unittest.TestCase):
         self.assertTrue(parsed.is_voice_lc_header)
         self.assertFalse(parsed.is_terminator_with_lc)
 
+    def test_tg91_group_receive_rejects_timeslot_one(self):
+        packet = DmrdPacket(
+            sequence=1,
+            source_id=self.SOURCE_ID,
+            destination_id=TARGET_TALKGROUP,
+            repeater_id=self.REPEATER_ID,
+            timeslot=1,
+            call_type=DmrdCallType.GROUP,
+            frame_class=DmrdFrameClass.VOICE_SYNC,
+            stream_id=self.STREAM_ID,
+            payload=self.PAYLOAD,
+        )
+
+        self.assertFalse(packet.is_target_group)
+
     def test_parser_models_private_timeslot_one_voice_frame(self):
         flags = 0x40 | 0x05
         packet = b"".join(

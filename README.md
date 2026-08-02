@@ -1,5 +1,7 @@
 # CarenDMR
 
+Aktueller Entwicklungsstand: **0.0.19.4.2**
+
 > Ein freier, konsequent barrierefrei entwickelter DMR-Client für
 > BrandMeister.
 
@@ -25,7 +27,7 @@ CarenDMR konzentriert sich ausschließlich auf:
 D-Star, YSF, P25, NXDN, M17, AllStar und ein allgemeines
 Digitalfunk-Framework gehören nicht zum Projektumfang.
 
-## Aktueller Stand: 0.0.18.3
+## Aktueller Stand: 0.0.19.1
 
 Der technische Stand umfasst:
 
@@ -40,11 +42,11 @@ Der technische Stand umfasst:
 - barrierefreies Read-only-Hauptfenster mit Live-QSO-Anzeige,
 - aktuelle DMR-ID, Talkgroup, Timeslot und Sprechdauer,
 - lokaler Mikrofon-Sendepfad mit Pegelanzeige, Testaufnahme, Wiedergabe und Loopback,
-- Empfangslautstärke bis 400 Prozent, zuschaltbare langsame AGC und Ausgangspegelanzeige,
-- 168 automatisierte Tests im aktuellen Prüfstand.
+- optionaler, separat bereitgestellter DroidStar-Vocoder über native Bridge,
+- lokaler PCM-zu-AMBE-Prüflauf ohne Funkübertragung,
+- 173 automatisierte Tests im aktuellen Prüfstand.
 
-Noch nicht enthalten sind eine allgemeine PTT-Schnittstelle, ein
-Sprachencoder und Talkgroup-Wechsel. Öffentliche automatisierte
+Noch nicht enthalten sind eine PTT-Schnittstelle, DMRD-Sprachversand und Talkgroup-Wechsel. Ein externer Encoder kann in 0.0.19.1 ausschließlich offline geprüft werden. Öffentliche automatisierte
 Sendetests sind dauerhaft verboten.
 
 Zusätzlich führt die GUI eine lokale QSO-Historie abgeschlossener empfangener Sprechdurchgänge.
@@ -97,7 +99,7 @@ Strg+T trennt ihn, Esc oder Strg+Q beendet das Programm.
 Im Reiter **„Senden – lokaler Audiotest“** können Mikrofone eingelesen und
 ausgewählt, eine fünfsekündige Testaufnahme erstellt, der Pegel beobachtet und
 die Aufnahme lokal wiedergegeben werden. Ein viersekündiger Loopback-Test prüft
-Mikrofon und Lautsprecher gemeinsam. Version 0.0.18.3 besitzt weiterhin keine PTT,
+Mikrofon und Lautsprecher gemeinsam. Version 0.0.18.2 besitzt weiterhin keine PTT,
 keinen AMBE-Encoder und keine Netzwerk-Sendefunktion.
 
 ## Dokumentation
@@ -133,3 +135,7 @@ adaptierter Referenzbestandteile sind in
 ## Längerer TG91-Empfang
 
 `python main.py --listen` läuft rein empfangend bis Strg+C. Mit `python main.py --listen --duration 600` wird der Lauf auf zehn Minuten begrenzt. Alle 30 Sekunden werden Diagnosewerte ausgegeben.
+
+## BrandMeister-Empfang
+
+CarenDMR abonniert beim Verbindungsaufbau TG91 auf Timeslot 2 über die Homebrew-Option `TS2=91`. Der Wert kann bei Bedarf in `config/brandmeister.local.json` über das Feld `options` angepasst werden.

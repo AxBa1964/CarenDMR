@@ -1,3 +1,5 @@
+Aktueller stabiler Entwicklungsstand: **0.0.19.4.2** – Hold-to-Talk und bereinigte Sendeoberfläche.
+
 # Roadmap
 
 Die Roadmap beschreibt Produktmeilensteine, keine festen Termine. Jeder
@@ -41,13 +43,6 @@ abgenommen werden.
 - laufende Sprechdauer
 - gemeinsame Application-Schicht für GUI und Konsole
 
-### 0.0.18.x – Lokaler Audiopfad
-
-- Mikrofonwahl, Testaufnahme, Wiedergabe und Loopback
-- samplegenaue Aufnahme und lokale Mikrofonverstärkung
-- Empfangslautstärke bis 400 Prozent, Mute, AGC und Ausgangspegel
-- weiterhin keine Funkübertragung
-
 ## Nächste Meilensteine
 
 ### 0.0.16 – Zugängliche Einrichtung
@@ -83,3 +78,9 @@ abgenommen werden.
 - Hotspot- oder Repeaterbetrieb
 - automatisierte Aussendungen auf öffentlichen Talkgroups
 - eine komplexe, visuell dominierte Mehrprotokoll-Oberfläche
+
+## Aktueller Zwischenstand 0.0.19.1
+
+- optionale DroidStar-Vocoder-Plugin-Integration
+- lokaler PCM-zu-AMBE-Test ohne Funkübertragung
+- nächster Schritt: hart verriegelter privater Parrot-Sprachtest

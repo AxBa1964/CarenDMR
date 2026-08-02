@@ -150,7 +150,7 @@ class ReceiveService:
         if not self._connected_event_published:
             self._connected_event_published = True
             self.events.publish("Anmeldung bei BrandMeister erfolgreich.")
-            self.events.publish("Empfang auf Talkgroup 91, Timeslot 2 gestartet.")
+            self.events.publish("Empfang auf Talkgroup 91 gestartet; eingehende Timeslots 1 und 2 werden verarbeitet.")
         self.current_calls.update_duration()
         self.state_store.update(
             connection=ConnectionState.RECEIVING,

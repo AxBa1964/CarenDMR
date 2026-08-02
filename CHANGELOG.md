@@ -1,13 +1,64 @@
 # Changelog
 
-## 0.0.18.3 – Audio-Komfort
+## 0.0.19.4.2 – TG91-Sitzungsabonnement wiederhergestellt
 
-- Empfangslautstärke auf 0 bis 400 Prozent erweitert.
-- Zuschaltbare langsame AGC für gleichmäßigere Sprachlautheit ergänzt.
-- Soft-Limiter und DMR-Ausgangspegelanzeige ergänzt.
-- DMR-Audio während der lokalen Testwiedergabe automatisch stummgeschaltet und danach wieder freigegeben.
-- Mikrofonverstärkung, Ausgabelautstärke, Benutzer-Mute und AGC lokal gespeichert.
-- Samplegenaue fünfsekündige Testaufnahme und verzögertes Speichern der Reglerwerte beibehalten.
+- BrandMeister-RPTO-Optionen wie bei DroidStar ergänzt.
+- TG91 wird beim Verbindungsaufbau ausdrücklich als `TS2=91` für die Sitzung abonniert.
+- CarenDMR ist damit nicht mehr von einer zuvor dynamisch aktivierten Talkgroup abhängig.
+- Bestehende lokale Konfigurationen erhalten automatisch den Standard `TS2=91`.
+- Empfangsfilter wieder auf TG91/TS2 festgelegt.
+- Keine Änderung am fest verriegelten Parrot-Privatruf 9990/TS2.
+- Release-Abnahme in `DEPLOY.md` bleibt verbindlich.
+
+## 0.0.19.4.1 – TG91-Empfang und RX-Rückkehr repariert
+
+- Eingehender TG91-Gruppenverkehr wird auf Timeslot 1 und Timeslot 2 verarbeitet.
+- Der feste Parrot-Sendeweg bleibt unverändert auf Privatruf 9990, Timeslot 2 verriegelt.
+- War der normale TG91-Empfang vor dem Parrot-Test aktiv, wird er nach Echo, fehlendem Echo oder Fehler automatisch neu gestartet.
+- Verbindungs- und Schaltflächenstatus werden erst nach dem tatsächlichen Neustart des Empfangsdienstes aktualisiert.
+- Verbindliche praktische Release-Abnahme mit Regressionstest in `DEPLOY.md` ergänzt.
+- Keine neue Fachfunktion.
+
+## 0.0.19.4 – PTT-Status korrigiert und TX-Sicherheitslimit flexibel
+
+- PTT-Loslassen beendet die Aufnahme sofort über das gemeinsame Stop-Ereignis.
+- Der Aufnahme-Timer stoppt beim Loslassen und überschreibt die Statusanzeige während Kodierung, Versand und Echo-Wartezeit nicht mehr.
+- Das TX-Sicherheitslimit ist in der GUI zwischen 5 und 180 Sekunden einstellbar.
+- Standardwert bleibt 15 Sekunden; der Wert wird lokal in `config/audio_send.local.json` gespeichert.
+- Das Limit bleibt ausschließlich eine Notbremse, falls ein Loslassen-Ereignis ausbleibt.
+- Weiterhin ausschließlich fest verriegelter Privatruf an 9990 auf Timeslot 2; keine freie Zielwahl.
+
+## 0.0.19.1
+
+- Fest verriegelter Parrot-Sprachtest: DMR-ID 9990, Privatruf, Timeslot 2.
+- Fünf Sekunden Mikrofonaufnahme, PCM→AMBE, einmalige DMRD-Übertragung und Echoempfang.
+- Harte Sendegrenze zehn Sekunden; keine freie Zielwahl und keine Gruppenrufe.
+
+
+## 0.0.19.1 – DroidStar-Plugin-ABI unter Windows korrigiert
+
+- Tatsächlichen DroidStar-Export `destroy` unterstützt; der historische Tippfehler `destry` bleibt als Fallback kompatibel.
+- Präzise Diagnose ergänzt, welcher Plugin-Export fehlt beziehungsweise ob das Vocoder-Objekt nicht erzeugt werden konnte.
+- Windows-Bridge statisch gelinkt und auf unerwünschte MSYS2-Laufzeitabhängigkeiten geprüft.
+- Weiterhin ausschließlich lokaler PCM→AMBE-Test; keine PTT und kein DMRD-Versand.
+
+## 0.0.19.0 – Optionale Vocoder-Plugin-Integration
+
+- Neutrale `AmbeEncoder`-Schnittstelle ergänzt.
+- Separat bereitgestellte DroidStar-kompatible Vocoder-Plugins über eine native C++-Bridge angebunden.
+- Plugin-Auswahl, lokaler Pfadspeicher und erneute Prüfung in der GUI ergänzt.
+- Rein lokalen PCM-zu-AMBE-Test mit 160 PCM-Samples und 9 Byte AMBE-Ausgabe ergänzt.
+- USB-AMBE-Backend als ausdrücklich noch nicht implementierte Erweiterungsgrenze vorbereitet.
+- Keine PTT, keine DMRD-Aussendung und keine freie Zielwahl ergänzt.
+
+## 0.0.18.2 – Audiopegel, Stumm und samplegenaue Aufnahme
+
+- Mikrofonverstärkung wird während des Ziehens sofort angewendet, aber erst 600 ms nach der letzten Änderung gespeichert.
+- Testaufnahmen sammeln bei 16 kHz exakt 80.000 Samples und zeigen 5,00 Sekunden an.
+- Ausgabelautstärke von 0 bis 100 Prozent für den DMR-Empfang ergänzt.
+- Benutzer-Stummschaltung mit Strg+M ergänzt; Empfang, Decoder und QSO-Historie laufen weiter.
+- Benutzer-Stumm und temporäres Aufnahme-Stumm bleiben intern getrennt.
+- Audioeinstellungen werden beim Beenden zusätzlich gesichert.
 - Keine PTT, kein AMBE-Encoder und keine DMRD-Sendefunktion ergänzt.
 
 ## 0.0.18 – Lokaler Audio-Sendepfad

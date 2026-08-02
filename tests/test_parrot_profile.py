@@ -50,7 +50,7 @@ class LockedParrotProfileTests(unittest.TestCase):
         self.assertEqual(PARROT_DESTINATION_ID, profile.destination_id)
         self.assertEqual(PARROT_TIMESLOT, profile.timeslot)
         self.assertIs(DmrdCallType.PRIVATE, profile.call_type)
-        self.assertEqual(10.0, PARROT_TRANSMIT_CAP_SECONDS)
+        self.assertEqual(180.0, PARROT_TRANSMIT_CAP_SECONDS)
         self.assertEqual(15.0, PARROT_ECHO_CAP_SECONDS)
         self.assertEqual(PARROT_FIXTURE_SECONDS, self.build().transmit_seconds)
 

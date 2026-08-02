@@ -74,6 +74,9 @@ class ReleaseZipTests(unittest.TestCase):
                 "RELEASE_INFO.md": "# Release\n",
                 "main.py": "print('ok')\n",
                 "native/build_windows.ps1": "Write-Host 'build'\n",
+                "native/build_vocoder_bridge_windows.ps1": "Write-Host 'bridge'\n",
+                "native/build_vocoder_bridge.sh": "#!/bin/sh\n",
+                "native/vocoder_plugin_bridge.cpp": "// bridge\n",
                 "requirements.txt": "\n",
                 "carendmr/version.py": '__version__ = "9.9.9"\n',
                 "config/config.json": "{}\n",
@@ -99,11 +102,18 @@ class ReleaseZipTests(unittest.TestCase):
 
             self.assertIn("main.py", names)
             self.assertIn("native/build_windows.ps1", names)
+            self.assertIn("native/build_vocoder_bridge_windows.ps1", names)
+            self.assertIn("native/vocoder_plugin_bridge.cpp", names)
             self.assertIn("LICENSE", names)
             self.assertIn("carendmr/version.py", names)
             self.assertIn("docs/UPSTREAM_PROVENANCE.md", names)
             self.assertNotIn("logs/carendmr.log", names)
             self.assertNotIn("old.zip", names)
+
+    def test_external_plugins_and_temp_files_are_excluded(self):
+        from tools.create_release_zip import should_exclude
+        self.assertTrue(should_exclude(Path("plugins/vocoder_plugin.winnt.x86_64")))
+        self.assertTrue(should_exclude(Path("tests/test_example.py.tmp")))
 
 
 if __name__ == "__main__":

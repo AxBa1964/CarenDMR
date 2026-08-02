@@ -200,7 +200,7 @@ class ParrotLiveTests(unittest.TestCase):
                 decoder_factory=FakeDecoder,
                 sequence_factory=lambda: 0,
                 stream_factory=lambda: 1,
-                monotonic=Clock(step=11.0),
+                monotonic=Clock(step=181.0),
                 sleep=lambda _: None,
             )
 

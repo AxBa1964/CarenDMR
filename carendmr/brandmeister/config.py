@@ -24,6 +24,7 @@ class BrandMeisterConfig:
     url: str = ""
     software_id: str = "20260728_CarenDMR"
     package_id: str = "MMDVM_HS_Hat"
+    options: str = "TS2=91"
     timeout_seconds: float = 5.0
 
     def validate(self) -> None:
@@ -51,6 +52,12 @@ class BrandMeisterConfig:
                 "Die Software-ID muss dem BrandMeister-Format "
                 "JJJJMMTT_Name entsprechen, zum Beispiel 20260728_CarenDMR."
             )
+        if not self.options.strip():
+            raise ValueError("Die BrandMeister-Optionen dürfen nicht leer sein.")
+        try:
+            self.options.encode("ascii")
+        except UnicodeEncodeError as exc:
+            raise ValueError("Die BrandMeister-Optionen müssen ASCII-Zeichen enthalten.") from exc
         if not self.package_id.startswith("MMDVM"):
             raise ValueError(
                 "Die Package-ID muss für BrandMeister mit MMDVM beginnen."
@@ -77,6 +84,7 @@ class BrandMeisterConfig:
             url=str(data.get("url", "")),
             software_id=str(data.get("software_id", "20260728_CarenDMR")),
             package_id=str(data.get("package_id", "MMDVM_HS_Hat")),
+            options=str(data.get("options", "TS2=91")),
             timeout_seconds=float(data.get("timeout_seconds", 5.0)),
         )
         config.validate()

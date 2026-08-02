@@ -49,7 +49,7 @@ class ReceiveServiceTests(unittest.TestCase):
         self.assertEqual(3, state.statistics.voice_bursts)
         messages = [event.message for event in service.events.snapshot()]
         self.assertEqual(1, messages.count("Anmeldung bei BrandMeister erfolgreich."))
-        self.assertEqual(1, messages.count("Empfang auf Talkgroup 91, Timeslot 2 gestartet."))
+        self.assertEqual(1, messages.count("Empfang auf Talkgroup 91 gestartet; eingehende Timeslots 1 und 2 werden verarbeitet."))
         self.assertIn("DMR-ID 2632198 spricht auf Talkgroup 91, Timeslot 2.", messages)
         self.assertTrue(any("Sprechdurchgang von DMR-ID 2632198 beendet" in message for message in messages))
         self.assertIn("stop_requested", captured)

@@ -20,4 +20,7 @@ __all__ = [
     "BufferedPcmOutput",
     "PcmOutputError",
     "SoundDeviceBackend",
+    "OptimizerDiagnostics", "optimize_transmit_pcm",
 ]
+
+from .optimizer import OptimizerDiagnostics, optimize_transmit_pcm

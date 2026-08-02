@@ -27,6 +27,7 @@ from .protocol import (
     build_close_packet,
     build_config_packet,
     build_login_packet,
+    build_options_packet,
     build_ping_packet,
     is_master_ack,
     is_master_nak,
@@ -95,6 +96,7 @@ __all__ = [
     "build_close_packet",
     "build_config_packet",
     "build_login_packet",
+    "build_options_packet",
     "build_ping_packet",
     "build_locked_parrot_fixture",
     "build_locked_parrot_test_plan",
@@ -110,3 +112,5 @@ __all__ = [
     "parse_dmrd_packet",
     "parse_dmrd_receive_event",
 ]
+
+from .parrot_voice import ParrotVoiceError, ParrotVoiceResult, build_locked_parrot_voice_packets, execute_locked_parrot_voice_once

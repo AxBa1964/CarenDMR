@@ -88,6 +88,19 @@ def build_config_packet(
     return packet
 
 
+def build_options_packet(dmr_id: int, options: str) -> bytes:
+    """Erzeugt das optionale RPTO-Paket wie DroidStar.
+
+    BrandMeister nutzt diese Optionen unter anderem, um statische
+    Talkgroups für die Sitzung zu abonnieren.
+    """
+    text = str(options).strip()
+    if not text:
+        raise ValueError("Die BrandMeister-Optionen dürfen nicht leer sein.")
+    encoded = text.encode("ascii", errors="strict")
+    return b"RPTO" + _id_bytes(dmr_id) + encoded
+
+
 def build_ping_packet(dmr_id: int) -> bytes:
     return b"RPTPING" + _id_bytes(dmr_id)
 
