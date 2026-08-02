@@ -23,7 +23,7 @@ class HoldToTalkUiTests(unittest.TestCase):
         self.assertTrue(window._tx_stop_event.is_set())
         self.assertFalse(window._tx_recording)
         window.parrot_button.configure.assert_called_once_with(
-            text="Kodierung und Senden läuft …", state="disabled"
+            text="TX AUS", state="disabled", bg="#2f6fbd"
         )
 
     def test_timer_does_not_overwrite_processing_status_after_release(self):

@@ -1,6 +1,6 @@
-# Deployment CarenDMR 0.0.19.7
+# Deployment CarenDMR 0.0.21.1
 
-Dieses Dokument ist die verbindliche chronologische Anleitung für Version 0.0.19.7. Lokale Zugangsdaten, Datenbanken und externe Vocoder-Plugins dürfen nicht committed oder in das Release-ZIP aufgenommen werden.
+Dieses Dokument ist die verbindliche chronologische Anleitung für Version 0.0.21.1. Lokale Zugangsdaten, Datenbanken und externe Vocoder-Plugins dürfen nicht committed oder in das Release-ZIP aufgenommen werden.
 
 ## 1. Projektstand prüfen
 
@@ -12,6 +12,8 @@ git pull --ff-only
 ```
 
 ## 2. Dateien unter Windows entsperren
+
+Dieser Schritt ist nach jedem Entpacken einer neuen ZIP zwingend erforderlich, damit Windows die PowerShell-Buildskripte ausführen darf.
 
 ```powershell
 Get-ChildItem -Recurse -File | Unblock-File
@@ -30,13 +32,13 @@ python -m pip install -r requirements.txt
 .\native\build_windows.ps1
 ```
 
-## 5. Native Bridge für DroidStar-kompatible Plugins bauen
+## 5. Native Bridge für den externen AMBE-Encoder bauen
 
 ```powershell
 .\native\build_vocoder_bridge_windows.ps1
 ```
 
-Die Bridge enthält keinen Codec. Das externe Vocoder-Plugin wird nicht mit CarenDMR ausgeliefert und muss vom Benutzer separat und rechtmäßig bereitgestellt werden.
+Die Bridge enthält keinen Codec. Das externe Vocoder-Plugin wird nicht mit CarenDMR ausgeliefert und muss separat und rechtmäßig bereitgestellt werden.
 
 ## 6. Vollständige Tests ausführen
 
@@ -58,37 +60,48 @@ python tools\release_check.py
 python main.py --gui
 ```
 
-## 9. Empfang und Audio praktisch prüfen
+## 9. Einmalige Inbetriebnahme prüfen
 
-- Mit „Verbinden und empfangen“ verbinden.
-- TG91-Empfang, aktuelle Station und QSO-Historie prüfen.
-- Im Reiter „Senden – lokaler Audiotest“ Mikrofonaufnahme, Wiedergabe, AGC und Mute prüfen.
+1. Im Reiter **Einstellungen** kontrollieren, ob das bisher gespeicherte Mikrofon ausgewählt ist.
+2. Das gespeicherte AMBE-Plugin wird automatisch geladen und geprüft.
+3. Bei erfolgreicher Prüfung erscheint keine Fehlermeldung und die TX-Taste wird freigegeben.
+4. Erscheint eine Encoder-Fehlermeldung, bleibt Empfang möglich. Dann unter **Einstellungen** das Plugin einmal neu zuordnen.
 
-## 10. Optionales DroidStar-Plugin offline prüfen
+## 10. Funkgeräte-Oberfläche prüfen
 
-1. Im Reiter „Senden – lokaler Audiotest“ den Bereich „Optionaler AMBE-Encoder“ öffnen.
-2. „Plugin auswählen und prüfen“ wählen.
-3. Eine separat bereitgestellte, zur Plattform passende DroidStar-Vocoder-Plugin-Datei auswählen.
-4. Erfolgsmeldung „AMBE-Encoder bereit: 9 Byte erzeugt“ prüfen.
+1. Im Reiter **Betrieb** TG und TS1 oder TS2 auswählen.
+2. **Verbinden und empfangen** drücken und hörbaren Empfang abwarten.
+3. TG und Timeslot mehrfach mit **TG / Timeslot umschalten** wechseln.
+4. Prüfen, dass die aktuelle Station und das Ereignisprotokoll aktualisiert werden.
+5. Prüfen, dass es nur die Reiter **Betrieb**, **QSO-Historie** und **Einstellungen** gibt.
 
-Die Plugin-Prüfung codiert zunächst nur einen lokalen stummen PCM-Rahmen und sendet nichts. Der anschließende Parrot-Test ist hart auf DMR-ID 9990, Privatruf und Timeslot 2 verriegelt.
+## 11. Rastende PTT und TX→RX-Rückkehr prüfen
 
-## 11. Release-ZIP erzeugen
+Der Sendepfad ist in 0.0.21.1 weiterhin fest auf den sicheren Parrot-Privatruf 9990 / TS2 begrenzt.
+
+1. Bei aktivem Empfang die große blaue Taste **TX AUS** einmal drücken.
+2. Prüfen, dass sie rot wird und **TX EIN** anzeigt.
+3. Sprechen und die Taste erneut drücken.
+4. Prüfen, dass die Aussendung beendet und anschließend automatisch dieselbe Empfangs-TG-/TS-Kombination wiederhergestellt wird.
+5. Prüfen, dass kein zusätzlicher Klick auf **Verbinden** nötig ist.
+6. Sicherheitsprüfung: TX erneut starten und nicht manuell beenden. Nach spätestens 60 Sekunden muss CarenDMR TX selbst beenden und zum Empfang zurückkehren.
+
+## 12. QSO-Historie prüfen
+
+1. Mehrere Stationen empfangen.
+2. Reiter **QSO-Historie** öffnen und aktualisieren.
+3. Prüfen, dass Datum, Rufzeichen, Name, DMR-ID, TG/TS, Dauer und der vorbereitete Status **Nur gehört** sichtbar sind.
+4. Der Status ist in dieser Version noch keine automatische QSO-Erkennung.
+
+## 13. Release-ZIP erzeugen
 
 ```powershell
 python tools\create_release_zip.py
 ```
 
-Das ZIP darf insbesondere nicht enthalten:
+Das ZIP darf insbesondere nicht enthalten: `.git`, `.venv`, Cache-Verzeichnisse, `config\*.local.json`, externe Plugins, Datenbanken, Logs, Mitschnitte oder native Binärdateien.
 
-- `.git`, `.venv` oder Cache-Verzeichnisse,
-- `config\*.local.json`,
-- externe Vocoder-Plugin-Dateien,
-- `data\contacts.db` oder `data\qso_history.db`,
-- Audioaufnahmen, Logs oder Paketmitschnitte,
-- `*.dll`, `*.so` oder `*.dylib`.
-
-## 12. Git prüfen, committen und pushen
+## 14. Git prüfen, committen und pushen
 
 ```powershell
 git status
@@ -98,37 +111,6 @@ git add -A
 git status
 git diff --cached --check
 git diff --cached
-git commit -m "CarenDMR 0.0.19.7 gueltiger dynamischer TG-Gruppenruf"
+git commit -m "CarenDMR 0.0.21.1 Funkgeraete-Oberflaeche"
 git push origin master
 ```
-
-
-## Privaten Parrot-Sprachtest prüfen
-
-1. `python main.py --gui` starten.
-2. Im Reiter **Senden** das konfigurierte Plugin erneut prüfen.
-3. **5-Sekunden-Privattest an Parrot 9990 starten** wählen.
-4. Bestätigen, fünf Sekunden sprechen und das Echo abwarten.
-5. Prüfen, dass Ziel 9990, Ruftyp Privatruf und Timeslot 2 unveränderbar angezeigt werden.
-
-## 8. Praktische Funktionsprüfung
-
-```powershell
-python main.py --gui
-```
-
-- Plugin erneut prüfen.
-- TX-Taste drücken und zwei bis fünf Sekunden sprechen.
-- TX-Taste loslassen: Die Aufnahme muss sofort enden und gesendet werden.
-- Prüfen, dass das Parrot-Echo wiedergegeben und die Sendehistorie ergänzt wird.
-- Prüfen, dass beim Loslassen sofort beendet und gesendet wird; das eingestellte TX-Sicherheitslimit greift nur als Notbremse.
-
-
-## Prüfung Version 0.0.19.7
-
-1. CarenDMR starten.
-2. Im Reiter **Empfang** die gewünschte Talkgroup und Timeslot 1 oder 2 eintragen.
-3. **Verbinden und empfangen** wählen.
-4. Im Ereignisprotokoll müssen die erfolgreiche Anmeldung und der gestartete Empfang auf der gewählten Talkgroup erscheinen.
-5. Für einen Wechsel zuerst **Trennen**, danach neue Talkgroup beziehungsweise neuen Timeslot eintragen und erneut verbinden.
-6. In `config/brandmeister.local.json` ist kein API-Key erforderlich.

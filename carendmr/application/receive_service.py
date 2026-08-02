@@ -38,6 +38,9 @@ class ReceiveService:
         self._stop = Event()
         self._thread: Thread | None = None
         self._lock = Lock()
+        self._switch_lock = Lock()
+        self._switch_thread: Thread | None = None
+        self._switch_cancel = Event()
         self._connected_event_published = False
         self._capture_muted = Event()
         self._user_muted = Event()
@@ -46,6 +49,7 @@ class ReceiveService:
         self._output_level_percent = 0.0
         self._target_talkgroup = 91
         self._target_timeslot = 2
+        self._target_call_type = "group"
         self._output_level_callback: Callable[[float], None] | None = None
         self.contacts = ContactService(self.project_root)
         self.history = QsoHistoryService(self.project_root)
@@ -55,13 +59,78 @@ class ReceiveService:
         )
 
 
-    def set_receive_target(self, talkgroup: int, timeslot: int) -> None:
+    def set_receive_target(self, talkgroup: int, timeslot: int, call_type: str = "group") -> None:
         talkgroup, timeslot = validate_receive_target(talkgroup, timeslot)
+        call_type = str(call_type).strip().lower()
+        if call_type not in {"group", "private"}:
+            raise ValueError("Die Rufart muss group oder private sein.")
         if self.is_running:
-            raise RuntimeError("Die Talkgroup kann nur bei getrenntem Empfang geändert werden.")
+            raise RuntimeError("Die Talkgroup kann nur bei getrenntem Empfang direkt geändert werden.")
         self._target_talkgroup = talkgroup
         self._target_timeslot = timeslot
+        self._target_call_type = call_type
         self.state_store.update(talkgroup=talkgroup, timeslot=timeslot)
+
+    @property
+    def target_talkgroup(self) -> int:
+        return self._target_talkgroup
+
+    @property
+    def target_timeslot(self) -> int:
+        return self._target_timeslot
+
+    @property
+    def is_switching(self) -> bool:
+        with self._switch_lock:
+            return self._switch_thread is not None and self._switch_thread.is_alive()
+
+    def switch_receive_target(self, talkgroup: int, timeslot: int, call_type: str = "group") -> bool:
+        """Wechselt TG und Timeslot automatisch und startet den Empfang erneut."""
+        talkgroup, timeslot = validate_receive_target(talkgroup, timeslot)
+        call_type = str(call_type).strip().lower()
+        if call_type not in {"group", "private"}:
+            raise ValueError("Die Rufart muss group oder private sein.")
+        with self._switch_lock:
+            if self._switch_thread is not None and self._switch_thread.is_alive():
+                return False
+            self._switch_cancel.clear()
+            self._switch_thread = Thread(
+                target=self._switch_worker,
+                args=(talkgroup, timeslot, call_type),
+                name="CarenDMR-Receive-Switch",
+                daemon=True,
+            )
+            self._switch_thread.start()
+        return True
+
+    def _switch_worker(self, talkgroup: int, timeslot: int, call_type: str) -> None:
+        old_tg = self._target_talkgroup
+        old_ts = self._target_timeslot
+        self.events.publish(
+            f"Empfang wird von Talkgroup {old_tg}, Timeslot {old_ts} "
+            f"auf Talkgroup {talkgroup}, Timeslot {timeslot} umgeschaltet."
+        )
+        if self.is_running:
+            self._request_stop(cancel_pending_switch=False, message="Empfang wird für TG-/TS-Wechsel beendet")
+            if not self.wait(8.0):
+                self.events.publish(
+                    "TG-/TS-Wechsel abgebrochen: Der bisherige Empfang wurde nicht rechtzeitig beendet.",
+                    EventLevel.ERROR,
+                )
+                return
+        if self._switch_cancel.is_set():
+            self.events.publish("TG-/TS-Wechsel wurde abgebrochen.")
+            return
+        self.set_receive_target(talkgroup, timeslot, call_type)
+        if not self.start():
+            self.events.publish(
+                "TG-/TS-Wechsel abgebrochen: Der neue Empfang konnte nicht gestartet werden.",
+                EventLevel.ERROR,
+            )
+            return
+        self.events.publish(
+            f"Automatischer Wechsel auf Talkgroup {talkgroup}, Timeslot {timeslot} gestartet."
+        )
 
     def mute_audio_output(self) -> None:
         """Unterdrückt nur die lokale Empfangswiedergabe; Netzwerk und Decoder laufen weiter."""
@@ -131,13 +200,18 @@ class ReceiveService:
         return True
 
     def stop(self) -> None:
+        self._request_stop(cancel_pending_switch=True, message="Empfang wird beendet")
+
+    def _request_stop(self, *, cancel_pending_switch: bool, message: str) -> None:
+        if cancel_pending_switch:
+            self._switch_cancel.set()
         if not self.is_running:
             return
         self.state_store.update(
             connection=ConnectionState.STOPPING,
-            message="Empfang wird beendet",
+            message=message,
         )
-        self.events.publish("Empfang wird beendet.")
+        self.events.publish(f"{message}.")
         self._stop.set()
 
     def wait(self, timeout: float | None = None) -> bool:
@@ -207,6 +281,7 @@ class ReceiveService:
                 seconds=seconds,
                 target_talkgroup=self._target_talkgroup,
                 target_timeslot=self._target_timeslot,
+                target_call_type=self._target_call_type,
                 progress_callback=self._on_progress,
                 call_activity_callback=self._on_call_activity,
                 progress_interval=1.0,

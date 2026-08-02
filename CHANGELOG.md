@@ -1,4 +1,58 @@
+# Änderungsprotokoll
+
+## 0.0.21.1 – Funkgeräte-Betriebsmaske
+
+- CONNECT/DISCONNECT als zentraler Verbindungs-Toggle im Kanalbereich.
+- Rufart Gruppe/Privat neben Talkgroup und Timeslot; dynamische Aktivierung und Empfangsfilter berücksichtigen die Rufart.
+- Stumm-Schalter auf der Betriebsseite; Netzwerkempfang und Historie laufen stumm weiter.
+- Große TX-Taste bleibt als TX AUS/TX EIN-Toggle. Beim Beenden erscheint kein irritierender Zwischenzustand mehr.
+- Parrot-Ergebnis und 60-Sekunden-Sicherheitsabschaltung stehen nur noch im Ereignisprotokoll.
+- Beenden bleibt als separate Schaltfläche unterhalb des Betriebsbereichs.
+
+## 0.0.21.0 – Funkgeräte-Oberfläche
+
+- Empfang und PTT im gemeinsamen Reiter **Betrieb** zusammengeführt.
+- Hauptnavigation auf **Betrieb**, **QSO-Historie** und **Einstellungen** reduziert.
+- Große rastende TX-Taste ergänzt: einmal drücken startet TX (rot), erneut drücken beendet TX und kehrt automatisch zum Empfang zurück.
+- TX-Sicherheitsabschaltung verbindlich auf 60 Sekunden gesetzt.
+- Technische Mikrofon-, Audio-, Kontakt- und Encoderfunktionen in die Einstellungen verschoben.
+- Gespeicherten AMBE-Encoder beim Programmstart automatisch laden und prüfen; Meldung nur bei Fehler, Empfang bleibt verfügbar.
+- QSO-Historie um vorbereiteten Kontaktstatus „Nur gehört“ ergänzt.
+- Bestehende dynamische TG-/TS-Umschaltung sowie automatische TX→RX-Rückkehr unverändert weiterverwendet.
+- Parrot-Ziel 9990 / TS2 bleibt vorerst fest verriegelt; freies Senden ist nicht Bestandteil dieser Version.
+
+## 0.0.20.2 – Automatische Rückkehr von Parrot zu Empfang
+
+- Zentrale `ConnectionManager`-Steuerung für Verbinden, Trennen, TG-/TS-Wechsel und TX-Rückkehr ergänzt.
+- Ein vor dem Parrot-Test aktiver Empfang wird kontrolliert beendet und nach Erfolg oder Fehler automatisch mit derselben TG-/TS-Kombination wieder gestartet.
+- Manuelles Drücken auf „Verbinden und empfangen“ nach dem Parrot-Test ist nicht mehr vorgesehen.
+- Empfang bleibt aus, wenn der Parrot-Test bei zuvor getrennter Verbindung gestartet wurde.
+- Gleichzeitige Verbindungsoperationen werden zentral gesperrt.
+- Diagnosecode aus 0.0.20.1 bleibt für spätere Fehleranalysen enthalten.
+- BrandMeister-API und API-Key bleiben vollständig ungenutzt.
+
+## 0.0.20.1-DIAG – Vollständige Empfangsdiagnose
+
+- Protokolliert BrandMeister-Anmeldung, Ziel-TG und Timeslot sowie den Aktivierungsruf.
+- Zeigt jedes eingehende DMRD-Paket mit Quelle, Ziel, Timeslot, Rufart, Frame-Typ und Stream-ID.
+- Protokolliert für jedes verworfene Paket den genauen Filtergrund.
+- Zeigt Decoder-Aufrufe, erzeugte PCM-Samples und Übergaben an die Audioausgabe.
+- Gibt alle fünf Sekunden sowie beim Beenden eine kompakte Empfangsstatistik aus.
+- Keine Änderung am BrandMeister-Protokoll, Aktivierungsruf oder Decoderverfahren.
+
 # Changelog
+
+## 0.0.20.0 – Empfang mit automatisch schaltbarer TG-/Timeslot-Kombination
+
+- Talkgroup und Timeslot 1 oder 2 bleiben während des Empfangs bearbeitbar.
+- Neue Schaltfläche „TG / Timeslot umschalten“ ergänzt.
+- CarenDMR beendet beim Umschalten den bisherigen Empfang kontrolliert, übernimmt die neue Kombination und verbindet automatisch erneut.
+- Keine manuelle Trennung und kein erneuter Klick auf „Verbinden und empfangen“ mehr erforderlich.
+- Doppelte gleichzeitige Umschaltvorgänge werden verhindert.
+- Strg+U als barrierefreies Tastenkürzel für den TG-/TS-Wechsel ergänzt.
+- Empfang weiterhin ohne BrandMeister-API und ohne API-Key.
+- Sendepfad und Parrot-Test bewusst nicht verändert.
+- Automatische Testreihe um den TG-/TS-Wechsel erweitert.
 
 ## 0.0.19.7 – Gültiger stummer Gruppenruf zur dynamischen TG-Aktivierung
 

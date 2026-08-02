@@ -1,6 +1,6 @@
 # CarenDMR
 
-Aktueller Entwicklungsstand: **0.0.19.7**
+Aktueller Entwicklungsstand: **0.0.21.1**
 
 > Ein freier, konsequent barrierefrei entwickelter DMR-Client für
 > BrandMeister.
@@ -27,7 +27,7 @@ CarenDMR konzentriert sich ausschließlich auf:
 D-Star, YSF, P25, NXDN, M17, AllStar und ein allgemeines
 Digitalfunk-Framework gehören nicht zum Projektumfang.
 
-## Aktueller Stand: 0.0.19.1
+## Aktueller Stand: 0.0.21.1
 
 Der technische Stand umfasst:
 
@@ -44,10 +44,12 @@ Der technische Stand umfasst:
 - lokaler Mikrofon-Sendepfad mit Pegelanzeige, Testaufnahme, Wiedergabe und Loopback,
 - optionaler, separat bereitgestellter DroidStar-Vocoder über native Bridge,
 - lokaler PCM-zu-AMBE-Prüflauf ohne Funkübertragung,
-- 173 automatisierte Tests im aktuellen Prüfstand.
+- dynamisch schaltbarer Empfang für frei gewählte Talkgroup und TS1/TS2,
+- automatische Rückkehr zum zuvor aktiven Empfang nach einem Parrot-Test,
+- weiterhin verfügbare Empfangsdiagnose für Netzwerk, Filter, Decoder und Audio,
+- 195 automatisierte Tests im aktuellen Prüfstand.
 
-Noch nicht enthalten sind eine PTT-Schnittstelle, DMRD-Sprachversand und Talkgroup-Wechsel. Ein externer Encoder kann in 0.0.19.1 ausschließlich offline geprüft werden. Öffentliche automatisierte
-Sendetests sind dauerhaft verboten.
+Der Parrot-Sendepfad bleibt experimentell: Verzögerung und Sendeaudioqualität sind noch nicht optimiert. Freie Aussendungen oder allgemeine Zielwahl sind nicht freigegeben; der Test bleibt fest auf den privaten Parrot 9990/TS2 begrenzt.
 
 Zusätzlich führt die GUI eine lokale QSO-Historie abgeschlossener empfangener Sprechdurchgänge.
 

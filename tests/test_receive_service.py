@@ -80,6 +80,49 @@ class ReceiveServiceTests(unittest.TestCase):
                 self.assertTrue(service.wait(2.0))
         self.assertEqual(ConnectionState.DISCONNECTED, service.state_store.get().connection)
 
+    def test_switch_receive_target_restarts_automatically_with_new_tg_and_slot(self):
+        calls = []
+
+        def fake_listen(_config, **kwargs):
+            calls.append((kwargs["target_talkgroup"], kwargs["target_timeslot"]))
+            kwargs["progress_callback"](
+                LiveListenProgress(0.1, 0, 0, 0, 0, 0, 0, 0)
+            )
+            while not kwargs["stop_requested"]():
+                time.sleep(0.005)
+            return LiveListenResult(
+                True, True, 0, 0.1, 0, 0, 0, 0,
+                0, 0, 0, 0, False, True,
+            )
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / "config").mkdir()
+            with patch(
+                "carendmr.application.receive_service.BrandMeisterConfigStore.load",
+                return_value=type("Config", (), {"host": "server", "port": 62031})(),
+            ):
+                service = ReceiveService(root, listen_function=fake_listen)
+                self.assertTrue(service.start())
+                deadline = time.monotonic() + 2.0
+                while len(calls) < 1 and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(service.switch_receive_target(262, 1))
+                self.assertFalse(service.switch_receive_target(91, 2))
+                deadline = time.monotonic() + 3.0
+                while len(calls) < 2 and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertEqual([(91, 2), (262, 1)], calls[:2])
+                state = service.state_store.get()
+                self.assertEqual(262, state.talkgroup)
+                self.assertEqual(1, state.timeslot)
+                service.stop()
+                self.assertTrue(service.wait(2.0))
+
+        messages = [event.message for event in service.events.snapshot()]
+        self.assertTrue(any("auf Talkgroup 262, Timeslot 1 umgeschaltet" in message for message in messages))
+        self.assertIn("Automatischer Wechsel auf Talkgroup 262, Timeslot 1 gestartet.", messages)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -9,7 +9,7 @@ from threading import Event, Thread
 from time import monotonic
 from tkinter import filedialog, messagebox, ttk
 
-from carendmr.application import AudioSendService, EncoderService, EventService, ParrotTestService, ReceiveService
+from carendmr.application import AudioSendService, ConnectionManager, EncoderService, EventService, ParrotTestService, ReceiveService
 from carendmr.audio import AudioDirection
 from carendmr.domain import ApplicationEvent, ApplicationState, ConnectionState, EventLevel
 from carendmr.version import __version__
@@ -22,7 +22,7 @@ class MainWindow:
         self.project_root = Path(project_root)
         self.root = tk.Tk()
         self.root.title(f"CarenDMR {__version__}")
-        self.root.minsize(620, 480)
+        self.root.minsize(760, 650)
 
         self.events = EventService()
         self.receive_service = ReceiveService(self.project_root, events=self.events)
@@ -36,6 +36,9 @@ class MainWindow:
             self.project_root, audio_service=self.audio_send_service,
             encoder_service=self.encoder_service,
         )
+        self.connection_manager = ConnectionManager(
+            self.receive_service, self.parrot_test_service, events=self.events
+        )
         self._updates: queue.SimpleQueue[tuple[str, object]] = queue.SimpleQueue()
         self._tx_stop_event: Event | None = None
         self._tx_started_at: float | None = None
@@ -48,6 +51,7 @@ class MainWindow:
         self.server_var = tk.StringVar(value="Nicht verbunden")
         self.talkgroup_var = tk.StringVar(value="91")
         self.timeslot_var = tk.StringVar(value="2")
+        self.call_type_var = tk.StringVar(value="Gruppe")
         self.audio_var = tk.StringVar(value="Inaktiv")
         self.statistics_var = tk.StringVar(value="Noch keine Empfangsdaten")
         self.current_callsign_var = tk.StringVar(value="Nicht bekannt")
@@ -91,9 +95,9 @@ class MainWindow:
             value="Bereit für einen privaten Test, sobald Encoder und Mikrofon geprüft sind."
         )
         self.transmit_optimizer_var = tk.BooleanVar(value=True)
-        self.tx_safety_limit_var = tk.IntVar(
-            value=self.audio_send_service.tx_safety_limit_seconds
-        )
+        # Für den Funkbetrieb gilt ein festes Sicherheitslimit von 60 Sekunden.
+        self.audio_send_service.set_tx_safety_limit_seconds(60)
+        self.tx_safety_limit_var = tk.IntVar(value=60)
         self._microphone_by_label: dict[str, object] = {}
 
         self._build()
@@ -106,7 +110,9 @@ class MainWindow:
         self.root.bind("<Control-q>", lambda _event: self._close())
         self.root.bind("<Control-r>", lambda _event: self._start())
         self.root.bind("<Control-t>", lambda _event: self._stop())
+        self.root.bind("<Control-u>", lambda _event: self._switch_receive_target())
         self.root.bind("<Control-m>", lambda _event: self._toggle_output_mute())
+        self.root.bind("<Control-p>", lambda _event: self._toggle_transmit())
         self.root.after(100, self._process_updates)
         self.connect_button.focus_set()
 
@@ -123,18 +129,159 @@ class MainWindow:
 
         self.notebook = ttk.Notebook(outer, takefocus=True)
         self.notebook.grid(row=1, column=0, sticky="nsew")
-        reception = ttk.Frame(self.notebook, padding=12)
+        operation = ttk.Frame(self.notebook, padding=12)
         history = ttk.Frame(self.notebook, padding=12)
-        transmit = ttk.Frame(self.notebook, padding=12)
-        transmit_history = ttk.Frame(self.notebook, padding=12)
-        self.notebook.add(reception, text="Empfang")
+        settings = ttk.Frame(self.notebook, padding=12)
+        self.notebook.add(operation, text="Betrieb")
         self.notebook.add(history, text="QSO-Historie")
-        self.notebook.add(transmit, text="Senden")
-        self.notebook.add(transmit_history, text="Sendehistorie")
-        self._build_reception_tab(reception)
+        self.notebook.add(settings, text="Einstellungen")
+        self._build_operation_tab(operation)
         self._build_history_tab(history)
-        self._build_transmit_tab(transmit)
-        self._build_transmit_history_tab(transmit_history)
+        self._build_settings_tab(settings)
+        self.root.after(0, self._initialize_once)
+
+    def _build_operation_tab(self, outer: ttk.Frame) -> None:
+        """Gemeinsame Funkgeräteansicht für Empfang und PTT."""
+        outer.columnconfigure(0, weight=1)
+        outer.rowconfigure(5, weight=1)
+
+        status = ttk.LabelFrame(outer, text="Verbindung und Kanal", padding=10)
+        status.grid(row=0, column=0, sticky="ew")
+        status.columnconfigure(5, weight=1)
+        ttk.Label(status, text="BrandMeister:").grid(row=0, column=0, sticky="w", padx=(0, 6))
+        ttk.Label(status, textvariable=self.brandmeister_var).grid(row=0, column=1, sticky="w", padx=(0, 18))
+        ttk.Label(status, text="Empfang:").grid(row=0, column=2, sticky="w", padx=(0, 6))
+        ttk.Label(status, textvariable=self.receive_var).grid(row=0, column=3, sticky="w")
+        ttk.Label(status, text="Server:").grid(row=1, column=0, sticky="w", padx=(0, 6), pady=(6, 0))
+        ttk.Label(status, textvariable=self.server_var).grid(row=1, column=1, columnspan=5, sticky="w", pady=(6, 0))
+
+        self.connect_button = ttk.Button(status, text="CONNECT", command=self._toggle_connection, width=13)
+        self.connect_button.grid(row=0, column=4, rowspan=2, padx=(18, 0), sticky="e")
+
+        ttk.Label(status, text="Talkgroup:").grid(row=2, column=0, sticky="w", padx=(0, 6), pady=(8, 0))
+        self.talkgroup_entry = ttk.Entry(status, textvariable=self.talkgroup_var, width=10, takefocus=True)
+        self.talkgroup_entry.grid(row=2, column=1, sticky="w", pady=(8, 0))
+        ttk.Label(status, text="Timeslot:").grid(row=2, column=2, sticky="w", padx=(10, 6), pady=(8, 0))
+        self.timeslot_combo = ttk.Combobox(status, textvariable=self.timeslot_var, values=("1", "2"), state="readonly", width=4, takefocus=True)
+        self.timeslot_combo.grid(row=2, column=3, sticky="w", pady=(8, 0))
+        ttk.Label(status, text="Rufart:").grid(row=2, column=4, sticky="w", padx=(12, 6), pady=(8, 0))
+        self.call_type_combo = ttk.Combobox(status, textvariable=self.call_type_var, values=("Gruppe", "Privat"), state="readonly", width=8, takefocus=True)
+        self.call_type_combo.grid(row=2, column=5, sticky="w", pady=(8, 0))
+        self.switch_button = ttk.Button(status, text="Kanal umschalten", command=self._switch_receive_target, state="disabled")
+        self.switch_button.grid(row=3, column=0, columnspan=2, pady=(8, 0), sticky="w")
+
+        current_frame = ttk.LabelFrame(outer, text="Aktuelle Station", padding=10)
+        current_frame.grid(row=1, column=0, sticky="ew", pady=(8, 0))
+        current_frame.columnconfigure(1, weight=1)
+        current_frame.columnconfigure(3, weight=1)
+        current_fields = (
+            ("Rufzeichen", self.current_callsign_var), ("Name", self.current_name_var),
+            ("Ort/Region", self.current_location_var), ("Land", self.current_country_var),
+            ("DMR-ID", self.current_dmr_id_var), ("Ziel", self.current_target_var),
+            ("Sprechdauer", self.current_duration_var),
+        )
+        for index, (label, variable) in enumerate(current_fields):
+            row, pair = divmod(index, 2)
+            col = pair * 2
+            ttk.Label(current_frame, text=f"{label}:").grid(row=row, column=col, sticky="nw", padx=(0, 8), pady=2)
+            ttk.Label(current_frame, textvariable=variable, takefocus=True).grid(row=row, column=col + 1, sticky="nw", padx=(0, 18), pady=2)
+        ttk.Label(current_frame, text="Kontaktstatus:").grid(row=4, column=0, sticky="nw", padx=(0, 8), pady=2)
+        self.worked_status_var = tk.StringVar(value="Nur gehört – noch kein bestätigtes QSO")
+        ttk.Label(current_frame, textvariable=self.worked_status_var).grid(row=4, column=1, columnspan=3, sticky="w", pady=2)
+
+        radio = ttk.LabelFrame(outer, text="Funkbetrieb", padding=10)
+        radio.grid(row=2, column=0, sticky="ew", pady=(8, 0))
+        radio.columnconfigure(0, weight=1)
+        radio.columnconfigure(1, weight=1)
+        ttk.Label(radio, text="RX-Pegel").grid(row=0, column=0, sticky="w")
+        ttk.Progressbar(radio, variable=self.output_level_var, maximum=100).grid(row=1, column=0, sticky="ew", padx=(0, 12))
+        ttk.Label(radio, text="Mikrofonpegel").grid(row=0, column=1, sticky="w")
+        self.microphone_level = ttk.Progressbar(radio, variable=self.microphone_level_var, maximum=100)
+        self.microphone_level.grid(row=1, column=1, sticky="ew")
+        self.parrot_button = tk.Button(
+            radio, text="TX AUS", command=self._toggle_transmit,
+            font=("TkDefaultFont", 15, "bold"), width=18, height=3,
+            bg="#2f6fbd", fg="white", activebackground="#245892",
+            disabledforeground="#dddddd", state="disabled", takefocus=True,
+        )
+        self.parrot_button.grid(row=2, column=0, columnspan=2, pady=(12, 6))
+        self.operation_mute_check = ttk.Checkbutton(
+            radio, text="Stumm (Strg+M)", variable=self.output_muted_var,
+            command=self._on_output_mute_changed, takefocus=True,
+        )
+        self.operation_mute_check.grid(row=3, column=0, columnspan=2, pady=(4, 0))
+
+        ttk.Label(outer, text="Empfangsstatistik:").grid(row=3, column=0, sticky="w", pady=(8, 2))
+        ttk.Label(outer, textvariable=self.statistics_var, wraplength=690).grid(row=4, column=0, sticky="w")
+        log_frame = ttk.LabelFrame(outer, text="Ereignisprotokoll", padding=6)
+        log_frame.grid(row=5, column=0, sticky="nsew", pady=(8, 0))
+        log_frame.rowconfigure(0, weight=1); log_frame.columnconfigure(0, weight=1)
+        self.event_log = tk.Listbox(log_frame, activestyle="dotbox", exportselection=False, takefocus=True)
+        scrollbar = ttk.Scrollbar(log_frame, orient="vertical", command=self.event_log.yview)
+        self.event_log.configure(yscrollcommand=scrollbar.set)
+        self.event_log.grid(row=0, column=0, sticky="nsew"); scrollbar.grid(row=0, column=1, sticky="ns")
+
+        buttons = ttk.Frame(outer)
+        buttons.grid(row=6, column=0, sticky="ew", pady=(10, 0))
+        self.exit_button = ttk.Button(buttons, text="Beenden", command=self._close)
+        self.exit_button.grid(row=0, column=0)
+
+    def _build_settings_tab(self, frame: ttk.Frame) -> None:
+        """Technische Inbetriebnahme- und Audioeinstellungen."""
+        frame.columnconfigure(1, weight=1)
+        ttk.Label(frame, text="Audio und einmalige Inbetriebnahme", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        ttk.Label(frame, text="Mikrofon:").grid(row=1, column=0, sticky="w", padx=(0, 12), pady=4)
+        self.microphone_combo = ttk.Combobox(frame, textvariable=self.microphone_var, state="readonly", takefocus=True)
+        self.microphone_combo.grid(row=1, column=1, sticky="ew", pady=4); self.microphone_combo.bind("<<ComboboxSelected>>", self._select_microphone)
+        ttk.Button(frame, text="Mikrofone neu einlesen", command=self._scan_microphones).grid(row=2, column=1, sticky="w", pady=(2, 8))
+        ttk.Label(frame, text="Mikrofonstatus:").grid(row=3, column=0, sticky="nw", padx=(0, 12), pady=4)
+        ttk.Label(frame, textvariable=self.microphone_status_var, wraplength=520).grid(row=3, column=1, sticky="w", pady=4)
+        ttk.Label(frame, text="Mikrofonverstärkung:").grid(row=4, column=0, sticky="w", padx=(0, 12), pady=4)
+        gain_frame = ttk.Frame(frame); gain_frame.grid(row=4, column=1, sticky="ew"); gain_frame.columnconfigure(0, weight=1)
+        self.microphone_gain_scale = ttk.Scale(gain_frame, from_=25, to=200, variable=self.microphone_gain_var, command=self._on_microphone_gain_changed)
+        self.microphone_gain_scale.grid(row=0, column=0, sticky="ew"); ttk.Label(gain_frame, textvariable=self.microphone_gain_text_var, width=7).grid(row=0, column=1, padx=(8, 0))
+        ttk.Label(frame, text="Ausgabelautstärke:").grid(row=5, column=0, sticky="w", padx=(0, 12), pady=4)
+        vol = ttk.Frame(frame); vol.grid(row=5, column=1, sticky="ew"); vol.columnconfigure(0, weight=1)
+        ttk.Scale(vol, from_=0, to=400, variable=self.output_volume_var, command=self._on_output_volume_changed).grid(row=0, column=0, sticky="ew")
+        ttk.Label(vol, textvariable=self.output_volume_text_var, width=7).grid(row=0, column=1, padx=(8, 0))
+        flags = ttk.Frame(frame); flags.grid(row=6, column=1, sticky="w", pady=4)
+        ttk.Checkbutton(flags, text="AGC", variable=self.output_agc_var, command=self._on_output_agc_changed).grid(row=0, column=0)
+        ttk.Checkbutton(frame, text="Sprache optimieren (Hochpass, Kompressor, Limiter)", variable=self.transmit_optimizer_var).grid(row=7, column=1, sticky="w", pady=4)
+
+        encoder_frame = ttk.LabelFrame(frame, text="AMBE-Encoder – einmalige Zuordnung", padding=10)
+        encoder_frame.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(14, 0)); encoder_frame.columnconfigure(1, weight=1)
+        ttk.Label(encoder_frame, text="Plugin:").grid(row=0, column=0, sticky="nw", padx=(0, 10), pady=3)
+        ttk.Label(encoder_frame, textvariable=self.encoder_plugin_var, wraplength=500).grid(row=0, column=1, sticky="w", pady=3)
+        ttk.Label(encoder_frame, text="Status:").grid(row=1, column=0, sticky="nw", padx=(0, 10), pady=3)
+        ttk.Label(encoder_frame, textvariable=self.encoder_status_var, wraplength=500).grid(row=1, column=1, sticky="w", pady=3)
+        controls = ttk.Frame(encoder_frame); controls.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 0))
+        self.encoder_select_button = ttk.Button(controls, text="Plugin zuordnen", command=self._select_encoder_plugin)
+        self.encoder_verify_button = ttk.Button(controls, text="Erneut prüfen", command=self._verify_encoder_plugin)
+        self.encoder_select_button.grid(row=0, column=0, padx=(0, 8)); self.encoder_verify_button.grid(row=0, column=1)
+        ttk.Label(encoder_frame, text="Beim Programmstart wird das gespeicherte Plugin automatisch geladen und geprüft. Nur bei einem Fehler ist ein Eingriff erforderlich.", wraplength=600).grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 0))
+
+        contacts = ttk.LabelFrame(frame, text="Kontaktdatenbank", padding=10)
+        contacts.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(14, 0)); contacts.columnconfigure(0, weight=1)
+        ttk.Label(contacts, textvariable=self.contacts_var, wraplength=500).grid(row=0, column=0, sticky="w")
+        self.contacts_button = ttk.Button(contacts, text="Kontaktdaten aktualisieren", command=self._update_contacts)
+        self.contacts_button.grid(row=0, column=1, padx=(12, 0))
+        ttk.Label(frame, text="TX-Sicherheitslimit: fest 60 Sekunden", font=("TkDefaultFont", 10, "bold")).grid(row=10, column=0, columnspan=2, sticky="w", pady=(14, 0))
+
+    def _initialize_once(self) -> None:
+        """Lädt Mikrofon und Encoder automatisch; im Erfolgsfall bleibt es still."""
+        self._scan_microphones()
+        plugin_path = self.encoder_service.configured_plugin_path
+        if plugin_path is None:
+            self.encoder_status_var.set("Noch kein Encoder zugeordnet. Empfang ist möglich; Senden bleibt gesperrt.")
+            return
+        self.encoder_plugin_var.set(str(plugin_path))
+        self._verify_encoder_path(plugin_path, save=False)
+
+    def _toggle_transmit(self) -> None:
+        if self._tx_active:
+            self._release_hold_to_talk()
+        else:
+            self._start_hold_to_talk()
 
     def _build_reception_tab(self, outer: ttk.Frame) -> None:
         outer.columnconfigure(1, weight=1)
@@ -152,11 +299,21 @@ class MainWindow:
         self.talkgroup_entry = ttk.Entry(outer, textvariable=self.talkgroup_var, width=12, takefocus=True)
         self.talkgroup_entry.grid(row=3, column=1, sticky="w", pady=3)
         ttk.Label(outer, text="Timeslot:").grid(row=4, column=0, sticky="nw", padx=(0, 12), pady=3)
+        target_controls = ttk.Frame(outer)
+        target_controls.grid(row=4, column=1, sticky="w", pady=3)
         self.timeslot_combo = ttk.Combobox(
-            outer, textvariable=self.timeslot_var, values=("1", "2"),
+            target_controls, textvariable=self.timeslot_var, values=("1", "2"),
             state="readonly", width=4, takefocus=True,
         )
-        self.timeslot_combo.grid(row=4, column=1, sticky="w", pady=3)
+        self.timeslot_combo.grid(row=0, column=0, sticky="w")
+        self.switch_button = ttk.Button(
+            target_controls,
+            text="TG / Timeslot umschalten",
+            command=self._switch_receive_target,
+            state="disabled",
+            takefocus=True,
+        )
+        self.switch_button.grid(row=0, column=1, padx=(12, 0))
         ttk.Label(outer, text="Audioausgabe:").grid(row=5, column=0, sticky="nw", padx=(0, 12), pady=3)
         ttk.Label(outer, textvariable=self.audio_var, takefocus=True).grid(row=5, column=1, sticky="nw", pady=3)
 
@@ -205,7 +362,7 @@ class MainWindow:
         self.connect_button.grid(row=0, column=0, padx=(0, 8))
         self.disconnect_button.grid(row=0, column=1, padx=(0, 8))
         self.exit_button.grid(row=0, column=2)
-        ttk.Label(outer, text="Tastenkürzel: Strg+R verbinden, Strg+T trennen, Esc oder Strg+Q beenden.", wraplength=560).grid(row=12, column=0, columnspan=2, sticky="w", pady=(10, 0))
+        ttk.Label(outer, text="Tastenkürzel: Strg+R verbinden, Strg+U TG/TS umschalten, Strg+T trennen, Esc oder Strg+Q beenden.", wraplength=560).grid(row=12, column=0, columnspan=2, sticky="w", pady=(10, 0))
 
     def _build_transmit_tab(self, frame: ttk.Frame) -> None:
         frame.columnconfigure(1, weight=1)
@@ -341,11 +498,10 @@ class MainWindow:
 
         ttk.Label(
             frame,
-            text=("Version 0.0.19.4 sendet ausschließlich einen fest verriegelten "
+            text=("Der Sendebereich sendet ausschließlich einen fest verriegelten "
                   "Privatruf an 9990 auf Timeslot 2. Es gibt keine freie Zielwahl."),
             wraplength=560,
         ).grid(row=13, column=0, columnspan=2, sticky="w", pady=(16, 0))
-        self.root.after(0, self._scan_microphones)
 
     def _build_history_tab(self, frame: ttk.Frame) -> None:
         frame.rowconfigure(1, weight=1)
@@ -354,14 +510,14 @@ class MainWindow:
         controls.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         ttk.Label(controls, text="Abgeschlossene empfangene Sprechdurchgänge").grid(row=0, column=0, sticky="w")
         ttk.Button(controls, text="Aktualisieren", command=self._refresh_history).grid(row=0, column=1, padx=(12, 0))
-        columns = ("time", "callsign", "name", "country", "dmr_id", "target", "duration")
+        columns = ("time", "callsign", "name", "country", "dmr_id", "target", "duration", "worked")
         self.history_tree = ttk.Treeview(frame, columns=columns, show="headings", takefocus=True)
         headings = {
             "time": "Zeit", "callsign": "Rufzeichen", "name": "Name",
             "country": "Land", "dmr_id": "DMR-ID", "target": "Ziel",
-            "duration": "Dauer",
+            "duration": "Dauer", "worked": "QSO",
         }
-        widths = {"time": 145, "callsign": 90, "name": 150, "country": 110, "dmr_id": 90, "target": 90, "duration": 70}
+        widths = {"time": 145, "callsign": 90, "name": 150, "country": 110, "dmr_id": 90, "target": 90, "duration": 70, "worked": 105}
         for column in columns:
             self.history_tree.heading(column, text=headings[column])
             self.history_tree.column(column, width=widths[column], anchor="w")
@@ -385,7 +541,7 @@ class MainWindow:
             target = f"TG{entry.talkgroup}/TS{entry.timeslot}"
             self.history_tree.insert("", tk.END, values=(
                 timestamp, entry.callsign or "Unbekannt", entry.name, entry.country,
-                entry.source_id, target, f"{entry.duration_seconds:.0f} s",
+                entry.source_id, target, f"{entry.duration_seconds:.0f} s", "Nur gehört",
             ))
 
     def _build_transmit_history_tab(self, frame: ttk.Frame) -> None:
@@ -593,9 +749,6 @@ class MainWindow:
     def _start_hold_to_talk(self, event=None) -> str:
         if self._tx_active or str(self.parrot_button.cget("state")) == "disabled":
             return "break"
-        if self.receive_service.is_running:
-            self.receive_service.stop()
-            self.receive_service.wait(3.0)
         self._tx_active = True
         self._tx_recording = True
         self._tx_stop_event = Event()
@@ -606,16 +759,16 @@ class MainWindow:
                 self._tx_pointer_grabbed = True
             except tk.TclError:
                 self._tx_pointer_grabbed = False
-        self.parrot_button.configure(text="TX läuft – zum Senden loslassen")
+        self.parrot_button.configure(text="TX EIN", bg="#c62828", activebackground="#9d1f1f")
         limit = self.audio_send_service.tx_safety_limit_seconds
-        self.parrot_status_var.set(f"TX-Aufnahme läuft: 0,0 / {limit} Sekunden.")
+        self.parrot_status_var.set(f"SENDEN: 0,0 / {limit} Sekunden. Erneut TX drücken zum Beenden.")
         self._update_tx_timer()
         stop_event = self._tx_stop_event
         optimize = bool(self.transmit_optimizer_var.get())
 
         def worker() -> None:
             try:
-                result = self.parrot_test_service.run_hold_to_talk(
+                result = self.connection_manager.run_parrot_hold_to_talk(
                     stop_event,
                     level_callback=lambda level: self._updates.put(("mic_level", level)),
                     optimize=optimize,
@@ -638,10 +791,9 @@ class MainWindow:
             self._tx_pointer_grabbed = False
         if not self._tx_stop_event.is_set():
             self._tx_recording = False
-            self.parrot_button.configure(text="Kodierung und Senden läuft …", state="disabled")
-            self.parrot_status_var.set(
-                "TX losgelassen. Aufnahme beendet; Sprache wird codiert und privat an 9990 gesendet …"
-            )
+            self.parrot_button.configure(text="TX AUS", state="disabled", bg="#2f6fbd")
+            if hasattr(self, "events"):
+                self.events.publish("TX beendet; Aussendung wird abgeschlossen.")
             self._tx_stop_event.set()
         return "break"
 
@@ -663,35 +815,57 @@ class MainWindow:
             self._tx_recording = False
             self._tx_stop_event.set()
             self._release_tx_pointer_grab()
-            self.parrot_button.configure(text="Sicherheitslimit erreicht – Senden läuft", state="disabled")
-            self.parrot_status_var.set(
-                f"{int(limit)}-Sekunden-Sicherheitslimit erreicht. "
-                "Aufnahme beendet; Aussendung läuft …"
-            )
+            self.parrot_button.configure(text="TX LIMIT ERREICHT", state="disabled", bg="#b26a00")
+            self.events.publish(f"TX nach {int(limit)} Sekunden automatisch beendet.", EventLevel.WARNING)
             return
-        self.parrot_status_var.set(
-            f"TX-Aufnahme läuft: {elapsed:.1f} / {int(limit)} Sekunden. "
-            "Zum Senden loslassen."
-        )
+        # Der laufende TX-Zustand wird ausschließlich über die große rote Taste angezeigt.
         self.root.after(100, self._update_tx_timer)
+
+    def _toggle_connection(self) -> None:
+        if self.receive_service.is_running:
+            self._stop()
+        else:
+            self._start()
 
     def _start(self) -> None:
         try:
             talkgroup = int(self.talkgroup_var.get().strip())
             timeslot = int(self.timeslot_var.get().strip())
-            self.receive_service.set_receive_target(talkgroup, timeslot)
         except (TypeError, ValueError, RuntimeError) as error:
             messagebox.showerror("CarenDMR", str(error), parent=self.root)
             self.talkgroup_entry.focus_set()
             return
-        if self.receive_service.start():
-            self.connect_button.configure(state="disabled")
-            self.disconnect_button.configure(state="normal")
+        call_type = "private" if self.call_type_var.get() == "Privat" else "group"
+        if self.connection_manager.connect(talkgroup, timeslot, call_type):
+            self.connect_button.configure(text="DISCONNECT")
         else:
             self.events.publish("Der Empfang läuft bereits.")
 
+    def _switch_receive_target(self) -> None:
+        try:
+            talkgroup = int(self.talkgroup_var.get().strip())
+            timeslot = int(self.timeslot_var.get().strip())
+        except (TypeError, ValueError) as error:
+            messagebox.showerror("CarenDMR", str(error), parent=self.root)
+            self.talkgroup_entry.focus_set()
+            return
+        if not self.receive_service.is_running:
+            self._start()
+            return
+        try:
+            call_type = "private" if self.call_type_var.get() == "Privat" else "group"
+            started = self.connection_manager.switch_receive_target(talkgroup, timeslot, call_type)
+        except (TypeError, ValueError, RuntimeError) as error:
+            messagebox.showerror("CarenDMR", str(error), parent=self.root)
+            self.talkgroup_entry.focus_set()
+            return
+        if not started:
+            self.events.publish("Ein TG-/TS-Wechsel läuft bereits.")
+            return
+        self.switch_button.configure(state="disabled")
+
     def _stop(self) -> None:
-        self.receive_service.stop()
+        self.connection_manager.disconnect()
 
     def _close(self) -> None:
         if self._settings_save_after_id is not None:
@@ -734,7 +908,7 @@ class MainWindow:
                         f"{diagnostics.message}"
                     )
                     self._set_encoder_buttons(True)
-                    self.parrot_button.configure(state="normal")
+                    self.parrot_button.configure(state="normal", text="TX AUS", bg="#2f6fbd")
                 elif kind == "parrot_result":
                     result, duration, safety_limit_reached = value
                     self._tx_active = False
@@ -744,15 +918,16 @@ class MainWindow:
                     self._release_tx_pointer_grab()
                     suffix = " Sicherheitslimit erreicht." if safety_limit_reached else ""
                     if result.echo_received:
-                        self.parrot_status_var.set(
-                            f"Parrot-Echo erfolgreich. {duration:.1f} Sekunden TX; "
+                        self.events.publish(
+                            f"Parrot-Echo erfolgreich: {duration:.1f} Sekunden TX, "
                             f"{result.echo_voice_bursts} Echobursts empfangen.{suffix}"
                         )
                     else:
-                        self.parrot_status_var.set(
-                            f"{duration:.1f} Sekunden privat gesendet, aber kein Echo empfangen.{suffix}"
+                        self.events.publish(
+                            f"{duration:.1f} Sekunden privat gesendet, aber kein Echo empfangen.{suffix}",
+                            EventLevel.WARNING,
                         )
-                    self.parrot_button.configure(state="normal", text="TX gedrückt halten – Loslassen sendet")
+                    self.parrot_button.configure(state="normal", text="TX AUS", bg="#2f6fbd", activebackground="#245892")
                     self._refresh_transmit_history()
                 elif kind == "parrot_error":
                     self._tx_active = False
@@ -760,11 +935,19 @@ class MainWindow:
                     self._tx_stop_event = None
                     self._tx_started_at = None
                     self._release_tx_pointer_grab()
-                    self.parrot_status_var.set(f"Parrot-Test sicher abgebrochen: {value}")
-                    self.parrot_button.configure(state="normal", text="TX gedrückt halten – Loslassen sendet")
+                    self.events.publish(f"Parrot-Test sicher abgebrochen: {value}", EventLevel.ERROR)
+                    self.parrot_button.configure(state="normal", text="TX AUS", bg="#2f6fbd", activebackground="#245892")
                 elif kind == "encoder_error":
-                    self.encoder_status_var.set(f"Encoderprüfung fehlgeschlagen: {value}")
+                    self.encoder_status_var.set(f"Encoder konnte nicht geladen werden: {value}")
                     self._set_encoder_buttons(True)
+                    self.parrot_button.configure(state="disabled", text="TX NICHT VERFÜGBAR", bg="#777777")
+                    messagebox.showerror(
+                        "AMBE-Encoder",
+                        "Der gespeicherte AMBE-Encoder konnte nicht geladen werden. "
+                        "Empfang bleibt möglich; Senden ist deaktiviert. "
+                        "Bitte prüfen Sie die Zuordnung unter Einstellungen.\n\n" + str(value),
+                        parent=self.root,
+                    )
                 elif kind == "contacts_updated":
                     count, updated_at = value  # type: ignore[misc]
                     self.contacts_var.set(
@@ -838,10 +1021,16 @@ class MainWindow:
             ConnectionState.RECEIVING,
             ConnectionState.STOPPING,
         }
-        self.connect_button.configure(state="disabled" if running else "normal")
-        self.disconnect_button.configure(state="normal" if running else "disabled")
-        self.talkgroup_entry.configure(state="disabled" if running else "normal")
-        self.timeslot_combo.configure(state="disabled" if running else "readonly")
+        self.connect_button.configure(
+            text="DISCONNECT" if running else "CONNECT",
+            state="disabled" if state.connection in {ConnectionState.CONNECTING, ConnectionState.STOPPING} else "normal",
+        )
+        self.switch_button.configure(
+            state="normal" if running and state.connection is not ConnectionState.STOPPING else "disabled"
+        )
+        self.talkgroup_entry.configure(state="normal")
+        self.timeslot_combo.configure(state="readonly")
+        self.call_type_combo.configure(state="readonly")
 
     def _append_event(self, event: ApplicationEvent) -> None:
         self.event_log.insert(tk.END, event.display_text)

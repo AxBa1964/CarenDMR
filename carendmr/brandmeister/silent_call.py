@@ -74,16 +74,17 @@ class SilentCallFixture:
         return tuple(packet.to_bytes() for packet in self.packets)
 
 
-def build_silent_group_call_fixture(
+def build_silent_call_fixture(
     *,
     source_id: int,
     repeater_id: int,
-    talkgroup: int,
+    destination_id: int,
     timeslot: int,
     stream_id: int,
+    call_type: DmrdCallType = DmrdCallType.GROUP,
     first_sequence: int = 0,
 ) -> SilentCallFixture:
-    """Build a complete, valid silent group call for a dynamic TG/TS."""
+    """Build a complete valid silent group or private call."""
 
     if not isinstance(first_sequence, int) or isinstance(first_sequence, bool):
         raise TypeError("Die erste Sequenznummer muss eine ganze Zahl sein.")
@@ -95,12 +96,15 @@ def build_silent_group_call_fixture(
         raise ValueError("Repeater-ID muss zwischen 1 und 4294967295 liegen.")
     if not 1 <= stream_id <= 0xFFFFFFFF:
         raise ValueError("Stream-ID muss zwischen 1 und 4294967295 liegen.")
-    if not 1 <= talkgroup <= 0xFFFFFF:
-        raise ValueError("Talkgroup muss zwischen 1 und 16777215 liegen.")
+    if not 1 <= destination_id <= 0xFFFFFF:
+        raise ValueError("Ziel-ID muss zwischen 1 und 16777215 liegen.")
+    if not isinstance(call_type, DmrdCallType):
+        raise TypeError("Die Rufart muss GROUP oder PRIVATE sein.")
     if timeslot not in (1, 2):
         raise ValueError("Timeslot muss 1 oder 2 sein.")
 
-    lc = bytes((0, 0, 0)) + talkgroup.to_bytes(3, "big") + source_id.to_bytes(3, "big")
+    flco = 0x03 if call_type is DmrdCallType.PRIVATE else 0x00
+    lc = bytes((flco, 0, 0)) + destination_id.to_bytes(3, "big") + source_id.to_bytes(3, "big")
     embedded = _encode_embedded_lc(lc)
     payloads = (
         _encode_full_lc_burst(lc, _VOICE_LC_HEADER),
@@ -111,22 +115,34 @@ def build_silent_group_call_fixture(
     sequence = tuple((first_sequence + offset) & 0xFF for offset in range(8))
 
     packets = (
-        DmrdPacket(sequence[0], source_id, talkgroup, repeater_id, timeslot,
-                   DmrdCallType.GROUP, DmrdFrameClass.DATA_SYNC, stream_id,
+        DmrdPacket(sequence[0], source_id, destination_id, repeater_id, timeslot,
+                   call_type, DmrdFrameClass.DATA_SYNC, stream_id,
                    payloads[0], data_type=DmrdDataType.VOICE_LC_HEADER.value),
-        DmrdPacket(sequence[1], source_id, talkgroup, repeater_id, timeslot,
-                   DmrdCallType.GROUP, DmrdFrameClass.VOICE_SYNC, stream_id, payloads[1]),
+        DmrdPacket(sequence[1], source_id, destination_id, repeater_id, timeslot,
+                   call_type, DmrdFrameClass.VOICE_SYNC, stream_id, payloads[1]),
         *(
-            DmrdPacket(sequence[number + 1], source_id, talkgroup, repeater_id, timeslot,
-                       DmrdCallType.GROUP, DmrdFrameClass.VOICE, stream_id,
+            DmrdPacket(sequence[number + 1], source_id, destination_id, repeater_id, timeslot,
+                       call_type, DmrdFrameClass.VOICE, stream_id,
                        payloads[number + 1], voice_frame_number=number)
             for number in range(1, 6)
         ),
-        DmrdPacket(sequence[7], source_id, talkgroup, repeater_id, timeslot,
-                   DmrdCallType.GROUP, DmrdFrameClass.DATA_SYNC, stream_id,
+        DmrdPacket(sequence[7], source_id, destination_id, repeater_id, timeslot,
+                   call_type, DmrdFrameClass.DATA_SYNC, stream_id,
                    payloads[7], data_type=DmrdDataType.TERMINATOR_WITH_LC.value),
     )
     return SilentCallFixture(packets=packets)
+
+
+def build_silent_group_call_fixture(
+    *, source_id: int, repeater_id: int, talkgroup: int, timeslot: int,
+    stream_id: int, first_sequence: int = 0
+) -> SilentCallFixture:
+    """Compatibility wrapper for a dynamic group call."""
+    return build_silent_call_fixture(
+        source_id=source_id, repeater_id=repeater_id,
+        destination_id=talkgroup, timeslot=timeslot, stream_id=stream_id,
+        call_type=DmrdCallType.GROUP, first_sequence=first_sequence,
+    )
 
 
 def build_tg91_ts2_silent_call_fixture(

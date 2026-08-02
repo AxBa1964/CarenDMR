@@ -56,7 +56,7 @@ class AudioSendService:
         self._user_muted = bool(settings.get("output_muted", False))
         self._agc_enabled = bool(settings.get("agc_enabled", True))
         self._tx_safety_limit_seconds = self._validate_tx_safety_limit(
-            settings.get("tx_safety_limit_seconds", 15)
+            settings.get("tx_safety_limit_seconds", 60)
         )
 
     def _load_settings(self) -> dict[str, object]:

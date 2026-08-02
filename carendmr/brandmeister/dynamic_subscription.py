@@ -6,7 +6,8 @@ import secrets
 import time
 from typing import Callable
 
-from .silent_call import build_silent_group_call_fixture
+from .dmrd import DmrdCallType
+from .silent_call import build_silent_call_fixture
 
 
 def validate_receive_target(talkgroup: int, timeslot: int) -> tuple[int, int]:
@@ -19,26 +20,35 @@ def validate_receive_target(talkgroup: int, timeslot: int) -> tuple[int, int]:
     return talkgroup, timeslot
 
 
+def normalize_call_type(call_type: str) -> str:
+    normalized = str(call_type).strip().lower()
+    if normalized not in {"group", "private"}:
+        raise ValueError("Die Rufart muss 'group' oder 'private' sein.")
+    return normalized
+
+
 def build_dynamic_tg_packets(*, dmr_id: int, talkgroup: int, timeslot: int,
-                             stream_id: int | None = None) -> tuple[bytes, ...]:
+                             stream_id: int | None = None, call_type: str = "group") -> tuple[bytes, ...]:
     """Erzeugt einen vollständigen gültigen stummen DMR-Gruppenruf."""
     talkgroup, timeslot = validate_receive_target(talkgroup, timeslot)
+    call_type = normalize_call_type(call_type)
     if not 1 <= dmr_id <= 0xFFFFFF:
         raise ValueError("Die DMR-ID muss für DMRD in 24 Bit passen.")
     if stream_id is None:
         stream_id = secrets.randbelow(0xFFFFFFFF) + 1
-    return build_silent_group_call_fixture(
-        source_id=dmr_id, repeater_id=dmr_id, talkgroup=talkgroup,
+    return build_silent_call_fixture(
+        source_id=dmr_id, repeater_id=dmr_id, destination_id=talkgroup,
         timeslot=timeslot, stream_id=stream_id,
+        call_type=DmrdCallType.PRIVATE if call_type == "private" else DmrdCallType.GROUP,
     ).to_bytes()
 
 
 def activate_dynamic_talkgroup(transport, *, dmr_id: int, talkgroup: int,
-                               timeslot: int, pause_seconds: float = 0.06,
+                               timeslot: int, call_type: str = "group", pause_seconds: float = 0.06,
                                sleep: Callable[[float], None] = time.sleep) -> None:
     """Sendet einen vollständigen stummen Gruppenruf über die Login-Sitzung."""
     packets = build_dynamic_tg_packets(
-        dmr_id=dmr_id, talkgroup=talkgroup, timeslot=timeslot
+        dmr_id=dmr_id, talkgroup=talkgroup, timeslot=timeslot, call_type=call_type
     )
     for index, packet in enumerate(packets):
         sent = transport.send(packet)

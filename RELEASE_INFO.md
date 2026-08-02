@@ -1,25 +1,19 @@
-# CarenDMR 0.0.19.7 – Hold-to-Talk und Sendeoberfläche
+# CarenDMR 0.0.21.1 – Funkgeräte-Oberfläche
 
-## Zweck
-
-Dieses Qualitätsrelease korrigiert die Hold-to-Talk-Bedienung und entfernt überholte lokale Entwicklungsfunktionen aus der Benutzeroberfläche.
+Version 0.0.21.1 ordnet die Oberfläche erstmals nach dem tatsächlichen Funkbetrieb statt nach technischen Teilsystemen.
 
 ## Enthalten
 
-- TX gedrückt halten: Aufnahme läuft
-- TX loslassen: Aufnahme endet sofort, anschließend Kodierung und Versand
-- flexibles TX-Sicherheitslimit von 5 bis 180 Sekunden; Standard 15 Sekunden
-- fest verriegelter Privatruf an DMR-ID 9990, Timeslot 2
-- bereinigte Sendeoberfläche ohne Testaufnahme-, Wiedergabe- und Loopback-Schaltflächen
-- hörbarer abgestimmter Audio-Optimizer V1
-- Sendehistorie und Parrot-Echo bleiben erhalten
-- plattformneutraler Kern für Windows, macOS, Linux und Raspberry Pi OS
+- Nur noch drei Hauptbereiche: **Betrieb**, **QSO-Historie** und **Einstellungen**.
+- Empfang, TG-/TS-Umschaltung und PTT befinden sich gemeinsam auf der Betriebsseite.
+- Große rastende TX-Taste: erster Klick startet TX und färbt die Taste rot; zweiter Klick beendet TX und führt anschließend automatisch zum Empfang zurück.
+- Feste TX-Sicherheitsabschaltung nach 60 Sekunden.
+- Der Sendepfad bleibt in dieser Version aus Sicherheitsgründen weiterhin auf Parrot 9990 / TS2 verriegelt.
+- Mikrofon-, Audio-, Kontakt- und Encoderverwaltung befinden sich unter Einstellungen.
+- Ein bereits zugeordnetes AMBE-Plugin wird beim Programmstart automatisch geladen und geprüft. Nur bei einem Fehler erscheint eine Meldung; Empfang bleibt dann verfügbar und TX gesperrt.
+- Die QSO-Historie enthält bereits eine sichtbare Spalte für den künftigen Kontaktstatus. Automatische QSO-Erkennung und Logbuchableitung folgen später.
+- Die funktionierende BrandMeister-, TG-/TS- und TX→RX-Logik aus 0.0.20.2 bleibt erhalten.
 
-## Sicherheitsgrenze
+## Bewusste Abgrenzung
 
-Keine freie Zielwahl, keine Gruppenrufe und keine normalen Talkgroup-Aussendungen.
-
-
-## Schwerpunkt 0.0.19.7
-
-Dynamische Auswahl und Aktivierung einer Empfangs-Talkgroup über das bestehende BrandMeister-Homebrew-UDP-Protokoll. Es wird kein API-Key verwendet.
+Die Version verändert nicht den AMBE-Sendecodec und gibt noch kein freies Senden auf die aktuell gewählte Talkgroup frei. Nach der Oberflächenprüfung folgt die Härtung des Funkkerns und erst danach der reale Test mit einer befreundeten Station.
