@@ -12,7 +12,10 @@ from tkinter import filedialog, messagebox, ttk
 
 from carendmr.application import AudioSendService, ConnectionManager, EncoderService, EventService, ParrotTestService, ReceiveService
 from carendmr.audio import AudioDirection
-from carendmr.domain import ApplicationEvent, ApplicationState, ConnectionState, EventLevel
+from carendmr.domain import (
+    ApplicationEvent, ApplicationState, ConnectionState, EventLevel,
+    InformationCategory, InformationPriority,
+)
 from carendmr.diagnostics import initialize as initialize_diagnostics, set_enabled as set_diagnostics_enabled
 from carendmr.diagnostics.tx_rx_timing import initialize as initialize_tx_rx_timing
 from carendmr.version import __version__
@@ -219,10 +222,10 @@ class MainWindow:
         self._build_operation_tab(operation)
         self._build_history_tab(history)
         self._build_settings_tab(settings)
-        self._show_page("operation")
+        self._show_page("operation", announce=False)
         self.root.after(0, self._initialize_once)
 
-    def _show_page(self, page_name: str) -> None:
+    def _show_page(self, page_name: str, *, announce: bool = True) -> None:
         page = self._pages.get(page_name)
         if page is None:
             return
@@ -235,6 +238,16 @@ class MainWindow:
                 activebackground=self.colors["blue_dark"] if active else self.colors["card_alt"],
                 activeforeground="white",
                 font=("Segoe UI", 13 if active else 10, "bold"),
+            )
+        if announce and hasattr(self, "events"):
+            labels = {"operation": "Betrieb", "history": "QSO-Historie", "settings": "Einstellungen"}
+            label = labels.get(page_name, page_name)
+            self.events.publish(
+                f"Bereich {label} geöffnet.",
+                code=f"navigation.{page_name}",
+                long_text=f"Du befindest dich im Bereich {label}.",
+                category=InformationCategory.OPERATION,
+                priority=InformationPriority.LOW,
             )
 
     def _show_help(self) -> None:
@@ -1616,7 +1629,13 @@ class MainWindow:
         self.event_log.see(tk.END)
 
     def run(self) -> int:
-        self.events.publish("CarenDMR ist bereit. Der Empfang ist noch nicht verbunden.")
+        self.events.publish(
+            "CarenDMR ist bereit. Der Empfang ist noch nicht verbunden.",
+            code="system.ready",
+            long_text="CarenDMR ist bereit. Der Empfang ist noch nicht verbunden.",
+            category=InformationCategory.SYSTEM,
+            priority=InformationPriority.HIGH,
+        )
         self.root.mainloop()
         return 0
 

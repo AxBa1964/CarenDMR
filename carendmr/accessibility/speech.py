@@ -81,3 +81,18 @@ class SpeechManager:
 
     def _on_status_changed(self, event: StatusChangedEvent) -> None:
         self._output.speak(message_for_status(event.current, event.detail))
+
+
+class InformationSpeechBridge:
+    """Gibt strukturierte Informationsmeldungen über einen SpeechOutput aus."""
+
+    def __init__(self, output: SpeechOutput, *, enabled: Callable[[], bool] | None = None) -> None:
+        self._output = output
+        self._enabled = enabled or (lambda: True)
+
+    def __call__(self, message) -> None:
+        if not self._enabled():
+            return
+        text = getattr(message, "speech_text", "")
+        if text:
+            self._output.speak(text)

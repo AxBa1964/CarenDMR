@@ -3,6 +3,7 @@ from .contact_service import ContactService
 from .connection_manager import ConnectionManager
 from .current_call_service import CurrentCallService
 from .event_service import EventService
+from .information_manager import InformationManager
 from .encoder_service import EncoderService
 from .receive_service import ReceiveService
 from .qso_history_service import QsoHistoryService
@@ -11,6 +12,6 @@ from .transmit_history_service import TransmitHistoryService
 from .state_store import ApplicationStateStore
 
 __all__ = [
-    "AudioSendService", "MicrophoneDiagnostics", "ContactService", "ConnectionManager", "EncoderService", "CurrentCallService", "EventService", "ReceiveService",
+    "AudioSendService", "MicrophoneDiagnostics", "ContactService", "ConnectionManager", "EncoderService", "CurrentCallService", "EventService", "InformationManager", "ReceiveService",
     "ApplicationStateStore", "QsoHistoryService", "ParrotTestService", "TransmitHistoryService",
 ]

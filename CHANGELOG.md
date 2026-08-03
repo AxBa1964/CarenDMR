@@ -1,3 +1,13 @@
+# Changelog
+
+## 0.0.24.0
+
+- Zentralen Informationsmanager mit getrennten visuellen und sprachlichen Ausgabekanälen eingeführt.
+- Strukturierte Meldungen besitzen Code, Kurztext, Langtext, Kategorie, Priorität und Handlungshinweis.
+- Bestehendes Ereignisprotokoll bleibt kompatibel und nutzt intern den Informationsmanager.
+- Bereichswechsel und Startbereitschaft liefern erstmals strukturierte Betriebsinformationen.
+- Grundlage für Caren Assist und die spätere Raspberry-Pi-Sprachführung geschaffen.
+
 ## 0.0.23.9
 
 - WAV-Audiodiagnose im Bereich Einstellungen > Diagnose schaltbar.

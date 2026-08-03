@@ -1,4 +1,4 @@
-# CarenDMR 0.0.23.9 – schaltbare WAV-Audiodiagnose
+# CarenDMR 0.0.24.0 – schaltbare WAV-Audiodiagnose
 
 Die WAV-Audiodiagnose ist jetzt im Bereich Einstellungen > Diagnose schaltbar.
 

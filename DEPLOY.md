@@ -1,8 +1,8 @@
-# Deployment CarenDMR 0.0.23.9
+# Deployment CarenDMR 0.0.24.0
 
-**0.0.23.9:** Reine Audio-Diagnose mit WAV-Ausgabe vor und nach der 16-kHz-zu-8-kHz-Aufbereitung; Funkverhalten unverändert.
+**0.0.24.0:** Reine Audio-Diagnose mit WAV-Ausgabe vor und nach der 16-kHz-zu-8-kHz-Aufbereitung; Funkverhalten unverändert.
 
-Dieses Dokument ist die verbindliche chronologische Anleitung für Version 0.0.23.9. Lokale Zugangsdaten, Datenbanken und externe Vocoder-Plugins dürfen nicht committed oder in das Release-ZIP aufgenommen werden.
+Dieses Dokument ist die verbindliche chronologische Anleitung für Version 0.0.24.0. Lokale Zugangsdaten, Datenbanken und externe Vocoder-Plugins dürfen nicht committed oder in das Release-ZIP aufgenommen werden.
 
 ## 1. Projektstand prüfen
 
@@ -132,7 +132,7 @@ git add -A
 git status
 git diff --cached --check
 git diff --cached
-git commit -m "CarenDMR 0.0.23.9 TX Sprachqualitaet verbessert"
+git commit -m "CarenDMR 0.0.24.0 TX Sprachqualitaet verbessert"
 git push origin master
 ```
 
