@@ -12,6 +12,7 @@ from carendmr.brandmeister.listen import (
     LiveCallActivity, LiveListenProgress, LiveListenResult, listen_receive_only,
 )
 from carendmr.domain import ConnectionState, EventLevel, ReceiveStatistics
+from carendmr.diagnostics.tx_rx_timing import mark as timing_mark
 
 from .contact_service import ContactService
 from .current_call_service import CurrentCallService
@@ -78,6 +79,10 @@ class ReceiveService:
     @property
     def target_timeslot(self) -> int:
         return self._target_timeslot
+
+    @property
+    def target_call_type(self) -> str:
+        return self._target_call_type
 
     @property
     def is_switching(self) -> bool:
@@ -222,7 +227,29 @@ class ReceiveService:
         thread.join(timeout)
         return not thread.is_alive()
 
+    def _on_connected(self) -> None:
+        """Meldet RX unmittelbar nach Login und Zielaktivierung als bereit."""
+        if self._connected_event_published:
+            return
+        self._connected_event_published = True
+        timing_mark("RX_VERBUNDEN_STATUS", "Direkt nach BM-Anmeldung und Zielaktivierung")
+        self.events.publish("Anmeldung bei BrandMeister erfolgreich.")
+        self.events.publish(
+            f"Empfang auf Talkgroup {self._target_talkgroup}, "
+            f"Timeslot {self._target_timeslot} gestartet."
+        )
+        self.state_store.update(
+            connection=ConnectionState.RECEIVING,
+            brandmeister_connected=True,
+            receive_active=True,
+            audio_active=True,
+            message="Empfang aktiv",
+        )
+
     def _on_progress(self, progress: LiveListenProgress) -> None:
+        # Fallback für ältere bzw. gemockte Listen-Funktionen, die den neuen
+        # connected_callback noch nicht auslösen.
+        self._on_connected()
         statistics = ReceiveStatistics(
             elapsed_seconds=progress.elapsed_seconds,
             datagrams=progress.datagrams,
@@ -233,13 +260,6 @@ class ReceiveService:
             concealed_bursts=progress.concealed_bursts,
             invalid_dmrd=progress.invalid_dmrd,
         )
-        if not self._connected_event_published:
-            self._connected_event_published = True
-            self.events.publish("Anmeldung bei BrandMeister erfolgreich.")
-            self.events.publish(
-                f"Empfang auf Talkgroup {self._target_talkgroup}, "
-                f"Timeslot {self._target_timeslot} gestartet."
-            )
         self.current_calls.update_duration()
         self.state_store.update(
             connection=ConnectionState.RECEIVING,
@@ -276,6 +296,7 @@ class ReceiveService:
                 timeslot=self._target_timeslot,
             )
             self.events.publish("Verbindung zu BrandMeister wird hergestellt.")
+            timing_mark("RX_VERBINDUNGSAUFBAU_START", f"{config.host}:{config.port}")
             result = self._listen(
                 config,
                 seconds=seconds,
@@ -284,6 +305,7 @@ class ReceiveService:
                 target_call_type=self._target_call_type,
                 progress_callback=self._on_progress,
                 call_activity_callback=self._on_call_activity,
+                connected_callback=self._on_connected,
                 progress_interval=1.0,
                 stop_requested=self._stop.is_set,
                 output_muted=lambda: self.audio_output_muted,
@@ -319,6 +341,7 @@ class ReceiveService:
             invalid_dmrd=result.invalid_dmrd,
         )
         if result.closed:
+            timing_mark("RX_SOCKET_AUDIO_GESCHLOSSEN")
             state = ConnectionState.DISCONNECTED
             message = "Empfang beendet"
             self.events.publish("Empfang und Verbindung wurden sauber beendet.")

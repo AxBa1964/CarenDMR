@@ -37,6 +37,34 @@ class AudioBackend(Protocol):
     ) -> Any:
         """Nimmt bis zum Loslassen oder bis zum Sicherheitslimit auf."""
 
+
+    def stream_input_blocks_until(
+        self, *, input_index: int, stop_event: Event, max_duration_seconds: float,
+        sample_rate: int, channels: int,
+        block_callback: Callable[[Any], None],
+        level_callback: Callable[[float], None] | None = None,
+    ) -> None:
+        """Liefert Mikrofonblöcke fortlaufend bis PTT losgelassen wird."""
+        sd = self._module()
+        import numpy as np
+        started = __import__('time').monotonic()
+
+        def callback(indata: Any, _frames: int, _time: Any, status: Any) -> None:
+            del status
+            if stop_event.is_set() or __import__('time').monotonic() - started >= max_duration_seconds:
+                raise sd.CallbackStop
+            block = indata.copy()
+            if block.size:
+                block_callback(block)
+                if level_callback is not None:
+                    rms = float(np.sqrt(np.mean(np.square(block, dtype=np.float64))))
+                    level_callback(min(100.0, rms * 200.0))
+
+        with sd.InputStream(samplerate=sample_rate, channels=channels, dtype="float32",
+                            device=input_index, callback=callback, blocksize=320):
+            while not stop_event.is_set() and __import__('time').monotonic() - started < max_duration_seconds:
+                sd.sleep(10)
+
     def play_samples(
         self,
         samples: Any,
@@ -199,6 +227,34 @@ class SoundDeviceBackend:
         if not blocks:
             return np.empty((0, channels), dtype="float32")
         return np.concatenate(blocks, axis=0)[:target_frames]
+
+
+    def stream_input_blocks_until(
+        self, *, input_index: int, stop_event: Event, max_duration_seconds: float,
+        sample_rate: int, channels: int,
+        block_callback: Callable[[Any], None],
+        level_callback: Callable[[float], None] | None = None,
+    ) -> None:
+        """Liefert Mikrofonblöcke fortlaufend bis PTT losgelassen wird."""
+        sd = self._module()
+        import numpy as np
+        started = __import__('time').monotonic()
+
+        def callback(indata: Any, _frames: int, _time: Any, status: Any) -> None:
+            del status
+            if stop_event.is_set() or __import__('time').monotonic() - started >= max_duration_seconds:
+                raise sd.CallbackStop
+            block = indata.copy()
+            if block.size:
+                block_callback(block)
+                if level_callback is not None:
+                    rms = float(np.sqrt(np.mean(np.square(block, dtype=np.float64))))
+                    level_callback(min(100.0, rms * 200.0))
+
+        with sd.InputStream(samplerate=sample_rate, channels=channels, dtype="float32",
+                            device=input_index, callback=callback, blocksize=320):
+            while not stop_event.is_set() and __import__('time').monotonic() - started < max_duration_seconds:
+                sd.sleep(10)
 
     def play_samples(
         self,

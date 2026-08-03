@@ -1,4 +1,112 @@
+## 0.0.23.9
+
+- WAV-Audiodiagnose im Bereich Einstellungen > Diagnose schaltbar.
+- Standardmäßig deaktiviert, um unnötige WAV-Dateien im Normalbetrieb zu vermeiden.
+- Einstellung wird sofort lokal gespeichert.
+- TX- und Parrot-RX-Diagnosedateien werden nur bei aktivierter Option erzeugt.
+
+## 0.0.23.8 – Gefilterter TX-Sprachresampler
+
+- Ersetzt die einfache Paarmittelung bei 16→8 kHz durch einen kontinuierlichen 63-Tap-FIR-Sprachtiefpass.
+- Verhindert Aliasanteile oberhalb des AMBE-Sprachbands.
+- PCM-Framebildung, AMBE-Encoder, DMR-Paketierung und TX/RX-Timing bleiben unverändert.
+- TX- und Parrot-RX-Diagnose-WAVs bleiben aktiv.
+
+# Changelog
+
+## 0.0.23.8 – Parrot-RX-Audiodiagnose
+
+- Speichert das vom BrandMeister-Parrot empfangene und nach AMBE decodierte PCM als 8-kHz-WAV.
+- Die Datei entsteht nur bei einem echten Parrot-Test auf 9990 / TS2 / Privat.
+- Ablage unter `logs/audio_debug/` als `rx_..._03_parrot_nach_ambe_8k.wav`.
+- Protokolliert den Dateipfad und die Sampleanzahl als `RX_AUDIO_DEBUG_WAV`.
+- Keine Änderung an TX-Takt, Encoder, Audiopegel oder TX/RX-Umschaltung.
+
+## 0.0.23.5 – Geglätteter TX-Sendetakt
+
+- Windows-Timerauflösung während TX auf 1 ms angehoben.
+- Hybrider Burst-Scheduler: grobes Warten per Sleep, präzise Endphase für den 60-ms-Takt.
+- Ziel: gemessenen TX-Jitter von rund 9 ms deutlich reduzieren, ohne die schnelle TX/RX-Umschaltung zu verlieren.
+- TX-Jitter-, Encoder- und Queue-Diagnose bleiben zur Erfolgskontrolle aktiv.
+
+## 0.0.23.3 – Live-TX-Takt und schneller RX-Rückweg
+
+- DMR-Sprachbursts werden nun anhand eines absoluten 60-ms-Zeitplans gesendet.
+- Encoder-, Python- und Socket-Laufzeiten addieren sich nicht mehr auf jeden Burst.
+- Ein wachsender Audio-Rückstand bei längeren Durchgängen wird dadurch vermieden.
+- Die zusätzliche feste 250-ms-Audiowartezeit beim RX-Aufbau entfällt.
+- Diagnoseprotokoll meldet Taktkorrekturen weiterhin in `logs/tx_rx_timing.log`.
+
+## 0.0.23.1 – Echtes Live-TX-Streaming
+
+- Mikrofon-Audio wird während gedrückter PTT fortlaufend in 8-kHz-PCM umgewandelt, AMBE-codiert und als DMR-Sprachbursts gesendet.
+- Die während des schnellen RX-Abbaus aufgenommenen ersten Audioblöcke werden gepuffert und anschließend ohne Silbenverlust übertragen.
+- Nach dem Loslassen folgen nur noch ein angefangener Sprachburst und der DMR-Terminator; die Wartezeit wächst nicht mehr mit der Sprechdauer.
+- Parrot 9990/TS2 privat verwendet weiterhin dieselbe Verbindung zum Empfang und zur Wiedergabe des Echos.
+- Normale Gruppen- und Privatrufe wechseln nach dem Streamabschluss sofort zurück auf RX.
+- Millisekundenmessung bleibt zur Kontrolle des realen Live-TX-Verhaltens aktiv.
+
+## 0.0.22.9 – TX/RX-Zeitmessung
+
+- Persistente Millisekundenmessung für den vollständigen PTT-, TX- und RX-Rückkehrpfad ergänzt.
+- Gemessen werden RX-Stopp, Mikrofonaufnahme, TX-Login, erster und letzter DMR-Frame, RX-Neustart, Audioöffnung, BrandMeister-Login und Zielaktivierung.
+- Messergebnisse werden automatisch unter `logs/tx_rx_timing.log` gespeichert.
+- Noch keine Änderung an Netzwerkwartezeiten oder am stabilen DMR-Kern.
+
+## 0.0.22.8.1 – TX-Ziel korrekt übernommen
+
+- TX verwendet jetzt die aktuell eingestellte Ziel-ID/Talkgroup, den Timeslot und die Rufart.
+- Nur 9990 / TS2 / Privat wird als Parrot-Test behandelt und auf Echo überwacht.
+- Normale Privat- und Gruppenrufe warten nicht mehr auf ein Parrot-Echo.
+- RX-Rückkehr stellt Ziel, Timeslot und Rufart vollständig wieder her.
+
+## 0.0.22.8 – TX-Start beschleunigt
+
+- Mikrofonaufnahme startet unmittelbar beim Drücken der PTT.
+- RX-Abbau und TX-Aufnahme laufen parallel; erste Wörter gehen während des Empfangsstopps nicht mehr verloren.
+- Vor die Nutzsprache werden 240 ms DMR-Vorlauf gesetzt, damit Header und erster Sprachburst sicher aufgebaut sind.
+- Nach TX wird die zuvor aktive Talkgroup-/Timeslot-Kombination weiterhin automatisch wiederhergestellt.
+- QSO-Historie aus 0.0.22.7.1 bleibt unverändert.
+
+## 0.0.22.6 – UI-Konsolidierung
+
+- Moderne Betriebsseite aus 0.0.22.2 beibehalten.
+- Moderne stationsweise QSO-Historie aus 0.0.22.3 wiederhergestellt.
+- Kompakte kategorisierte Einstellungen aus 0.0.22.4 beibehalten.
+- Dauerhaft gespeicherter Status „QSO bestätigt“ wieder aktiv.
+- UI-Regressionstests für alle drei Hauptbereiche ergänzt.
+- DMR-Kern und Funkbetrieb unverändert.
+
 # Änderungsprotokoll
+
+## 0.0.22.4 – Neue kompakte Einstellungen
+
+- Einstellungsbereich vollständig in das dunkle CarenDMR-Kartenlayout überführt.
+- Linke Kategorienavigation für **Audio**, **Netzwerk**, **Daten**, **Bedienung**, **Diagnose** und **Erweiterungen** ergänzt.
+- Suchfeld springt per Suchbegriff direkt zur passenden Einstellungsgruppe.
+- Mikrofon, Wiedergabe und AMBE-Codec in deutlich kleinere, getrennte Karten aufgeteilt.
+- BrandMeister-Profil wird ohne Passwort als kompakte Statuskarte angezeigt.
+- RadioID-Kontaktdaten und QSO-Datenbank logisch im Bereich **Daten** gebündelt.
+- Diagnosemodus bleibt standardmäßig ausgeschaltet und ist gezielt aktivierbar.
+- Platz für UDP-Logbuch, APRS, Stream Deck/Fußtaster und Plugins vorbereitet.
+- Betriebsseite, BrandMeister-Protokoll, Empfang, TG-Wechsel und TX/RX-Logik unverändert.
+
+## 0.0.22.1 – GUI-Startkorrektur
+
+- Ungültige `padx`/`pady`-Optionen aus `tk.Listbox` entfernt.
+- GUI-Start unter Tkinter geprüft.
+- DMR-Kern unverändert.
+
+## 0.0.22.0 – UI/UX-Redesign, Phase 1
+
+- Betriebsseite als modernes dunkles Funk-Dashboard mit Kartenstruktur neu aufgebaut.
+- Verbindungsleiste mit TG, Timeslot, Rufart, **TG wechseln** sowie CONNECT/DISCONNECT zusammengeführt.
+- Gegenstation, Funksteuerung, Pegel und Ereignisse visuell klar priorisiert.
+- Große rastende TX-Taste, Stumm-Funktion und sämtliche bestehende Funklogik unverändert weiterverwendet.
+- Ausführliche `[DIAG]`-PowerShell-Ausgaben sind im Normalbetrieb standardmäßig ausgeschaltet.
+- Diagnosemodus kann unter **Einstellungen → Diagnose** ein- und ausgeschaltet werden und wird lokal gespeichert.
+- Zentrales Farbsystem und wiederverwendbare UI-Stile als Grundlage der weiteren Neugestaltung ergänzt.
+- Keine Änderung an BrandMeister-Login, dynamischer TG-Aktivierung, Decoder, Audio, Parrot oder TX→RX-Rückkehr.
 
 ## 0.0.21.1 – Funkgeräte-Betriebsmaske
 

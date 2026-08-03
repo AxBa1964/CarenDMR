@@ -3,15 +3,146 @@
 from __future__ import annotations
 
 import json
+import os
+import queue
+import time
+import wave
+from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
-from threading import Event
-from typing import Callable
+from threading import Event, Thread
+from typing import Callable, Iterator
+
+from carendmr.diagnostics.tx_rx_timing import mark as timing_mark
 
 from carendmr.audio import (
     AudioDevice, AudioDirection, AudioManager, SoundDeviceBackend,
     OptimizerDiagnostics, optimize_transmit_pcm,
 )
+
+
+class _SpeechBandDecimator16kTo8k:
+    """Kontinuierlicher FIR-Tiefpass mit anschließender Halbierung auf 8 kHz.
+
+    Der Filter begrenzt das Signal vor der Dezimation auf das nutzbare
+    Sprachband. Dadurch werden Frequenzen oberhalb der neuen Nyquist-Grenze
+    nicht als hörbare Aliasanteile in den AMBE-Eingang zurückgefaltet.
+    """
+
+    _TAPS = 63
+    _CUTOFF_HZ = 3400.0
+    _INPUT_RATE = 16000.0
+
+    def __init__(self) -> None:
+        import numpy as np
+        n = np.arange(self._TAPS, dtype=np.float64) - (self._TAPS - 1) / 2.0
+        normalized = self._CUTOFF_HZ / self._INPUT_RATE
+        coefficients = 2.0 * normalized * np.sinc(2.0 * normalized * n)
+        coefficients *= np.hamming(self._TAPS)
+        coefficients /= np.sum(coefficients)
+        self._coefficients = coefficients.astype(np.float32)
+        self._history = np.zeros(self._TAPS - 1, dtype=np.float32)
+
+    def process(self, samples):
+        import numpy as np
+        mono = np.asarray(samples, dtype=np.float32).reshape(-1)
+        if not mono.size:
+            return np.empty(0, dtype=np.float32)
+        combined = np.concatenate((self._history, mono))
+        filtered = np.convolve(combined, self._coefficients, mode="valid")
+        self._history = combined[-(self._TAPS - 1):].copy()
+        return filtered[::2].astype(np.float32, copy=False)
+
+
+class LivePcmCapture:
+    _END = object()
+    def __init__(self, service: "AudioSendService", stop_event: Event, *, max_duration_seconds: float, level_callback=None) -> None:
+        self.service=service; self.stop_event=stop_event; self.max_duration_seconds=float(max_duration_seconds); self.level_callback=level_callback
+        self.queue: queue.Queue[object]=queue.Queue(); self.sample_count=0; self.error: Exception|None=None
+        self.queue_max_chunks=0; self.queue_puts=0; self.queue_gets=0; self.queue_empty_waits=0
+        self._raw_pcm_16k: list[int] = []
+        self._ambe_pcm_8k: list[int] = []
+        self.debug_raw_path: Path | None = None
+        self.debug_ambe_path: Path | None = None
+        self._resampler = _SpeechBandDecimator16kTo8k()
+        self.thread=Thread(target=self._run, name="CarenDMR-Live-Audio", daemon=True)
+    def start(self)->None: self.thread.start()
+    def _run(self)->None:
+        import numpy as np
+        service=self.service
+        try:
+            if service._selected_input is None: service.microphones()
+            if service._selected_input is None: raise RuntimeError("Es wurde kein Mikrofon gefunden.")
+            factor=service._gain_percent/100.0
+            def report(level: float)->None:
+                if self.level_callback is not None: self.level_callback(max(0.0,min(100.0,float(level)*factor)))
+            def on_block(block)->None:
+                mono=np.asarray(block,dtype=np.float32).reshape(-1)
+                if not mono.size: return
+                mono=np.clip(mono*factor,-1.0,1.0)
+                raw_pcm=np.clip(np.rint(mono*32767.0),-32768,32767).astype(np.int16)
+                self._raw_pcm_16k.extend(int(v) for v in raw_pcm)
+                down=self._resampler.process(mono)
+                pcm=np.clip(np.rint(down*32767.0),-32768,32767).astype(np.int16)
+                chunk=tuple(int(v) for v in pcm)
+                self._ambe_pcm_8k.extend(chunk)
+                self.sample_count += len(chunk); self.queue.put(chunk)
+                self.queue_puts += 1; self.queue_max_chunks=max(self.queue_max_chunks,self.queue.qsize())
+            service._mute_receive()
+            if not hasattr(service.backend,"stream_input_blocks_until"): raise RuntimeError("Das Audio-Backend unterstützt kein Live-TX.")
+            service.backend.stream_input_blocks_until(input_index=service._selected_input.index, stop_event=self.stop_event, max_duration_seconds=self.max_duration_seconds, sample_rate=service.SAMPLE_RATE, channels=service.CHANNELS, block_callback=on_block, level_callback=report)
+        except Exception as error: self.error=error
+        finally:
+            timing_mark("TX_LETZTER_AUDIOBLOCK_GELESEN", f"Samples={self.sample_count}")
+            if service.audio_debug_wav_enabled:
+                try:
+                    self._write_debug_wavs()
+                except Exception as error:
+                    timing_mark("TX_AUDIO_DEBUG_FEHLER", str(error))
+            service._unmute_receive(); self.queue.put(self._END)
+
+    @staticmethod
+    def _write_mono_pcm16_wav(path: Path, sample_rate: int, samples: list[int]) -> None:
+        import array
+        path.parent.mkdir(parents=True, exist_ok=True)
+        pcm = array.array("h", samples)
+        if os.name != "nt" and pcm.itemsize == 2:
+            # WAV ist immer little-endian. Auf den unterstützten Plattformen ist
+            # dies normalerweise bereits der Fall; die Prüfung hält es portabel.
+            import sys
+            if sys.byteorder != "little":
+                pcm.byteswap()
+        with wave.open(str(path), "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(sample_rate)
+            wav_file.writeframes(pcm.tobytes())
+
+    def _write_debug_wavs(self) -> None:
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        debug_dir = self.service.project_root / "logs" / "audio_debug"
+        self.debug_raw_path = debug_dir / f"tx_{stamp}_01_roh_16k.wav"
+        self.debug_ambe_path = debug_dir / f"tx_{stamp}_02_vor_ambe_8k.wav"
+        self._write_mono_pcm16_wav(self.debug_raw_path, 16000, self._raw_pcm_16k)
+        self._write_mono_pcm16_wav(self.debug_ambe_path, 8000, self._ambe_pcm_8k)
+        timing_mark("TX_AUDIO_DEBUG_WAV", f"Roh16k={self.debug_raw_path};VorAMBE8k={self.debug_ambe_path}")
+
+    def chunks(self)->Iterator[tuple[int,...]]:
+        while True:
+            if self.queue.empty() and self.thread.is_alive(): self.queue_empty_waits += 1
+            item=self.queue.get()
+            if item is self._END:
+                timing_mark("TX_AUDIO_QUEUE_LEER")
+                break
+            self.queue_gets += 1
+            yield item
+        self.thread.join(timeout=1.0)
+        timing_mark("TX_AUDIO_QUEUE_STATISTIK", f"Puts={self.queue_puts};Gets={self.queue_gets};MaxChunks={self.queue_max_chunks};LeerWarten={self.queue_empty_waits}")
+        if self.error is not None: raise self.error
+    @property
+    def duration_seconds(self)->float: return self.sample_count/8000.0
+    @property
+    def safety_limit_reached(self)->bool: return self.duration_seconds >= self.max_duration_seconds-0.05
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +189,7 @@ class AudioSendService:
         self._tx_safety_limit_seconds = self._validate_tx_safety_limit(
             settings.get("tx_safety_limit_seconds", 60)
         )
+        self._audio_debug_wav_enabled = bool(settings.get("audio_debug_wav_enabled", False))
 
     def _load_settings(self) -> dict[str, object]:
         try:
@@ -112,6 +244,10 @@ class AudioSendService:
     def tx_safety_limit_seconds(self) -> int:
         return self._tx_safety_limit_seconds
 
+    @property
+    def audio_debug_wav_enabled(self) -> bool:
+        return self._audio_debug_wav_enabled
+
     def set_gain_percent(self, value: object) -> int:
         self._gain_percent = self._validate_gain(value)
         return self._gain_percent
@@ -132,6 +268,10 @@ class AudioSendService:
         self._tx_safety_limit_seconds = self._validate_tx_safety_limit(value)
         return self._tx_safety_limit_seconds
 
+    def set_audio_debug_wav_enabled(self, value: object) -> bool:
+        self._audio_debug_wav_enabled = bool(value)
+        return self._audio_debug_wav_enabled
+
     def save_settings(self) -> None:
         self._settings_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
@@ -140,6 +280,7 @@ class AudioSendService:
             "output_muted": self._user_muted,
             "agc_enabled": self._agc_enabled,
             "tx_safety_limit_seconds": self._tx_safety_limit_seconds,
+            "audio_debug_wav_enabled": self._audio_debug_wav_enabled,
         }
         self._settings_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -318,6 +459,10 @@ class AudioSendService:
             return pcm, duration, hit_limit, diagnostics
         finally:
             self._unmute_receive()
+
+    def start_live_capture(self, stop_event: Event, *, max_duration_seconds: float, level_callback: Callable[[float], None] | None = None) -> LivePcmCapture:
+        capture=LivePcmCapture(self, stop_event, max_duration_seconds=max_duration_seconds, level_callback=level_callback)
+        capture.start(); return capture
 
     def play_test(self) -> None:
         if self._recording is None:

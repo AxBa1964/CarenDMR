@@ -1,6 +1,10 @@
 # CarenDMR
 
-Aktueller Entwicklungsstand: **0.0.21.1**
+**0.0.23.9:** Audio-Diagnose speichert pro TX das CarenDMR-Eingangssignal mit 16 kHz und das 8-kHz-Signal direkt vor AMBE.
+
+**Aktueller Stand: 0.0.23.9** – moderne Betriebsseite, QSO-Historie und kompakte kategorisierte Einstellungen.
+
+Aktueller Entwicklungsstand: **0.0.22.1**
 
 > Ein freier, konsequent barrierefrei entwickelter DMR-Client für
 > BrandMeister.
@@ -27,7 +31,7 @@ CarenDMR konzentriert sich ausschließlich auf:
 D-Star, YSF, P25, NXDN, M17, AllStar und ein allgemeines
 Digitalfunk-Framework gehören nicht zum Projektumfang.
 
-## Aktueller Stand: 0.0.21.1
+## Aktueller Stand: 0.0.22.1
 
 Der technische Stand umfasst:
 
@@ -142,3 +146,16 @@ adaptierter Referenzbestandteile sind in
 ## Dynamischer Talkgroup-Empfang
 
 Im Reiter **Empfang** werden Talkgroup und Timeslot vor dem Verbinden eingetragen. Nach der Anmeldung sendet CarenDMR einen kurzen stummen DMRD-Gruppenruf-Impuls über die bestehende UDP-Verbindung. Dadurch wird die gewählte Talkgroup dynamisch aktiviert. Ein BrandMeister-API-Key ist nicht erforderlich. Für einen Zielwechsel zuerst trennen, neues Ziel eintragen und erneut verbinden.
+
+## Neue Oberfläche ab 0.0.22.1
+
+Die Betriebsseite verwendet ein modernes dunkles Kartenlayout. Alle vorhandenen Funkfunktionen bleiben erreichbar: CONNECT/DISCONNECT, TG wechseln, TS1/TS2, Gruppe/Privat, Stumm und die rastende TX-Taste. Ausführliche PowerShell-Diagnosen sind standardmäßig ausgeschaltet und können unter Einstellungen gezielt aktiviert werden.
+
+
+## TX/RX-Zeitmessung
+
+Version 0.0.23.9 schreibt bei jedem Sendedurchgang eine Millisekunden-Zeitleiste nach `logs/tx_rx_timing.log`. Die Datei dient ausschließlich dazu, den langsamen Abschnitt zwischen RX, TX und erneutem RX eindeutig zu bestimmen.
+
+### Parrot-RX-Audiodiagnose ab 0.0.23.9
+
+Bei einem Parrot-Test auf 9990 / TS2 / Privat speichert CarenDMR zusätzlich das empfangene, nach AMBE decodierte Echo als `logs/audio_debug/rx_..._03_parrot_nach_ambe_8k.wav`. Zusammen mit den beiden TX-WAV-Dateien lässt sich der komplette Signalweg vergleichen.

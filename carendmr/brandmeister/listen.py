@@ -9,6 +9,8 @@ from typing import Callable
 
 from carendmr.audio.pcm_output import BufferedPcmOutput
 from carendmr.network import NetworkReceiveTimeout
+from carendmr.diagnostics import diagnostic_print
+from carendmr.diagnostics.tx_rx_timing import mark as timing_mark
 from carendmr.vocoder import NativeMbeReceiveVocoder, extract_ambe_codewords
 from carendmr.vocoder.playout import DmrJitterBuffer
 
@@ -83,6 +85,7 @@ def listen_receive_only(
     target_call_type: str = "group",
     progress_callback: Callable[[LiveListenProgress], None] | None = None,
     call_activity_callback: Callable[[LiveCallActivity], None] | None = None,
+    connected_callback: Callable[[], None] | None = None,
     progress_interval: float = DEFAULT_PROGRESS_INTERVAL_SECONDS,
     heartbeat_interval: float = DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
     stop_requested: Callable[[], bool] | None = None,
@@ -131,26 +134,33 @@ def listen_receive_only(
     try:
         output.start()
         audio_started = True
-        print("[DIAG][AUDIO] Ausgabestream geöffnet: 8000 Hz, mono, int16", flush=True)
+        timing_mark("RX_AUDIO_GEOEFFNET")
+        diagnostic_print("[DIAG][AUDIO] Ausgabestream geöffnet: 8000 Hz, mono, int16", flush=True)
         synthetic = _synthetic_samples()
         if output_muted is None or not output_muted():
             output.write(synthetic)
         synthetic_count = len(synthetic)
-        sleep(0.25)
+        # Der Audioausgang ist bereits geöffnet. Login und Zielaktivierung geben
+        # ihm anschließend ohnehin rund eine halbe Sekunde Anlaufzeit; eine
+        # zusätzliche feste 250-ms-Pause verzögert TX→RX nur unnötig.
+        timing_mark("RX_AUDIO_VORLAUF_FERTIG", "ohne zusätzliche Wartezeit")
 
         decoder = decoder_factory()
-        print("[DIAG][DECODER] Nativer MBE-Decoder geöffnet", flush=True)
-        print(f"[DIAG][NETZ] Verbinde mit {config.host}:{config.port}", flush=True)
+        diagnostic_print("[DIAG][DECODER] Nativer MBE-Decoder geöffnet", flush=True)
+        diagnostic_print(f"[DIAG][NETZ] Verbinde mit {config.host}:{config.port}", flush=True)
+        timing_mark("RX_LOGIN_START")
         client.login()
+        timing_mark("RX_LOGIN_FERTIG")
         authenticated = client.state is LoginState.CONNECTED
         if not authenticated or client.transport is None:
             raise RuntimeError("Die Empfangsverbindung ist nicht eindeutig aktiv.")
-        print("[DIAG][NETZ] BrandMeister-Anmeldung erfolgreich", flush=True)
-        print(
+        diagnostic_print("[DIAG][NETZ] BrandMeister-Anmeldung erfolgreich", flush=True)
+        diagnostic_print(
             f"[DIAG][ZIEL] Aktiviere TG {target_talkgroup} auf TS{target_timeslot}",
             flush=True,
         )
 
+        timing_mark("RX_ZIELAKTIVIERUNG_START")
         activate_dynamic_talkgroup(
             client.transport,
             dmr_id=config.dmr_id,
@@ -158,7 +168,19 @@ def listen_receive_only(
             timeslot=target_timeslot,
             call_type=target_call_type,
         )
-        print("[DIAG][ZIEL] Aktivierungsruf vollständig gesendet", flush=True)
+        diagnostic_print("[DIAG][ZIEL] Aktivierungsruf vollständig gesendet", flush=True)
+        timing_mark("RX_ZIELAKTIVIERUNG_FERTIG")
+        # Nach erfolgreichem Login und Zielaktivierung ist RX technisch bereit.
+        # Der bisherige Fortschritts-Callback kam erst deutlich später und ließ
+        # die Oberfläche unnötig lange auf „Verbindung wird aufgebaut“ stehen.
+        if connected_callback is not None:
+            connected_callback()
+
+        # Im Dauerempfang darf recv() nicht mehrere Sekunden blockieren, weil
+        # PTT den RX-Thread sonst erst nach Ablauf des Login-Timeouts beendet.
+        # 100 ms hält die CPU-Last gering und macht den Abbruch praktisch sofort.
+        if hasattr(client.transport, "set_receive_timeout"):
+            client.transport.set_receive_timeout(0.1)
 
         deadline = None if seconds is None else started_at + seconds
         try:
@@ -184,7 +206,7 @@ def listen_receive_only(
                     )
                     next_progress = now + progress_interval
                 if now >= next_diagnostic_summary:
-                    print(
+                    diagnostic_print(
                         "[DIAG][STAT] "
                         f"UDP={datagrams} DMRD-Voice={voice} Header={headers} "
                         f"Terminator={terminators} Codewörter={codewords} "
@@ -207,7 +229,7 @@ def listen_receive_only(
                     continue
                 if not datagram.startswith(b"DMRD"):
                     non_dmrd += 1
-                    print(
+                    diagnostic_print(
                         f"[DIAG][RX] Sonstiges UDP-Paket: {len(datagram)} Byte, "
                         f"Start={datagram[:12].hex(' ')}",
                         flush=True,
@@ -217,7 +239,7 @@ def listen_receive_only(
                     packet = parse_dmrd_packet(datagram)
                 except (TypeError, ValueError) as error:
                     invalid += 1
-                    print(
+                    diagnostic_print(
                         f"[DIAG][DMRD] Ungültiges Paket ({len(datagram)} Byte): {error}",
                         flush=True,
                     )
@@ -227,7 +249,7 @@ def listen_receive_only(
                     if packet.frame_class is DmrdFrameClass.VOICE
                     else packet.frame_class.name
                 )
-                print(
+                diagnostic_print(
                     f"[DIAG][DMRD] Seq={packet.sequence:03d} Src={packet.source_id} "
                     f"Dst={packet.destination_id} TS{packet.timeslot} "
                     f"Ruf={packet.call_type.name} Frame={frame_name} "
@@ -236,7 +258,7 @@ def listen_receive_only(
                 )
                 if packet.destination_id != target_talkgroup:
                     rejected_tg += 1
-                    print(
+                    diagnostic_print(
                         f"[DIAG][FILTER] VERWORFEN: TG {packet.destination_id} "
                         f"statt TG {target_talkgroup}",
                         flush=True,
@@ -244,7 +266,7 @@ def listen_receive_only(
                     continue
                 if packet.timeslot != target_timeslot:
                     rejected_ts += 1
-                    print(
+                    diagnostic_print(
                         f"[DIAG][FILTER] VERWORFEN: TS{packet.timeslot} "
                         f"statt TS{target_timeslot}",
                         flush=True,
@@ -253,12 +275,12 @@ def listen_receive_only(
                 expected_call_type = "PRIVATE" if target_call_type == "private" else "GROUP"
                 if packet.call_type.name != expected_call_type:
                     rejected_call_type += 1
-                    print(f"[DIAG][FILTER] VERWORFEN: Rufart {packet.call_type.name} statt {expected_call_type}", flush=True)
+                    diagnostic_print(f"[DIAG][FILTER] VERWORFEN: Rufart {packet.call_type.name} statt {expected_call_type}", flush=True)
                     continue
-                print("[DIAG][FILTER] AKZEPTIERT: TG, Timeslot und Rufart passen", flush=True)
+                diagnostic_print("[DIAG][FILTER] AKZEPTIERT: TG, Timeslot und Rufart passen", flush=True)
                 if packet.is_voice_lc_header:
                     headers += 1
-                    print("[DIAG][FRAME] Voice-LC-Header erkannt; Decoder wird zurückgesetzt", flush=True)
+                    diagnostic_print("[DIAG][FRAME] Voice-LC-Header erkannt; Decoder wird zurückgesetzt", flush=True)
                     if call_activity_callback is not None:
                         call_activity_callback(
                             LiveCallActivity(
@@ -272,7 +294,7 @@ def listen_receive_only(
                     continue
                 if packet.is_terminator_with_lc:
                     terminators += 1
-                    print("[DIAG][FRAME] Terminator mit LC erkannt", flush=True)
+                    diagnostic_print("[DIAG][FRAME] Terminator mit LC erkannt", flush=True)
                     if call_activity_callback is not None:
                         call_activity_callback(
                             LiveCallActivity(
@@ -287,7 +309,7 @@ def listen_receive_only(
                             samples += len(frame)
                             audio_writes += 1
                             audio_samples += len(frame)
-                            print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben", flush=True)
+                            diagnostic_print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben", flush=True)
                     concealed += batch.concealed_bursts
                     jitter.reset()
                     continue
@@ -296,7 +318,7 @@ def listen_receive_only(
                     DmrdFrameClass.VOICE_SYNC,
                 ):
                     rejected_frame += 1
-                    print("[DIAG][FILTER] VERWORFEN: kein Sprachrahmen", flush=True)
+                    diagnostic_print("[DIAG][FILTER] VERWORFEN: kein Sprachrahmen", flush=True)
                     continue
 
                 if call_activity_callback is not None:
@@ -316,12 +338,12 @@ def listen_receive_only(
                         corrected += frame.corrected_errors
                 except Exception as error:
                     decode_errors += 1
-                    print(
+                    diagnostic_print(
                         f"[DIAG][DECODER] FEHLER {type(error).__name__}: {error}",
                         flush=True,
                     )
                     continue
-                print(
+                diagnostic_print(
                     f"[DIAG][DECODER] 3 AMBE-Codewörter -> {len(decoded)} PCM-Samples",
                     flush=True,
                 )
@@ -333,7 +355,7 @@ def listen_receive_only(
                         samples += len(frame)
                         audio_writes += 1
                         audio_samples += len(frame)
-                        print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben", flush=True)
+                        diagnostic_print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben", flush=True)
                 concealed += batch.concealed_bursts
         except KeyboardInterrupt:
             interrupted = True
@@ -345,10 +367,15 @@ def listen_receive_only(
                 samples += len(frame)
                 audio_writes += 1
                 audio_samples += len(frame)
-                print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben (Restpuffer)", flush=True)
+                diagnostic_print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben (Restpuffer)", flush=True)
         concealed += batch.concealed_bursts
-        sleep(0.25)
-        print(
+        stopping = stop_requested is not None and stop_requested()
+        if not stopping:
+            sleep(0.25)
+            timing_mark("RX_ABBAU_NACHLAUF_FERTIG", "feste 250 ms")
+        else:
+            timing_mark("RX_ABBAU_NACHLAUF_FERTIG", "bei aktivem Stopp übersprungen")
+        diagnostic_print(
             "[DIAG][ENDE] "
             f"UDP={datagrams} Voice={voice} Header={headers} Terminator={terminators} "
             f"Codewörter={codewords} Audio-Schreibvorgänge={audio_writes} "
@@ -361,8 +388,10 @@ def listen_receive_only(
         elapsed = max(0.0, monotonic() - started_at)
         if decoder is not None:
             decoder.close()
+        timing_mark("RX_CLOSE_START")
         client.close()
         output.close()
+        timing_mark("RX_CLOSE_FERTIG")
         closed = (
             client.transport is None
             and client.state is LoginState.DISCONNECTED

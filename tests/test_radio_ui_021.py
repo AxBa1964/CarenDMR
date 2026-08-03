@@ -8,13 +8,13 @@ class RadioUi021Tests(unittest.TestCase):
         cls.source = (Path(__file__).parents[1] / "carendmr" / "ui" / "main_window.py").read_text(encoding="utf-8")
 
     def test_three_user_oriented_tabs(self):
-        self.assertIn('text="Betrieb"', self.source)
-        self.assertIn('text="QSO-Historie"', self.source)
-        self.assertIn('text="Einstellungen"', self.source)
+        self.assertIn('◉  BETRIEB', self.source)
+        self.assertIn('QSO-HISTORIE', self.source)
+        self.assertIn('EINSTELLUNGEN', self.source)
         self.assertNotIn('self.notebook.add(transmit, text="Senden")', self.source)
 
     def test_toggle_ptt_and_sixty_second_limit(self):
-        self.assertIn('text="TX AUS"', self.source)
+        self.assertIn('text="TX AUS\\nZum Senden drücken"', self.source)
         self.assertIn('command=self._toggle_transmit', self.source)
         self.assertIn('set_tx_safety_limit_seconds(60)', self.source)
 
