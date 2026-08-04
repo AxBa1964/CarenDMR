@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QApplication, QAbstractButton, QButtonGroup, QFormLayout, QGroupBox, QHBoxLayout,
     QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QRadioButton,
     QStatusBar, QTabWidget, QVBoxLayout, QWidget, QSlider, QCheckBox, QGridLayout,
+    QFrame, QSizePolicy,
 )
 
 from carendmr.application import (
@@ -25,16 +26,18 @@ from carendmr.application import (
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.domain import ApplicationState, ConnectionState
 from carendmr.version import __version__
+from carendmr.ui_qt.theme import METRICS
 from carendmr.accessibility.hotkeys import HotkeyManager
 from carendmr.ui_qt.settings_dialog import SettingsDialog
 from carendmr.ui_qt.history_widget import QsoHistoryWidget
+from carendmr.ui_qt.theme import apply_theme
 
 
 class MainWindow(QMainWindow):
     def __init__(self, project_root: Path) -> None:
         super().__init__()
         self.project_root = Path(project_root)
-        self.setWindowTitle(f"CarenDMR {__version__} – Qt-Migration")
+        self.setWindowTitle(f"CarenDMR {__version__} – Funkgerät auf dem Desktop")
         self.resize(920, 650)
 
         self.events = EventService()
@@ -76,141 +79,239 @@ class MainWindow(QMainWindow):
         self._apply_state(self.receive_service.state_store.get())
 
     def _build_ui(self) -> None:
+        """Baut das Layout V1, ohne die vorhandene Bedienlogik zu verändern."""
         self.tabs = QTabWidget(self)
+        self.tabs.setObjectName("mainTabs")
         operation_page = QWidget(self.tabs)
+        operation_page.setObjectName("operationPage")
         root = QVBoxLayout(operation_page)
-        root.setContentsMargins(12, 10, 12, 10)
-        root.setSpacing(7)
+        root.setContentsMargins(18, 14, 18, 14)
+        root.setSpacing(12)
 
-        target_box = QGroupBox("Funkziel")
-        target_form = QFormLayout(target_box)
+        # Kopfzeile: keine neue Funktion, nur eine klare visuelle Hierarchie.
+        header = QFrame(operation_page)
+        header.setObjectName("headerCard")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(18, 12, 18, 12)
+        title = QLabel("CarenDMR")
+        title.setObjectName("appTitle")
+        subtitle = QLabel("Funkgerät auf dem Desktop")
+        subtitle.setObjectName("appSubtitle")
+        title_column = QVBoxLayout()
+        title_column.setSpacing(0)
+        title_column.addWidget(title)
+        title_column.addWidget(subtitle)
+        header_layout.addLayout(title_column)
+        header_layout.addStretch(1)
+        self.connection_label = QLabel("Getrennt")
+        self.connection_label.setObjectName("connectionBadge")
+        self.connection_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.connection_label.setFixedSize(METRICS.connection_control_width, METRICS.status_control_height)
+        header_layout.addWidget(self.connection_label)
+        root.addWidget(header)
+
+        content = QGridLayout()
+        content.setHorizontalSpacing(12)
+        content.setVerticalSpacing(12)
+        content.setColumnStretch(0, 3)
+        content.setColumnStretch(1, 2)
+        root.addLayout(content, 1)
+
+        # Funkziel und Verbindung.
+        target_card = QFrame(operation_page)
+        target_card.setObjectName("card")
+        target_layout = QGridLayout(target_card)
+        target_layout.setContentsMargins(18, 14, 18, 14)
+        target_layout.setHorizontalSpacing(12)
+        target_layout.setVerticalSpacing(8)
+        target_heading = QLabel("FUNKZIEL")
+        target_heading.setObjectName("sectionTitle")
+        target_layout.addWidget(target_heading, 0, 0, 1, 6)
+
+        current_caption = QLabel("Aktuelle TG")
+        current_caption.setObjectName("fieldCaption")
         self.current_tg_label = QLabel(str(self.preferences.talkgroup))
         self.current_tg_label.setObjectName("currentTalkgroup")
+        current_column = QVBoxLayout()
+        current_column.setSpacing(1)
+        current_column.addWidget(current_caption)
+        current_column.addWidget(self.current_tg_label)
+        target_layout.addLayout(current_column, 1, 0, 2, 1)
+
+        target_layout.addWidget(QLabel("Neue Talkgroup"), 1, 1, 1, 2)
         self.tg_edit = QLineEdit()
-        self.tg_edit.setPlaceholderText("Neue Talkgroup")
+        self.tg_edit.setObjectName("talkgroupInput")
+        self.tg_edit.setPlaceholderText("Neue TG eingeben")
         self.tg_edit.setMaxLength(8)
         self.tg_edit.setValidator(QRegularExpressionValidator(QRegularExpression(r"[0-9]{0,8}"), self.tg_edit))
-        ts_row = QWidget()
-        ts_layout = QHBoxLayout(ts_row)
-        ts_layout.setContentsMargins(0, 0, 0, 0)
-        self.ts1_radio = QRadioButton("Timeslot 1")
-        self.ts2_radio = QRadioButton("Timeslot 2")
+        target_layout.addWidget(self.tg_edit, 2, 1, 1, 2)
+
+        self.ts1_radio = QRadioButton("TS 1")
+        self.ts2_radio = QRadioButton("TS 2")
         self.ts_group = QButtonGroup(self)
         self.ts_group.addButton(self.ts1_radio, 1)
         self.ts_group.addButton(self.ts2_radio, 2)
         (self.ts1_radio if self.preferences.timeslot == 1 else self.ts2_radio).setChecked(True)
-        ts_layout.addWidget(self.ts1_radio)
-        ts_layout.addWidget(self.ts2_radio)
-        ts_layout.addStretch(1)
-        call_row = QWidget()
-        call_layout = QHBoxLayout(call_row)
-        call_layout.setContentsMargins(0, 0, 0, 0)
-        self.group_radio = QRadioButton("Gruppenruf")
-        self.private_radio = QRadioButton("Privatruf")
+        ts_column = QVBoxLayout()
+        ts_column.setSpacing(3)
+        ts_column.addWidget(QLabel("Timeslot"))
+        ts_row = QHBoxLayout()
+        ts_row.setSpacing(10)
+        ts_row.addWidget(self.ts1_radio)
+        ts_row.addWidget(self.ts2_radio)
+        ts_column.addLayout(ts_row)
+        target_layout.addLayout(ts_column, 1, 3, 2, 1)
+
+        self.group_radio = QRadioButton("Gruppe")
+        self.private_radio = QRadioButton("Privat")
         self.call_group = QButtonGroup(self)
         self.call_group.addButton(self.group_radio)
         self.call_group.addButton(self.private_radio)
         (self.private_radio if self.preferences.call_type == "private" else self.group_radio).setChecked(True)
+        call_column = QVBoxLayout()
+        call_column.setSpacing(3)
+        call_column.addWidget(QLabel("Rufart"))
+        call_row = QHBoxLayout()
+        call_row.setSpacing(10)
+        call_row.addWidget(self.group_radio)
+        call_row.addWidget(self.private_radio)
+        call_column.addLayout(call_row)
+        target_layout.addLayout(call_column, 1, 4, 2, 1)
+
+        self.connect_button = QPushButton("Verbinden")
+        self.connect_button.setObjectName("connectButton")
+        self.connect_button.setFixedSize(METRICS.connection_control_width, METRICS.action_control_height)
+        self.connect_button.clicked.connect(self._toggle_connection)
+        target_layout.addWidget(self.connect_button, 1, 5, 2, 1)
+        self.server_label = QLabel("Server: Nicht verbunden")
+        self.server_label.setObjectName("secondaryText")
+        target_layout.addWidget(self.server_label, 3, 0, 1, 6)
+
         self.ts1_radio.toggled.connect(self._sync_radio_tab_focus)
         self.ts2_radio.toggled.connect(self._sync_radio_tab_focus)
         self.group_radio.toggled.connect(self._sync_radio_tab_focus)
         self.private_radio.toggled.connect(self._sync_radio_tab_focus)
         self._sync_radio_tab_focus()
-        call_layout.addWidget(self.group_radio)
-        call_layout.addWidget(self.private_radio)
-        call_layout.addStretch(1)
-        target_form.addRow("Aktuelle Talkgroup:", self.current_tg_label)
-        target_form.addRow("Neue Talkgroup:", self.tg_edit)
-        target_form.addRow("Timeslot:", ts_row)
-        target_form.addRow("Rufart:", call_row)
-        root.addWidget(target_box)
+        content.addWidget(target_card, 0, 0, 1, 2)
 
-        connection_box = QGroupBox("Verbindung")
-        connection_layout = QVBoxLayout(connection_box)
-        self.connection_label = QLabel("Getrennt")
-        self.server_label = QLabel("Server: Nicht verbunden")
-        self.connect_button = QPushButton("Verbinden")
-        self.connect_button.clicked.connect(self._toggle_connection)
-        connection_layout.addWidget(self.connection_label)
-        connection_layout.addWidget(self.server_label)
-        connection_layout.addWidget(self.connect_button)
-        root.addWidget(connection_box)
-
-        station_box = QGroupBox("Aktuelle Station")
-        station_form = QFormLayout(station_box)
+        # Aktuelle Station: wichtigste Empfangsinformationen prominent, Details kompakt.
+        station_card = QFrame(operation_page)
+        station_card.setObjectName("card")
+        station_layout = QGridLayout(station_card)
+        station_layout.setContentsMargins(18, 14, 18, 14)
+        station_layout.setHorizontalSpacing(14)
+        station_layout.setVerticalSpacing(5)
+        station_heading = QLabel("AKTUELLE STATION")
+        station_heading.setObjectName("sectionTitle")
+        station_layout.addWidget(station_heading, 0, 0, 1, 4)
         self.callsign_label = QLabel("Nicht bekannt")
+        self.callsign_label.setObjectName("callsignDisplay")
         self.name_label = QLabel("Nicht bekannt")
+        self.name_label.setObjectName("stationName")
+        station_layout.addWidget(self.callsign_label, 1, 0, 1, 4)
+        station_layout.addWidget(self.name_label, 2, 0, 1, 4)
         self.location_label = QLabel("Nicht bekannt")
         self.country_label = QLabel("Nicht bekannt")
         self.dmr_id_label = QLabel("Kein aktiver Sprecher")
         self.target_label = QLabel("–")
         self.duration_label = QLabel("0 Sekunden")
         self.qso_status_label = QLabel("Keine Station aktiv")
-        station_form.addRow("Rufzeichen:", self.callsign_label)
-        station_form.addRow("Name:", self.name_label)
-        station_form.addRow("Ort/Region:", self.location_label)
-        station_form.addRow("Land:", self.country_label)
-        station_form.addRow("DMR-ID:", self.dmr_id_label)
-        station_form.addRow("Ziel:", self.target_label)
-        station_form.addRow("Sprechdauer:", self.duration_label)
-        station_form.addRow("QSO-Status:", self.qso_status_label)
-        root.addWidget(station_box)
+        self.qso_status_label.setObjectName("qsoStatus")
+        detail_labels = (
+            ("Ort/Region", self.location_label), ("Land", self.country_label),
+            ("DMR-ID", self.dmr_id_label), ("Ziel", self.target_label),
+            ("Sprechdauer", self.duration_label), ("QSO-Status", self.qso_status_label),
+        )
+        for index, (caption, value) in enumerate(detail_labels):
+            row = 3 + index // 2
+            column = (index % 2) * 2
+            cap = QLabel(caption)
+            cap.setObjectName("fieldCaption")
+            station_layout.addWidget(cap, row, column)
+            station_layout.addWidget(value, row, column + 1)
+        content.addWidget(station_card, 1, 0)
 
-        info_box = QGroupBox("Betriebsinformationen")
-        info_form = QFormLayout(info_box)
+        # Rechte Bedienkarte: tägliche Audiofunktionen und PTT, ohne neue Controls.
+        control_card = QFrame(operation_page)
+        control_card.setObjectName("card")
+        control_layout = QVBoxLayout(control_card)
+        control_layout.setContentsMargins(18, 14, 18, 14)
+        control_layout.setSpacing(9)
+        control_heading = QLabel("FUNK- UND AUDIOBEDIENUNG")
+        control_heading.setObjectName("sectionTitle")
+        control_layout.addWidget(control_heading)
+
+        self.operation_gain_slider = QSlider(Qt.Orientation.Horizontal)
+        self.operation_gain_slider.setRange(0, 100)
+        self.operation_gain_value = QLabel("100 %")
+        self.operation_gain_value.setObjectName("valueLabel")
+        gain_row = QGridLayout()
+        gain_row.addWidget(QLabel("Mic-Gain"), 0, 0)
+        gain_row.addWidget(self.operation_gain_value, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        gain_row.addWidget(self.operation_gain_slider, 1, 0, 1, 2)
+        control_layout.addLayout(gain_row)
+
+        self.operation_volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.operation_volume_slider.setRange(0, 100)
+        self.operation_volume_value = QLabel("100 %")
+        self.operation_volume_value.setObjectName("valueLabel")
+        volume_row = QGridLayout()
+        volume_row.addWidget(QLabel("RX-Lautstärke"), 0, 0)
+        volume_row.addWidget(self.operation_volume_value, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
+        volume_row.addWidget(self.operation_volume_slider, 1, 0, 1, 2)
+        control_layout.addLayout(volume_row)
+
+        checks = QHBoxLayout()
+        self.operation_muted_check = QCheckBox("Empfang stumm")
+        self.operation_agc_check = QCheckBox("AGC aktiv")
+        checks.addWidget(self.operation_muted_check)
+        checks.addWidget(self.operation_agc_check)
+        checks.addStretch(1)
+        control_layout.addLayout(checks)
+
+        self.ptt_button = QPushButton("PTT – Senden einschalten")
+        self.ptt_button.setObjectName("pttButton")
+        self.ptt_button.setMinimumHeight(74)
+        self.ptt_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.ptt_button.clicked.connect(self._toggle_tx)
+        self.tx_status = QLabel("Senden nicht aktiv")
+        self.tx_status.setObjectName("txStatus")
+        self.tx_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.encoder_status = QLabel("AMBE-Encoder wird geprüft …")
+        self.encoder_status.setObjectName("secondaryText")
+        self.encoder_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        control_layout.addStretch(1)
+        control_layout.addWidget(self.ptt_button)
+        control_layout.addWidget(self.tx_status)
+        control_layout.addWidget(self.encoder_status)
+        content.addWidget(control_card, 1, 1)
+
+        # Betriebsinformationen nur einmal und bewusst kompakt.
+        info_card = QFrame(operation_page)
+        info_card.setObjectName("card")
+        info_layout = QGridLayout(info_card)
+        info_layout.setContentsMargins(18, 11, 18, 11)
+        info_layout.setHorizontalSpacing(14)
+        info_heading = QLabel("BETRIEBSINFORMATIONEN")
+        info_heading.setObjectName("sectionTitle")
+        info_layout.addWidget(info_heading, 0, 0, 1, 4)
         self.audio_status_label = QLabel("Audio nicht aktiv")
         self.statistics_label = QLabel("0 Datagramme, 0 Sprachbursts, 0 Decodierfehler")
         self.last_event_label = QLabel("Bereit")
         self.last_event_label.setWordWrap(True)
-        info_form.addRow("Audio:", self.audio_status_label)
-        info_form.addRow("Empfangsstatistik:", self.statistics_label)
-        info_form.addRow("Letztes Ereignis:", self.last_event_label)
-        root.addWidget(info_box)
+        info_layout.addWidget(QLabel("Audio"), 1, 0)
+        info_layout.addWidget(self.audio_status_label, 1, 1)
+        info_layout.addWidget(QLabel("Empfang"), 1, 2)
+        info_layout.addWidget(self.statistics_label, 1, 3)
+        info_layout.addWidget(QLabel("Letztes Ereignis"), 2, 0)
+        info_layout.addWidget(self.last_event_label, 2, 1, 1, 3)
+        content.addWidget(info_card, 2, 0, 1, 2)
 
-        daily_box = QGroupBox("Audio im Betrieb")
-        daily_grid = QGridLayout(daily_box)
-        daily_grid.setContentsMargins(10, 6, 10, 6)
-        daily_grid.setHorizontalSpacing(10)
-        daily_grid.setVerticalSpacing(4)
-        self.operation_gain_slider = QSlider(Qt.Orientation.Horizontal)
-        self.operation_gain_slider.setRange(0, 100)
-        self.operation_gain_value = QLabel("100 %")
-        self.operation_gain_value.setMinimumWidth(48)
-        self.operation_volume_slider = QSlider(Qt.Orientation.Horizontal)
-        self.operation_volume_slider.setRange(0, 100)
-        self.operation_volume_value = QLabel("100 %")
-        self.operation_volume_value.setMinimumWidth(48)
-        self.operation_muted_check = QCheckBox("Empfang stumm")
-        self.operation_agc_check = QCheckBox("AGC aktiv")
         self.operation_gain_slider.valueChanged.connect(self._operation_gain_changed)
         self.operation_volume_slider.valueChanged.connect(self._operation_volume_changed)
         self.operation_muted_check.toggled.connect(self._operation_muted_changed)
         self.operation_agc_check.toggled.connect(self._operation_agc_changed)
-        daily_grid.addWidget(QLabel("Mic-Gain:"), 0, 0)
-        daily_grid.addWidget(self.operation_gain_slider, 0, 1)
-        daily_grid.addWidget(self.operation_gain_value, 0, 2)
-        daily_grid.addWidget(QLabel("RX-Lautstärke:"), 0, 3)
-        daily_grid.addWidget(self.operation_volume_slider, 0, 4)
-        daily_grid.addWidget(self.operation_volume_value, 0, 5)
-        daily_grid.addWidget(self.operation_muted_check, 1, 1, 1, 2)
-        daily_grid.addWidget(self.operation_agc_check, 1, 4, 1, 2)
-        daily_grid.setColumnStretch(1, 1)
-        daily_grid.setColumnStretch(4, 1)
-        root.addWidget(daily_box)
         self._sync_operation_audio_controls()
-
-        send_box = QGroupBox("Senden")
-        send_layout = QVBoxLayout(send_box)
-        self.ptt_button = QPushButton("PTT – Senden einschalten")
-        self.ptt_button.setMinimumHeight(52)
-        self.ptt_button.clicked.connect(self._toggle_tx)
-        self.tx_status = QLabel("Senden nicht aktiv")
-        self.encoder_status = QLabel("AMBE-Encoder wird geprüft …")
-        send_layout.addWidget(self.ptt_button)
-        send_layout.addWidget(self.tx_status)
-        send_layout.addWidget(self.encoder_status)
-        root.addWidget(send_box)
-        root.addStretch(1)
 
         self.tabs.addTab(operation_page, "Betrieb")
         self.history_widget = QsoHistoryWidget(
@@ -224,7 +325,29 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.tabs)
         self._build_menu()
         self.setStatusBar(QStatusBar(self))
+        self.statusBar().setObjectName("mainStatusBar")
         self.statusBar().showMessage("Bereit")
+        self._apply_theme()
+        self._restore_tab_order()
+
+    def _apply_theme(self) -> None:
+        """Theme wird zentral auf QApplication-Ebene verwaltet."""
+        app = QApplication.instance()
+        if app is not None:
+            apply_theme(app)
+
+    def _restore_tab_order(self) -> None:
+        """Bewahrt die etablierte Tastaturreihenfolge trotz neuem Layout."""
+        selected_ts = self.ts1_radio if self.ts1_radio.isChecked() else self.ts2_radio
+        selected_call = self.private_radio if self.private_radio.isChecked() else self.group_radio
+        QWidget.setTabOrder(self.tg_edit, selected_ts)
+        QWidget.setTabOrder(selected_ts, selected_call)
+        QWidget.setTabOrder(selected_call, self.connect_button)
+        QWidget.setTabOrder(self.connect_button, self.operation_gain_slider)
+        QWidget.setTabOrder(self.operation_gain_slider, self.operation_volume_slider)
+        QWidget.setTabOrder(self.operation_volume_slider, self.operation_muted_check)
+        QWidget.setTabOrder(self.operation_muted_check, self.operation_agc_check)
+        QWidget.setTabOrder(self.operation_agc_check, self.ptt_button)
 
 
     def _show_status(self, message: str) -> None:
@@ -464,6 +587,21 @@ class MainWindow(QMainWindow):
         self.connect_button.setEnabled(
             state not in {RadioState.CONNECTING, RadioState.DISCONNECTING, RadioState.TRANSMITTING}
         )
+        self.connect_button.setProperty(
+            "visualState", "disconnect" if state in {RadioState.CONNECTED, RadioState.TRANSMITTING} else "connect"
+        )
+        if state is RadioState.TRANSMITTING:
+            badge_state = "tx"
+        elif state is RadioState.CONNECTED:
+            badge_state = "connected"
+        elif state in {RadioState.CONNECTING, RadioState.DISCONNECTING}:
+            badge_state = "busy"
+        else:
+            badge_state = "disconnected"
+        self.connection_label.setProperty("visualState", badge_state)
+        for widget in (self.connect_button, self.connection_label):
+            widget.style().unpolish(widget)
+            widget.style().polish(widget)
 
     def _toggle_connection(self) -> None:
         state = self.radio_state.state
@@ -526,6 +664,9 @@ class MainWindow(QMainWindow):
         self._tx_active = True
         self.radio_state.synchronize(RadioState.TRANSMITTING)
         self.ptt_button.setText("PTT – Senden ausschalten")
+        self.ptt_button.setProperty("visualState", "tx")
+        self.ptt_button.style().unpolish(self.ptt_button)
+        self.ptt_button.style().polish(self.ptt_button)
         self.tx_status.setText("Senden aktiv")
         self.statusBar().showMessage("Senden aktiv")
         self._set_controls_for_state(self.radio_state.state)
@@ -548,6 +689,9 @@ class MainWindow(QMainWindow):
         # bis zum Ergebnis sichtbar, wird aber gegen Mehrfachklicks gesperrt.
         self.ptt_button.setEnabled(False)
         self.ptt_button.setText("PTT – Sendung wird beendet …")
+        self.ptt_button.setProperty("visualState", "ending")
+        self.ptt_button.style().unpolish(self.ptt_button)
+        self.ptt_button.style().polish(self.ptt_button)
         self.tx_status.setText("Sendung wird beendet …")
         self.statusBar().showMessage("Sendung wird beendet …")
 
@@ -557,6 +701,9 @@ class MainWindow(QMainWindow):
         state = RadioState.CONNECTED if self.receive_service.is_running else RadioState.DISCONNECTED
         self.radio_state.synchronize(state)
         self.ptt_button.setText("PTT – Senden einschalten")
+        self.ptt_button.setProperty("visualState", "idle")
+        self.ptt_button.style().unpolish(self.ptt_button)
+        self.ptt_button.style().polish(self.ptt_button)
         self.tx_status.setText("Senden nicht aktiv")
         self.statusBar().showMessage(message)
         self._set_controls_for_state(state)
@@ -689,6 +836,7 @@ class MainWindow(QMainWindow):
 
 def run_gui(project_root: Path) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
+    apply_theme(app)
     window = MainWindow(project_root)
     window.show()
     return int(app.exec())

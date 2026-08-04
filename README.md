@@ -1,3 +1,26 @@
+# CarenDMR 0.1.2.1 – Design-System-Fix
+
+# CarenDMR 0.1.1 – Theme Engine & Accessibility
+
+CarenDMR ist ein eigenständiger Desktop-DMR-Client für BrandMeister.
+
+## Stand 0.1.1
+
+- zentrale Qt-Theme-Engine in `carendmr/ui_qt/theme.py`
+- kontrastreiche Farben für Betrieb, QSO-Historie und Einstellungen
+- heller Primär- und Sekundärtext auf dunklen Flächen
+- gut sichtbarer gelber Tastatur-Fokusrahmen
+- einheitliche Tabellen-, Eingabe-, Button- und Dialogdarstellung
+- keine Änderung an Funklogik, Hotkeys oder Tab-Reihenfolge
+
+## Start
+
+```powershell
+python main.py --gui
+```
+
+Die stabile Tkinter-Rückfallebene bleibt mit `python main.py --gui-tk` verfügbar.
+
 # CarenDMR
 
 **Aktueller Entwicklungsstand: 0.0.28.3 – Qt-Einstellungen Bedienkorrekturen**

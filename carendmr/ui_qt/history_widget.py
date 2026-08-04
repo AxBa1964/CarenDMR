@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 
 from carendmr.application import QsoHistoryService
 from carendmr.domain import QsoHistorySummary
+from carendmr.ui_qt.theme import METRICS
 
 
 class HistoryTable(QTableWidget):
@@ -104,6 +105,7 @@ class QsoHistoryWidget(QWidget):
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(METRICS.table_row_height)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.itemSelectionChanged.connect(self._selection_changed)
         self.table.itemDoubleClicked.connect(lambda _item: self.toggle_worked())

@@ -1,6 +1,4 @@
-# CarenDMR 0.0.28.3 – Qt-Einstellungen Bedienkorrekturen
+# CarenDMR 0.1.2.1 – Design-System-Fix
 
-- Kompakte Betriebsseite für normale Fenstergröße.
-- RX-Lautstärke im Betrieb 0–100 %, erweiterter Boost weiterhin in Einstellungen.
-- RadioID-Fortschritt direkt in der Datenbank-Kachel.
-- Erweiterte und automatische Vocoder-Plugin-Erkennung.
+Kleiner Stabilitäts- und Darstellungs-Patch auf Basis von 0.1.2.
+Funkbetrieb und Bedienlogik bleiben unverändert.

@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QTabWidget, QWidget, QFileDialog, QApplication,
 )
 
+from carendmr.ui_qt.theme import METRICS
 from carendmr.audio import AudioDirection
 from carendmr.diagnostics import initialize as initialize_diagnostics
 from carendmr.diagnostics import set_enabled as set_diagnostics_enabled
@@ -71,7 +72,11 @@ class SettingsDialog(QDialog):
         root.setSpacing(12)
 
         heading = QLabel("Einstellungen")
-        heading.setStyleSheet("font-size: 22px; font-weight: 600;")
+        heading.setObjectName("dialogTitle")
+        font = heading.font()
+        font.setPointSize(18)
+        font.setBold(True)
+        heading.setFont(font)
         root.addWidget(heading)
         root.addWidget(QLabel("Thematisch gegliederte CarenDMR-Einstellungen. Änderungen werden mit Übernehmen oder OK gespeichert."))
 
@@ -182,13 +187,12 @@ class SettingsDialog(QDialog):
         self.hotkey_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.hotkey_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.hotkey_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.hotkey_table.setTabKeyNavigation(False); self.hotkey_table.verticalHeader().setVisible(False)
+        self.hotkey_table.setTabKeyNavigation(False); self.hotkey_table.verticalHeader().setVisible(False); self.hotkey_table.verticalHeader().setDefaultSectionSize(METRICS.table_row_height)
         self.hotkey_table.horizontalHeader().setStretchLastSection(True)
         for row, function in enumerate(DEFAULT_HOTKEYS):
             item = QTableWidgetItem(FUNCTION_LABELS[function]); item.setData(Qt.ItemDataRole.UserRole, function)
             self.hotkey_table.setItem(row, 0, item)
             self.hotkey_table.setItem(row, 1, QTableWidgetItem(self._display_hotkey(self._pending_hotkeys.get(function, ""))))
-        self.hotkey_table.itemSelectionChanged.connect(self._hotkey_selection_changed)
         hotkey_root.addWidget(self.hotkey_table)
         capture_form = QFormLayout()
         self.current_hotkey_label = QLabel("Keine Funktion ausgewählt")
@@ -206,6 +210,11 @@ class SettingsDialog(QDialog):
         hotkey_buttons.addWidget(self.assign_hotkey_button); hotkey_buttons.addWidget(self.remove_hotkey_button); hotkey_buttons.addStretch(1); hotkey_buttons.addWidget(self.reset_hotkeys_button)
         hotkey_root.addLayout(hotkey_buttons)
         self.tabs.addTab(hotkey_page, "Hotkeys")
+
+        # Erst verbinden und auswählen, wenn alle Ziel-Widgets existieren.
+        self.hotkey_table.itemSelectionChanged.connect(self._hotkey_selection_changed)
+        if self.hotkey_table.rowCount():
+            self.hotkey_table.selectRow(0)
 
         self.status_label = QLabel("Bereit"); self.status_label.setWordWrap(True)
         root.addWidget(self.status_label)
@@ -372,6 +381,9 @@ class SettingsDialog(QDialog):
             self.hotkey_table.item(row, 1).setText(self._display_hotkey(self._pending_hotkeys.get(function, "")))
 
     def _hotkey_selection_changed(self) -> None:
+        # Qt kann die Auswahl bereits während des Dialogaufbaus melden.
+        if not hasattr(self, "current_hotkey_label"):
+            return
         items = self.hotkey_table.selectedItems()
         if not items:
             self._selected_function = None

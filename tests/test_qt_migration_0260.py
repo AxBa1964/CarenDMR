@@ -6,7 +6,7 @@ from carendmr.version import __version__
 
 
 def test_version_is_qt_migration_0265():
-    assert __version__ == "0.0.28.3"
+    assert __version__ == "0.1.2.1"
 
 
 def test_gui_argument_uses_qt_lazily():
@@ -37,16 +37,18 @@ def test_qt_ptt_remains_stoppable_during_transmit():
 def test_qt_f5_toggles_connection_and_uses_two_tg_fields():
     source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
     assert '"CONNECT": self._toggle_connection' in source
-    assert 'target_form.addRow("Aktuelle Talkgroup:", self.current_tg_label)' in source
-    assert 'target_form.addRow("Neue Talkgroup:", self.tg_edit)' in source
+    assert 'self.current_tg_label = QLabel(str(self.preferences.talkgroup))' in source
+    assert 'current_caption = QLabel("Aktuelle TG")' in source
+    assert 'target_layout.addWidget(QLabel("Neue Talkgroup")' in source
+    assert 'self.tg_edit = QLineEdit()' in source
     assert 'self._apply_pending_talkgroup()' in source
     assert 'QTimer.singleShot(0, self._focus_talkgroup)' in source
 
 
 def test_qt_timeslot_uses_radio_buttons():
     source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
-    assert 'self.ts1_radio = QRadioButton("Timeslot 1")' in source
-    assert 'self.ts2_radio = QRadioButton("Timeslot 2")' in source
+    assert 'self.ts1_radio = QRadioButton("TS 1")' in source
+    assert 'self.ts2_radio = QRadioButton("TS 2")' in source
     assert 'return int(text), 1 if self.ts1_radio.isChecked() else 2' in source
 
 

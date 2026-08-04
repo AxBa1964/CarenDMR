@@ -1,6 +1,6 @@
-from __future__ import annotations
+"""Zentrale Versionsinformation."""
 
-__version__ = "0.0.28.3"
+__version__ = "0.1.2.1"
 
 
 def get_version() -> str:

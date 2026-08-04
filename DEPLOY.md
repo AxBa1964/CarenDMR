@@ -1,4 +1,4 @@
-# CarenDMR 0.0.28.3 – Qt-Einstellungen Bedienkorrekturen
+# CarenDMR 0.1.2.1 – Design-System-Fix
 
 ## 1. Installation
 
@@ -11,22 +11,9 @@ python -m pip install -r requirements.txt
 python main.py --gui
 ```
 
-## 2. Betrieb prüfen
+## 2. Prüfung
 
-1. Fenster ohne Vollbild öffnen; alle Bedienelemente müssen erreichbar sein.
-2. F5/F6/F7, Empfang und Parrot unverändert prüfen.
-3. Mic-Gain und RX-Lautstärke im Betrieb prüfen; RX endet bei 100 %.
-4. Stumm und AGC prüfen.
-
-## 3. Datenbanken prüfen
-
-1. Einstellungen > Datenbanken öffnen.
-2. Kontaktdaten aktualisieren.
-3. Währenddessen muss direkt in der RadioID-Kachel „Kontaktdaten werden aktualisiert …“ stehen.
-4. Abschluss oder Fehler muss ebenfalls dort erscheinen.
-
-## 4. Codec prüfen
-
-1. Einstellungen > Codec / Decoder öffnen.
-2. Ein vorhandenes `plugins/vocoder_plugin.winnt.x86_64` muss automatisch erkannt werden.
-3. Bei manueller Zuordnung muss die Datei auch ohne `.dll` sichtbar sein.
+1. Einstellungen über `Strg+,` öffnen; in der Konsole darf kein Traceback erscheinen.
+2. Mit Tab auf Haupt- und Einstellungsreiter gehen. Der gelbe Rahmen liegt nur um den vollständigen Reiter, nicht zusätzlich um den Text.
+3. Betrieb prüfen: Statusanzeige ist klar nicht klickbar, Verbinden/Trennen klar als Button erkennbar. Beide Elemente sind rechts bündig und gleich breit.
+4. F5, F6, F7, Space, Empfang und Parrot unverändert prüfen.

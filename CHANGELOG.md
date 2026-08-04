@@ -1,3 +1,19 @@
+# CarenDMR 0.1.2.1 – Design-System-Fix
+
+- Initialisierungsfehler im Hotkey-Reiter beim Öffnen der Einstellungen behoben.
+- Native Fokusrechtecke direkt um Reitertexte entfernt; gelber Fokus bleibt um das vollständige Bedienelement.
+- Statusanzeige und Verbindungsbutton semantisch getrennt: Status flacher, Aktion höher, beide bündig und gleich breit.
+- Keine Änderung an Funklogik, Hotkeys, Tab-Reihenfolge oder QSO-Historie.
+
+# CarenDMR 0.1.1 – Theme Engine & Accessibility
+
+- Alle Qt-Farben und Grundstile zentral in `carendmr/ui_qt/theme.py`.
+- Dark Theme anwendungsweit auf Hauptfenster, Historie, Einstellungen und Dialoge angewendet.
+- Schwarz-auf-Schwarz-Darstellung beseitigt.
+- Kontrast für Text, Tabellen, Formulare, Gruppenfelder und deaktivierte Zustände erhöht.
+- Gelber, deutlich sichtbarer Fokusrahmen für Tastaturbedienung.
+- Bestehendes Layout, Tab-Reihenfolge, Hotkeys und Fachlogik unverändert.
+
 # CarenDMR 0.0.28.3 – Qt-Einstellungen Bedienkorrekturen
 
 - Betriebsseite wieder für normale Fenstergröße verdichtet.
