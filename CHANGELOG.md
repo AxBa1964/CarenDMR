@@ -1,3 +1,47 @@
+# CarenDMR 0.0.26.5 – Qt Stable Baseline
+
+- Radiobutton-Gruppen werden bereits beim Programmstart korrekt in den Tabpfad eingebunden.
+- Tab landet bei Timeslot und Rufart sofort auf dem aktuell ausgewählten Radiobutton.
+- Nach jeder Umschaltung folgt der Tabfokus weiterhin dem ausgewählten Wert.
+- Keine weiteren Funktions- oder Layoutänderungen.
+
+# CarenDMR 0.0.26.4 – Qt-Betrieb Stable Baseline
+
+- Enter aktiviert den aktuell fokussierten Button.
+- Leertaste aktiviert einen fokussierten Button statt global PTT auszulösen.
+- Außerhalb eines fokussierten Buttons bleibt Leertaste der PTT-Toggle.
+- Enter-Sonderbehandlung im TG-Eingabefeld entfernt.
+- Keine weiteren Funktions- oder Layoutänderungen.
+
+# CarenDMR 0.0.26.3 – F5-Verbindung und Talkgroup-Übernahme
+
+- F5 toggelt Verbinden und Trennen.
+- Beim Verbinden wird eine eingetragene neue Talkgroup zuerst übernommen.
+- Nach dem Trennen springt der Fokus in „Neue Talkgroup“.
+- Enter übernimmt die neue Talkgroup und fokussiert „Verbinden“.
+- Timeslot 1 und 2 sind echte Radiobuttons; F6 schaltet sichtbar um.
+
+# CarenDMR 0.0.26.3 – Qt-Betrieb: Hotkeys und Zustände
+
+- F5 setzt den Fokus in das Feld **Neue Talkgroup**.
+- Zwei-Felder-Bedienung: aktuelle TG als Anzeige, neue TG als leeres Eingabefeld.
+- Enter übernimmt die neue TG und setzt den Fokus auf **Verbinden**.
+- F6 schaltet Timeslot 1/2 sichtbar um.
+- F7 schaltet Gruppenruf/Privatruf sichtbar um.
+- Nach TX setzt ein aktiver RX-Zustand Statusleiste und TX-Anzeige auf **Empfang aktiv** zurück.
+
+---
+
+# CarenDMR 0.0.26.0 – Qt-Migration, Stufe 1: funktionaler Betrieb
+
+- Neuaufbau auf Basis der stabilen 0.0.25.2.
+- Funktionaler Qt-Betrieb statt Accessibility-Mock.
+- Echte BrandMeister-, RX-, Audio-, AMBE- und PTT-Anbindung.
+- Desktop-PTT als Toggle per Schaltfläche oder Leertaste.
+- Tkinter bleibt mit `--gui-tk` als Rückfallebene erhalten.
+- Keine eigene TTS und keine Screenreader-Sonderlogik in dieser Stufe.
+- 279 Tests und 20 Untertests bestanden.
+
 # 0.0.25.2
 
 - TTS- und Fokus-Engine V2 mit dauerhaftem Windows-SAPI-Prozess.

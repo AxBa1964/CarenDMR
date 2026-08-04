@@ -1,3 +1,9 @@
+# CarenDMR
+
+**Aktueller Entwicklungsstand: 0.0.26.5 – Qt Stable Baseline**
+
+Die neue Qt-Oberfläche portiert zunächst ausschließlich den echten Funkbetrieb. Sie wird mit `python main.py --gui` gestartet. Die stabile Tkinter-Oberfläche bleibt mit `python main.py --gui-tk` verfügbar. Accessibility-Sonderlogik folgt erst nach technischer Gleichwertigkeit.
+
 # CarenDMR 0.0.25.2
 
 Aktueller Entwicklungsstand mit TTS- und Fokus-Engine V2. Fokusmeldungen im Betrieb werden vollständig und seriell gesprochen; der Tab-Kreis bleibt auf den vier Betriebsfeldern begrenzt.

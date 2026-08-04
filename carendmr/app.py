@@ -23,9 +23,14 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Barrierefreier BrandMeister-DMR-Client in Entwicklung.",
     )
     parser.add_argument(
-        "--gui",
+        "--gui", "--gui-qt",
         action="store_true",
-        help="öffnet das barrierefreie Read-only-Hauptfenster",
+        help="öffnet die neue funktionale Qt-Betriebsoberfläche",
+    )
+    parser.add_argument(
+        "--gui-tk",
+        action="store_true",
+        help="öffnet die stabile Tkinter-Oberfläche als Rückfallebene",
     )
     parser.add_argument(
         "--listen",
@@ -154,7 +159,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     project_root = Path(__file__).resolve().parent.parent
 
-    if args.gui and args.listen:
+    if (args.gui or args.gui_tk) and args.listen:
         print("--gui und --listen können nicht gleichzeitig verwendet werden.", file=sys.stderr)
         return 2
     if args.duration is not None and not args.listen:
@@ -168,8 +173,11 @@ def run(argv: Sequence[str] | None = None) -> int:
         return 2
     if args.listen:
         return _run_live_listen(project_root, seconds=args.duration)
-    if args.gui:
+    if args.gui_tk:
         from carendmr.ui import run_gui
+        return run_gui(project_root)
+    if args.gui:
+        from carendmr.ui_qt import run_gui
         return run_gui(project_root)
 
     return _show_status(project_root)
