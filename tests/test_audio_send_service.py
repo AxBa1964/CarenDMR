@@ -91,15 +91,17 @@ class AudioSendServiceTests(unittest.TestCase):
         self.service.run_loopback(duration_seconds=0.1)
         self.assertEqual(["mute", "unmute"], self.mute_events)
 
-    def test_gain_is_applied_clipped_and_persisted(self):
-        self.service.set_gain_percent(200)
+    def test_gain_is_limited_to_one_hundred_percent_and_persisted(self):
+        self.service.set_gain_percent(100)
         self.service.save_settings()
         self.backend.record_input = lambda **kwargs: np.array([[0.75], [-0.75]], dtype=np.float32)
         result = self.service.record_test(duration_seconds=0.1)
-        self.assertEqual(200, result.gain_percent)
-        np.testing.assert_allclose(self.service._recording[:, 0], [1.0, -1.0])
+        self.assertEqual(100, result.gain_percent)
+        np.testing.assert_allclose(self.service._recording[:, 0], [0.75, -0.75])
         reloaded = AudioSendService(self.root, backend=self.backend)
-        self.assertEqual(200, reloaded.gain_percent)
+        self.assertEqual(100, reloaded.gain_percent)
+        with self.assertRaisesRegex(ValueError, "zwischen 0 und 100"):
+            self.service.set_gain_percent(101)
 
     def test_receive_audio_is_restored_after_recording_error(self):
         def fail(**kwargs):
@@ -126,7 +128,7 @@ class AudioSendServiceTests(unittest.TestCase):
         self.assertFalse(reloaded.agc_enabled)
 
     def test_gain_change_does_not_write_until_save(self):
-        self.service.set_gain_percent(150)
+        self.service.set_gain_percent(75)
         self.assertFalse((self.root / "config" / "audio_send.local.json").exists())
         self.service.save_settings()
         self.assertTrue((self.root / "config" / "audio_send.local.json").exists())

@@ -42,3 +42,17 @@ Beispiel: „Kein Mikrofon erkannt. Senden ist nicht möglich. Empfang bleibt ak
 ## Abgrenzung
 
 Der DMR-Kern kennt weder GUI noch TTS. Er oder die Anwendungsschicht erzeugt fachliche Ereignisse. Die Ausgabekanäle entscheiden über Darstellung und Sprachausgabe.
+
+## Framework V1 ab 0.0.24.2
+
+Jedes Ereignis trägt zusätzlich einen Bedienkontext und optionale strukturierte Metadaten. Der Informationsmanager führt eine begrenzte Historie und misst seine eigene Verteilungslaufzeit. Die Messung umfasst den visuellen Kanal, den späteren Sprachkanal und den Logkanal. Warnschwellen liegen bei 5, 20 und 50 Millisekunden.
+
+Caren Assist beschreibt nicht die grafische Oberfläche, sondern den aktuellen Betriebszustand und die nächste sinnvolle Handlung. Die Desktop-GUI und die spätere Raspberry-Pi-Bedienung dürfen unterschiedliche Darstellungen verwenden, beruhen aber auf denselben fachlichen Ereignissen.
+
+## Diagnosegrundsatz
+
+Jede neue Kernkomponente erhält ihre Diagnose- und Performance-Messpunkte bereits in der ersten Implementierung. Im Normalbetrieb verbleiben Messungen in einem begrenzten Ringpuffer; eine spätere Dateiausgabe wird nur im aktivierten Diagnosemodus erfolgen.
+
+## Audio-Prioritätsregel ab 0.0.24.3.2
+
+Der Funkverkehr hat Vorrang vor Assistenzmeldungen. TX beginnt erst nach der kurzen Ansage „Senden“. Nach Loslassen der PTT wird „Empfang“ unmittelbar gesprochen; bereits eintreffendes Parrot-Audio wird bis zum Ende dieser Ansage gepuffert. Technische Verbindungs-Zwischenzustände werden bei einem Zielwechsel zu einer kompakten Betriebsansage verdichtet.

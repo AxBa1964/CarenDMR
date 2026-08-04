@@ -25,7 +25,7 @@ class RadioUi021Tests(unittest.TestCase):
     def test_connection_toggle_and_call_type(self):
         self.assertIn('text="CONNECT"', self.source)
         self.assertIn('text="DISCONNECT"', self.source)
-        self.assertIn('values=("Gruppe", "Privat")', self.source)
+        self.assertIn('for row, value in enumerate(("Gruppe", "Privat"))', self.source)
         self.assertIn('text="Stumm (Strg+M)"', self.source)
 
     def test_operation_hides_developer_status_texts(self):

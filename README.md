@@ -1,8 +1,24 @@
+# CarenDMR 0.0.25.2
+
+Aktueller Entwicklungsstand mit TTS- und Fokus-Engine V2. Fokusmeldungen im Betrieb werden vollständig und seriell gesprochen; der Tab-Kreis bleibt auf den vier Betriebsfeldern begrenzt.
+
+# CarenDMR 0.0.25.1.2
+
+**Workflow V1:** Der tägliche Bedienablauf wurde finalisiert: TG direkt überschreiben, Tab auf aktive Auswahl, CONNECT nach Rufart sowie RX erst nach vollständiger Connect-Ansage.
+
+# CarenDMR 0.0.25.0
+
+**State Machine V1:** Eine zentrale Betriebszustandsmaschine steuert Connect, RX, PTT, TX und die Editierbarkeit der Betriebsparameter. Dadurch kann die GUI nicht mehr „Verbunden“ anzeigen, während PTT weiterhin gesperrt ist.
+
+# CarenDMR 0.0.24.6.4
+
+# CarenDMR 0.0.24.3.2
+
 # CarenDMR
 
-**0.0.24.0:** Audio-Diagnose speichert pro TX das CarenDMR-Eingangssignal mit 16 kHz und das 8-kHz-Signal direkt vor AMBE.
+**0.0.24.3.1:** Audio-Diagnose speichert pro TX das CarenDMR-Eingangssignal mit 16 kHz und das 8-kHz-Signal direkt vor AMBE.
 
-**Aktueller Stand: 0.0.24.0** – moderne Betriebsseite, QSO-Historie und kompakte kategorisierte Einstellungen.
+**Aktueller Stand: 0.0.24.3.1** – moderne Betriebsseite, QSO-Historie und kompakte kategorisierte Einstellungen.
 
 Aktueller Entwicklungsstand: **0.0.22.1**
 
@@ -154,8 +170,8 @@ Die Betriebsseite verwendet ein modernes dunkles Kartenlayout. Alle vorhandenen 
 
 ## TX/RX-Zeitmessung
 
-Version 0.0.24.0 schreibt bei jedem Sendedurchgang eine Millisekunden-Zeitleiste nach `logs/tx_rx_timing.log`. Die Datei dient ausschließlich dazu, den langsamen Abschnitt zwischen RX, TX und erneutem RX eindeutig zu bestimmen.
+Version 0.0.24.3.1 schreibt bei jedem Sendedurchgang eine Millisekunden-Zeitleiste nach `logs/tx_rx_timing.log`. Die Datei dient ausschließlich dazu, den langsamen Abschnitt zwischen RX, TX und erneutem RX eindeutig zu bestimmen.
 
-### Parrot-RX-Audiodiagnose ab 0.0.24.0
+### Parrot-RX-Audiodiagnose ab 0.0.24.3.1
 
 Bei einem Parrot-Test auf 9990 / TS2 / Privat speichert CarenDMR zusätzlich das empfangene, nach AMBE decodierte Echo als `logs/audio_debug/rx_..._03_parrot_nach_ambe_8k.wav`. Zusammen mit den beiden TX-WAV-Dateien lässt sich der komplette Signalweg vergleichen.

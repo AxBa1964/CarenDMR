@@ -42,7 +42,24 @@ class ConnectionManager:
         return self._operation_lock.locked() or self.receive_service.is_switching
 
     def connect(self, talkgroup: int, timeslot: int, call_type: str = "group") -> bool:
+        """Stellt einen definierten Empfangszustand her.
+
+        Ein noch laufender oder nur teilweise beendeter RX-Thread wird zuerst
+        vollständig gestoppt. Dadurch können GUI- und RX-Zustand nach schnellen
+        Seitenwechseln oder mehrfachen Connect-Aktionen nicht auseinanderlaufen.
+        """
         with self._operation_lock:
+            if self.receive_service.is_running:
+                same_target = (
+                    self.receive_service.target_talkgroup == int(talkgroup)
+                    and self.receive_service.target_timeslot == int(timeslot)
+                    and self.receive_service.target_call_type == str(call_type).strip().lower()
+                )
+                if same_target:
+                    return False
+                self.receive_service.stop()
+                if not self.receive_service.wait(self.receive_stop_timeout):
+                    raise RuntimeError("Der laufende Empfang konnte nicht rechtzeitig beendet werden.")
             self.receive_service.set_receive_target(talkgroup, timeslot, call_type)
             return self.receive_service.start()
 
@@ -59,7 +76,7 @@ class ConnectionManager:
             # Rückwärtskompatibilität für Test-/Mock-Dienste ohne Rufart-Parameter.
             return self.receive_service.switch_receive_target(talkgroup, timeslot)
 
-    def run_parrot_hold_to_talk(self, stop_event: Event, *, level_callback: Callable[[float], None] | None = None, optimize: bool = True):
+    def run_parrot_hold_to_talk(self, stop_event: Event, *, level_callback: Callable[[float], None] | None = None, optimize: bool = True, rx_playback_gate: Event | None = None):
         with self._operation_lock:
             resume_receive=self.receive_service.is_running
             talkgroup=self.receive_service.target_talkgroup; timeslot=self.receive_service.target_timeslot
@@ -96,7 +113,7 @@ class ConnectionManager:
                 timing_mark("RX_BEENDET")
             try:
                 timing_mark("TX_LIVE_VERARBEITUNG_START")
-                return self.parrot_service.transmit_live_capture(capture,optimize=optimize,started_at=started_at,destination_id=talkgroup,timeslot=timeslot,call_type=call_type)
+                return self.parrot_service.transmit_live_capture(capture,optimize=optimize,started_at=started_at,destination_id=talkgroup,timeslot=timeslot,call_type=call_type,rx_playback_gate=rx_playback_gate)
             finally:
                 if resume_receive:
                     try:

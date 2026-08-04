@@ -11,7 +11,7 @@ from carendmr.brandmeister.dynamic_subscription import validate_receive_target
 from carendmr.brandmeister.listen import (
     LiveCallActivity, LiveListenProgress, LiveListenResult, listen_receive_only,
 )
-from carendmr.domain import ConnectionState, EventLevel, ReceiveStatistics
+from carendmr.domain import (ConnectionState, EventLevel, ReceiveStatistics, InformationCategory, InformationPriority)
 from carendmr.diagnostics.tx_rx_timing import mark as timing_mark
 
 from .contact_service import ContactService
@@ -233,10 +233,23 @@ class ReceiveService:
             return
         self._connected_event_published = True
         timing_mark("RX_VERBUNDEN_STATUS", "Direkt nach BM-Anmeldung und Zielaktivierung")
-        self.events.publish("Anmeldung bei BrandMeister erfolgreich.")
         self.events.publish(
-            f"Empfang auf Talkgroup {self._target_talkgroup}, "
-            f"Timeslot {self._target_timeslot} gestartet."
+            "Anmeldung bei BrandMeister erfolgreich.",
+            code="connection.connected",
+            long_text="Mit BrandMeister verbunden.",
+            category=InformationCategory.CONNECTION,
+            priority=InformationPriority.HIGH,
+        )
+        self.events.publish(
+            f"Empfang auf Talkgroup {self._target_talkgroup}, Timeslot {self._target_timeslot} gestartet.",
+            code="reception.active",
+            long_text=(
+                f"Empfang aktiv. Talkgroup {self._target_talkgroup}, "
+                f"Timeslot {self._target_timeslot}, "
+                f"{'Privatruf' if self._target_call_type == 'private' else 'Gruppenruf'}."
+            ),
+            category=InformationCategory.RECEPTION,
+            priority=InformationPriority.HIGH,
         )
         self.state_store.update(
             connection=ConnectionState.RECEIVING,
@@ -295,7 +308,13 @@ class ReceiveService:
                 talkgroup=self._target_talkgroup,
                 timeslot=self._target_timeslot,
             )
-            self.events.publish("Verbindung zu BrandMeister wird hergestellt.")
+            self.events.publish(
+                "Verbindung zu BrandMeister wird hergestellt.",
+                code="connection.connecting",
+                long_text="Verbindung zu BrandMeister wird hergestellt. Bitte warten.",
+                category=InformationCategory.CONNECTION,
+                priority=InformationPriority.HIGH,
+            )
             timing_mark("RX_VERBINDUNGSAUFBAU_START", f"{config.host}:{config.port}")
             result = self._listen(
                 config,
@@ -326,7 +345,14 @@ class ReceiveService:
             )
             self.events.publish(
                 f"Empfang abgebrochen: {type(error).__name__}: {error}",
-                EventLevel.ERROR,
+                EventLevel.ERROR, code="connection.error",
+                long_text=(
+                    "Die Verbindung zu BrandMeister wurde wegen eines Fehlers beendet. "
+                    "Empfang und Senden sind derzeit nicht möglich."
+                ),
+                category=InformationCategory.ERROR,
+                priority=InformationPriority.ERROR,
+                action_hint="Netzwerk und BrandMeister-Einstellungen prüfen und erneut verbinden.",
             )
 
     def _apply_result(self, result: LiveListenResult) -> None:
@@ -344,7 +370,13 @@ class ReceiveService:
             timing_mark("RX_SOCKET_AUDIO_GESCHLOSSEN")
             state = ConnectionState.DISCONNECTED
             message = "Empfang beendet"
-            self.events.publish("Empfang und Verbindung wurden sauber beendet.")
+            self.events.publish(
+                "Empfang und Verbindung beendet.",
+                code="connection.disconnected",
+                long_text="Empfang und Verbindung zu BrandMeister wurden beendet.",
+                category=InformationCategory.CONNECTION,
+                priority=InformationPriority.HIGH,
+            )
         else:
             state = ConnectionState.ERROR
             message = "Empfang konnte nicht sauber beendet werden"

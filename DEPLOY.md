@@ -1,8 +1,104 @@
-# Deployment CarenDMR 0.0.24.0
+# CarenDMR 0.0.25.2 – TTS- und Fokus-Engine V2
 
-**0.0.24.0:** Reine Audio-Diagnose mit WAV-Ausgabe vor und nach der 16-kHz-zu-8-kHz-Aufbereitung; Funkverhalten unverändert.
+## Neu in dieser Version
 
-Dieses Dokument ist die verbindliche chronologische Anleitung für Version 0.0.24.0. Lokale Zugangsdaten, Datenbanken und externe Vocoder-Plugins dürfen nicht committed oder in das Release-ZIP aufgenommen werden.
+- Windows-SAPI wird nicht mehr für jeden Satz neu gestartet, sondern bleibt als ein dauerhafter Sprachprozess geöffnet.
+- Satzanfänge wie „Timeslot“ und „Rufart“ dürfen dadurch nicht mehr abgeschnitten werden.
+- Fokusmeldungen sind atomare vollständige Sätze:
+  - „Neue Talkgroup.“
+  - „Timeslot eins.“ / „Timeslot zwei.“
+  - „Rufart Gruppe.“ / „Rufart Privat.“
+  - „Connect.“
+- Schnelles Tabben verwirft nur noch wartende Fokusmeldungen und behält die zuletzt erreichte Position.
+- Der Tab-Kreis im Betrieb ist geschlossen:
+  - Neue TG → aktiver Timeslot → aktive Rufart → Connect → Neue TG.
+- Hauptreiter werden über diesen Tab-Kreis nicht mehr erreicht.
+- DMR-, Audio-, Verbindungs- und State-Machine-Kern sind unverändert.
+
+## Praxisprüfung
+
+1. Programm starten und Caren Assist aktivieren.
+2. Im getrennten Zustand mehrfach langsam mit Tab durch Neue TG, Timeslot, Rufart und Connect gehen.
+3. Prüfen, dass jede Meldung vollständig gesprochen wird.
+4. Schnell mehrfach Tab drücken und prüfen, dass keine Wortfragmente entstehen.
+5. Nach Connect erneut Tab drücken und prüfen, dass der Fokus im Betriebsbereich bleibt.
+6. Parrot sowie normales TX/RX stichprobenartig prüfen.
+
+# CarenDMR 0.0.25.1.2
+
+## Neu in dieser Version
+
+- Im Bereich Betrieb wird die aktuelle Talkgroup nur noch angezeigt.
+- Darunter steht ein separates, beim Start leeres Eingabefeld für eine neue Talkgroup.
+- Bleibt „Neue TG“ leer, wird beim Verbinden die aktuelle Talkgroup verwendet.
+- Nach erfolgreichem Verbinden wird das Feld „Neue TG“ wieder geleert.
+- Beim Tab auf Timeslot wird vollständig „Timeslot eins“ oder „Timeslot zwei“ gesprochen.
+- Beim Tab auf Rufart wird vollständig „Rufart Gruppe“ oder „Rufart Privat“ gesprochen.
+- Tab-Reihenfolge, Enter auf CONNECT und RX-Freigabe nach der vollständigen Connect-Ansage wurden nicht verändert.
+
+## Praxisprüfung
+
+1. Programm starten: aktuelle TG wird angezeigt, „Neue TG“ ist leer.
+2. Neue TG eintippen, Tab zu Timeslot und Rufart.
+3. Vollständige Ansagen prüfen.
+4. Tab zu CONNECT, Enter drücken.
+5. Prüfen, dass die neue TG aktiv wird und das Eingabefeld anschließend wieder leer ist.
+6. Erneut trennen und bei leerem Feld verbinden: die aktuelle TG muss weiterverwendet werden.
+
+
+# Neu in dieser Version – Workflow V1
+
+- Nach Disconnect wartet Caren Assist, bis „Verbindung getrennt“ vollständig gesprochen wurde.
+- Danach liegt der Fokus auf Talkgroup und der komplette bisherige Wert ist markiert.
+- Die erste eingegebene Ziffer ersetzt dadurch sofort die alte Talkgroup.
+- Tab-Reihenfolge im getrennten Zustand:
+  - Talkgroup
+  - aktiver Timeslot
+  - aktive Rufart
+  - CONNECT
+- Bei Timeslot und Rufart ist nur die aktuell gewählte Option Bestandteil der Tab-Reihenfolge.
+- Fokusansagen sind vollständig:
+  - „Timeslot eins“ oder „Timeslot zwei“
+  - „Rufart Gruppe“ oder „Rufart Privat“
+- Beim Connect wird die lokale RX-Wiedergabe stumm gehalten, bis die vollständige Connect-Ansage beendet ist.
+- Erst danach wird Empfangsaudio hörbar und der Fokus springt auf PTT.
+- Nicht mehr passende TTS-Meldungen werden bei Zustandswechseln verworfen.
+- DMR-, AMBE-, Netzwerk- und Live-TX-Pfad wurden nicht verändert.
+
+## Neu in dieser Version
+
+- Talkgroup wird beim Erhalt des Fokus vollständig markiert; die erste eingegebene Ziffer ersetzt den bisherigen Wert.
+- Beim Tab auf die aktive Timeslot-Auswahl spricht Caren Assist vollständig „Timeslot eins“ oder „Timeslot zwei“.
+- Beim Tab auf die aktive Rufart spricht Caren Assist vollständig „Rufart Gruppe“ oder „Rufart Privat“.
+- Der fokussierte CONNECT-Button kann mit Enter oder der Enter-Taste des Ziffernblocks ausgelöst werden.
+- Keine weiteren Änderungen an Workflow, DMR-, Audio- oder Netzwerkpfad.
+
+### Gezielter Praxistest
+
+1. Programm starten: Talkgroup muss vollständig markiert sein.
+2. Neue Talkgroup eintippen: alter Wert muss sofort ersetzt werden.
+3. Tab: vollständige Timeslot-Ansage prüfen.
+4. Tab: vollständige Rufart-Ansage prüfen.
+5. Tab auf CONNECT und Enter drücken: Verbindung muss starten.
+
+
+## Praxisprüfung
+
+1. Programm starten und verbinden.
+2. F5 drücken und auf die vollständige Meldung „Verbindung getrennt“ achten.
+3. Direkt eine neue TG eintippen. Der alte Wert muss ohne Backspace vollständig ersetzt werden.
+4. Tab drücken. Fokus und Ansage müssen auf dem aktuell aktiven Timeslot liegen.
+5. Timeslot mit 1/2 oder Pfeiltaste ändern. Die vollständige Ansage muss hörbar sein.
+6. Tab drücken. Fokus und Ansage müssen auf der aktuell aktiven Rufart liegen.
+7. Rufart mit G/P oder Pfeiltaste ändern. Die vollständige Ansage muss hörbar sein.
+8. Tab drücken. Fokus muss auf CONNECT liegen.
+9. Enter drücken. Die komplette Connect-Ansage muss zuerst beendet werden.
+10. Erst danach darf Audio der gewählten TG hörbar werden.
+11. Fokus muss anschließend auf PTT liegen; Space-TX prüfen.
+
+## Installation und Prüfung
+
+Dieses Dokument ist die verbindliche chronologische Anleitung für Version 0.0.25.1.2. Lokale Zugangsdaten, Datenbanken und externe Vocoder-Plugins dürfen nicht committed oder in das Release-ZIP aufgenommen werden.
 
 ## 1. Projektstand prüfen
 
@@ -73,7 +169,7 @@ python main.py --gui
 
 1. Im Reiter **Betrieb** TG und TS1 oder TS2 auswählen.
 2. **CONNECT** drücken und hörbaren Empfang abwarten.
-3. TG und Timeslot mehrfach mit **TG wechseln** wechseln.
+3. Im getrennten Zustand TG, Timeslot und Rufart ändern, anschließend erneut mit **CONNECT** verbinden.
 4. Prüfen, dass die aktuelle Station und das Ereignisprotokoll aktualisiert werden.
 5. Prüfen, dass es nur die Reiter **Betrieb**, **QSO-Historie** und **Einstellungen** gibt.
 
@@ -132,7 +228,7 @@ git add -A
 git status
 git diff --cached --check
 git diff --cached
-git commit -m "CarenDMR 0.0.24.0 TX Sprachqualitaet verbessert"
+git commit -m "CarenDMR 0.0.24.6.4 Stabilitätsfix Fokus PTT Verbindung"
 git push origin master
 ```
 

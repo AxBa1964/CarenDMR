@@ -32,14 +32,14 @@ class ParrotTestService:
     def start_live_hold_to_talk(self, stop_event: Event, *, level_callback: Callable[[float], None] | None = None):
         return self.audio_service.start_live_capture(stop_event, max_duration_seconds=float(self.audio_service.tx_safety_limit_seconds), level_callback=level_callback)
 
-    def transmit_live_capture(self, capture, *, started_at: str, destination_id: int, timeslot: int, call_type: str, optimize: bool = True):
+    def transmit_live_capture(self, capture, *, started_at: str, destination_id: int, timeslot: int, call_type: str, optimize: bool = True, rx_playback_gate: Event | None = None):
         plugin_path=self.encoder_service.configured_plugin_path
         if plugin_path is None: raise RuntimeError("Kein geprüftes DroidStar-Vocoder-Plugin konfiguriert.")
         self.encoder_service.verify_configured()
         config=BrandMeisterConfigStore(self.project_root / "config" / "brandmeister.local.json").load()
         is_parrot=destination_id==9990 and timeslot==2 and call_type=="private"
         with DroidStarPluginEncoder(self.project_root, plugin_path) as encoder:
-            result=execute_live_voice_once(config,destination_id=destination_id,timeslot=timeslot,call_type=DmrdCallType.PRIVATE if call_type=="private" else DmrdCallType.GROUP,pcm_chunks=capture.chunks(),encoder=encoder,wait_for_parrot_echo=is_parrot,lead_in_seconds=TX_LEAD_IN_SECONDS,rx_debug_dir=(self.project_root / "logs" / "audio_debug") if self.audio_service.audio_debug_wav_enabled else None)
+            result=execute_live_voice_once(config,destination_id=destination_id,timeslot=timeslot,call_type=DmrdCallType.PRIVATE if call_type=="private" else DmrdCallType.GROUP,pcm_chunks=capture.chunks(),encoder=encoder,wait_for_parrot_echo=is_parrot,lead_in_seconds=TX_LEAD_IN_SECONDS,rx_debug_dir=(self.project_root / "logs" / "audio_debug") if self.audio_service.audio_debug_wav_enabled else None,rx_playback_gate=rx_playback_gate)
         duration=capture.duration_seconds
         if duration < 0.20: raise RuntimeError("Die TX-Taste wurde zu kurz gedrückt; es wurde nichts gesendet.")
         self.history.add(TransmitHistoryEntry(started_at=started_at,duration_seconds=duration,destination_id=destination_id,timeslot=timeslot,call_type="Privatruf" if call_type=="private" else "Gruppenruf",echo_received=result.echo_received,safety_limit_reached=capture.safety_limit_reached,optimizer_enabled=optimize))

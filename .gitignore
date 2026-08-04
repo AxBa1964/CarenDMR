@@ -1,45 +1,16 @@
-# Python
+.venv/
+venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
-.venv/
-venv/
-
-# Logs
 logs/
-
-# Build / Release
+data/
+plugins/
+release/
 build/
 dist/
-release/
 *.zip
-*.spec
-native/libcarendmr_mbe.dylib
-native/libcarendmr_mbe.so
-
-# IDE
-.vscode/
-.idea/
-
-# Windows
-Thumbs.db
-Desktop.ini
-
-# Lokale Konfiguration
-config/config.local.json
-config/audio.local.json
-config/network.local.json
-config/network.example.json
-config/brandmeister.local.json
-
-# Alle lokalen Zugangsdaten und Geräteeinstellungen
-config/*.local.json
-
-native/carendmr_mbe.dll
-
-# Lokal heruntergeladene RadioID-Kontaktdaten
-data/
-config/encoder.local.json
-native/carendmr_vocoder_bridge.dll
-native/libcarendmr_vocoder_bridge.so
-native/libcarendmr_vocoder_bridge.dylib
+*.local.json
+*.dll
+*.so
+*.dylib

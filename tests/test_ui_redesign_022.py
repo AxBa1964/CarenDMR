@@ -11,7 +11,8 @@ class UiRedesign022Tests(unittest.TestCase):
         cls.source = (Path(__file__).parents[1] / "carendmr" / "ui" / "main_window.py").read_text(encoding="utf-8")
 
     def test_operation_uses_new_radio_dashboard_terms(self):
-        self.assertIn('text="TG wechseln"', self.source)
+        self.assertNotIn('text="TG wechseln"', self.source)
+        self.assertIn('text="CONNECT"', self.source)
         self.assertIn('text="FUNKSTEUERUNG"', self.source)
         self.assertIn('text="EREIGNISSE"', self.source)
         self.assertIn('text="TX AUS\\nZum Senden drücken"', self.source)

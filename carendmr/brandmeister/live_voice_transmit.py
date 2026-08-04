@@ -88,7 +88,7 @@ def execute_live_voice_once(
     wait_for_parrot_echo: bool = False, lead_in_seconds: float = 0.240,
     client_factory=BrandMeisterClient, output_factory=BufferedPcmOutput,
     decoder_factory=NativeMbeReceiveVocoder, monotonic=time.monotonic, sleep=time.sleep,
-    rx_debug_dir: Path | None = None,
+    rx_debug_dir: Path | None = None, rx_playback_gate=None,
 ) -> VoiceTransmitResult:
     """Sendet PCM fortlaufend. Nach Ende des Iterators folgen nur Pad/Terminator."""
     source_id = config.dmr_id
@@ -112,6 +112,30 @@ def execute_live_voice_once(
     early_bursts = late_bursts = 0
     rx_debug_samples: list[int] = []
     rx_debug_path: Path | None = None
+    pending_rx_frames: list[tuple[int, ...]] = []
+
+    def play_rx_frame(frame) -> None:
+        nonlocal output_samples
+        samples = tuple(int(sample) for sample in frame)
+        if rx_playback_gate is not None and not rx_playback_gate.is_set():
+            pending_rx_frames.append(samples)
+            return
+        if pending_rx_frames:
+            for buffered in pending_rx_frames:
+                output.write(buffered); output_samples += len(buffered)
+                rx_debug_samples.extend(buffered)
+            pending_rx_frames.clear()
+        output.write(samples); output_samples += len(samples)
+        rx_debug_samples.extend(samples)
+
+    def flush_rx_frames() -> None:
+        if rx_playback_gate is not None:
+            rx_playback_gate.wait(timeout=3.0)
+        if output is not None:
+            for buffered in pending_rx_frames:
+                output.write(buffered)
+                rx_debug_samples.extend(buffered)
+            pending_rx_frames.clear()
 
     def send_packet(packet: DmrdPacket, *, paced: bool = True) -> None:
         nonlocal sent, voice, next_send, late_schedule_resets, early_bursts, late_bursts
@@ -286,8 +310,7 @@ def execute_live_voice_once(
                     continue
                 if packet.is_terminator_with_lc:
                     for frame in jitter.flush().frames:
-                        output.write(frame); output_samples += len(frame)
-                        rx_debug_samples.extend(int(sample) for sample in frame)
+                        play_rx_frame(frame)
                     echo_received = echo_voice > 0
                     timing_mark("PARROT_TERMINATOR_EMPFANGEN", f"VoiceBursts={echo_voice}")
                     break
@@ -301,8 +324,8 @@ def execute_live_voice_once(
                 except Exception:
                     decode_errors += 1; continue
                 for frame in jitter.push(packet.sequence, tuple(decoded)).frames:
-                    output.write(frame); output_samples += len(frame)
-                    rx_debug_samples.extend(int(sample) for sample in frame)
+                    play_rx_frame(frame)
+            flush_rx_frames()
             timed_out = not echo_received
             timing_mark("PARROT_ECHO_WARTE_ENDE", "Timeout" if timed_out else "Echo vollständig")
             if rx_debug_dir is not None and rx_debug_samples:

@@ -1,4 +1,137 @@
+# 0.0.25.2
+
+- TTS- und Fokus-Engine V2 mit dauerhaftem Windows-SAPI-Prozess.
+- Fokusmeldungen werden als vollständige atomare Sätze ausgegeben.
+- Schnelle Fokuswechsel werden auf die zuletzt erreichte Position reduziert.
+- Geschlossener Tab-Kreis im Betrieb: Neue TG → Timeslot → Rufart → Connect → Neue TG.
+- Keine Änderungen an DMR-, Audio-, Verbindungs- oder State-Machine-Kern.
+
+# 0.0.25.1.2
+
+- Talkgroup-Bedienung stabilisiert: aktuelle TG als Anzeige, separates leeres Feld „Neue TG“.
+- Neue TG wird nur bei Eingabe übernommen; leer verwendet weiterhin die aktuelle TG.
+- Fokusansagen für Timeslot und Rufart werden als vollständige, atomare Meldungen ausgegeben.
+- Tab-Reihenfolge, Enter-Connect und verzögerte RX-Freigabe bleiben unverändert.
+
+
+- Talkgroup wird beim Fokus vollständig markiert.
+- Fokusansagen für Timeslot und Rufart werden als vollständige Meldungen ausgegeben.
+- CONNECT ist per Enter und Ziffernblock-Enter auslösbar.
+- Keine weiteren Workflow- oder DMR-Änderungen.
+
+# 0.0.25.1
+
+- Workflow V1 für Trennen, Einstellen und Verbinden.
+- Talkgroup nach Disconnect vollständig markiert.
+- Tab springt nur auf aktiven Timeslot und aktive Rufart.
+- CONNECT folgt direkt nach Rufart.
+- RX-Wiedergabe erst nach vollständiger Connect-Ansage.
+- Disconnect-TTS wird vollständig beendet, bevor der Fokus auf Talkgroup gesetzt wird.
+- TTS-Warteschlange wird bei Zustandswechseln bereinigt.
+
+# 0.0.25.0
+
+- Zentrales `carendmr/ui/design_system.py` eingeführt.
+- Vier visuelle Elementklassen: Information, Eingabe, Auswahl und Aktion.
+- Einheitliche semantische Farbpalette, Schriften, Abstände und Fokusrahmen.
+- Talkgroup ist als helles Eingabefeld eindeutig erkennbar und im verbundenen Zustand sichtbar gesperrt.
+- Timeslot und Rufart besitzen klar unterscheidbare aktive, inaktive und gesperrte Zustände.
+- CONNECT/DISCONNECT und PTT nutzen einheitliche Aktionszustände mit Hover, Fokus und Deaktivierung.
+- Statusflächen reagieren nicht wie Schaltflächen.
+- TX-Kachel zeigt getrennt zusätzlich „Keine Verbindung“.
+- Serveradresse wird nur bei tatsächlicher Verbindung angezeigt.
+- Design-System-Regeln in `docs/DesignSystem.md` dokumentiert.
+
+# 0.0.24.6.5
+
+- Zentrale `RadioStateMachine` mit den Zuständen `DISCONNECTED`, `CONNECTING`, `CONNECTED`, `TRANSMITTING`, `DISCONNECTING` und `ERROR`.
+- PTT-Freigabe, CONNECT/DISCONNECT und Editierbarkeit von TG, TS und Rufart werden nur noch aus diesem Zustand abgeleitet.
+- Nach erfolgreichem Connect wird die TX-Taste zuverlässig freigegeben.
+- TX-Start und TX-Ende synchronisieren denselben zentralen Betriebszustand.
+- Technische RX-Zustände können die State Machine nach Thread-Ende oder Fehler wieder an die Realität angleichen.
+- Regressionstests für erlaubte und verbotene Zustandswechsel ergänzt.
+
+# 0.0.24.6.4
+
+- TG-Wechsel-Schaltfläche aus dem Betriebsbereich entfernt.
+- Talkgroup, Timeslot und Rufart sind nur im getrennten Zustand editierbar.
+- Nach erfolgreichem Connect springt der Fokus auf PTT.
+- Nach Disconnect ist PTT gesperrt und der Fokus springt auf Talkgroup.
+- Interne BrandMeister-RX-Wiederanmeldungen nach TX bleiben sprachlich stumm.
+- Talkgroups werden durch Caren Assist überall ziffernweise gesprochen.
+
+# 0.0.24.6.3
+
+- Fokusumrandung deutlich verstärkt.
+- PTT global und unabhängig von Reiter/Fokus sicher beendet.
+- TX-Taste nach Sendestart wieder bedienbar.
+- Reiterwechsel und Programmende lösen sicheren TX-Abbruch aus.
+- ConnectionManager bereinigt stale RX-Zustände vor Connect.
+- Verbindungsfehler werden in GUI und Ereignislog abgefangen.
+- Regressionstests für Fokus, PTT und stale RX ergänzt.
+
 # Changelog
+
+## 0.0.24.6.1
+
+- Lokaler 10-Sekunden-Mikrofontest ohne Funkübertragung.
+- Live-Anzeige von TX-Pegel, Peak und Bewertung während der Mic-Gain-Kalibrierung.
+- Talkgroup-Eingabe auf Ziffern begrenzt.
+- Reiterwechsel beendet eine laufende PTT sicher.
+
+
+## 0.0.24.5
+Qualitätssprint für kurze Sprachmeldungen, vereinfachten F2-Ablauf und zuverlässige Connect-/Disconnect-Audiofolge.
+
+- F2 öffnet Betrieb und fokussiert direkt die Talkgroup; der zusätzliche Assistentendialog entfällt.
+- Fokusmeldungen wurden auf Feldname und Wert verkürzt.
+- F3 verwirft ausstehende Fokusmeldungen und spricht ausschließlich den Betriebszustand.
+- F5 hält RX bis zum Ende der vollständigen Verbindungsansage gesperrt.
+- TG-/TS-/Rufart-Wechsel setzt die RX-Sperre vor Beginn des technischen Wechsels.
+- Nach Disconnect wird erst nach beendetem RX-Abbau „Verbindung getrennt“ gesprochen.
+
+Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurierbaren Bedienfunktionen, Fokusansagen und Kontext-Hilfe.
+
+# 0.0.24.3.2 – Audio Manager V1
+
+- Funk-Audio und Caren Assist werden erstmals koordiniert.
+- Vor TX spricht Caren Assist kurz „Senden“; die Mikrofonaufnahme startet erst nach Ende der Ansage plus 150 ms Reserve.
+- Nach TX spricht Caren Assist unmittelbar „Empfang“.
+- Parrot-RX-Audio wird bis zum Ende der kurzen Empfangsansage gepuffert und anschließend vollständig wiedergegeben.
+- Technische Zwischenmeldungen beim TG-Wechsel werden zu einer kompakten Betriebsansage zusammengefasst.
+- Veraltete TTS-Warteschlangeneinträge werden vor TX/RX-Ansagen verworfen.
+- DMR-, AMBE- und TX-Timingkern bleiben unverändert.
+
+# 0.0.24.3.1 – Caren Assist V1 und letzter Betriebszustand
+
+- Erste abschaltbare, lokale Sprachausgabe für wichtige Betriebszustände.
+- TTS läuft über eine eigene Queue und blockiert weder GUI noch DMR-Kern.
+- Letzte Talkgroup, Timeslot und Rufart werden sofort lokal gespeichert und beim Start wiederhergestellt.
+- Sprachaktivierung wird ebenfalls lokal gespeichert.
+- Strukturierte Meldungen für Verbindung, Empfang, TX und Fehler ergänzt.
+- Keine Änderung am DMR-, AMBE- oder Audiokern.
+
+## 0.0.24.3.1 – Caren Assist Framework V1
+
+- Informationsereignisse um Bedienkontext und strukturierte Metadaten erweitert.
+- Getrennte Kanäle für GUI, spätere Sprachführung und Diagnose-/Logausgabe.
+- Ringpuffer-Historie mit letzter Meldung und letzten Ereignissen für spätere Wiederholfunktionen.
+- Leichtgewichtige Laufzeitdiagnose für Gesamtverteilung, GUI, Sprache und Logging.
+- Queue-Tiefe, Maximalwert und Warnschwellen bei 5, 20 und 50 Millisekunden.
+- Betrieb, QSO-Historie und Einstellungen setzen ihren Bedienkontext automatisch.
+- DMR-, Audio- und TX/RX-Kern unverändert.
+
+# Changelog
+
+## 0.0.24.1 – Bedienungsframework V1
+
+- Timeslot 1/2 als direkt erreichbare, vertikal angeordnete Auswahlschalter umgesetzt.
+- Rufart Gruppe/Privat als direkt erreichbare, vertikal angeordnete Auswahlschalter umgesetzt.
+- Aktive Auswahl wird nicht nur farblich, sondern zusätzlich mit Text und gedrücktem Zustand angezeigt.
+- Pfeiltasten hoch/runter wechseln innerhalb der beiden Auswahlgruppen.
+- Plattformneutrales Fokusmodell mit Steuerelement-ID, GUI-Name, Assist-Name und Rolle eingeführt.
+- Änderungen an Timeslot und Rufart erzeugen strukturierte Betriebsereignisse für GUI und spätere Sprachausgabe.
+- DMR-, Audio-, TX/RX- und Verbindungslogik unverändert.
 
 ## 0.0.24.0
 

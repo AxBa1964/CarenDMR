@@ -161,8 +161,8 @@ class AudioSendService:
 
     SAMPLE_RATE = 16_000
     CHANNELS = 1
-    MIN_GAIN_PERCENT = 25
-    MAX_GAIN_PERCENT = 200
+    MIN_GAIN_PERCENT = 0
+    MAX_GAIN_PERCENT = 100
     MAX_OUTPUT_VOLUME_PERCENT = 400
     MIN_TX_SAFETY_LIMIT_SECONDS = 5
     MAX_TX_SAFETY_LIMIT_SECONDS = 180
@@ -318,6 +318,55 @@ class AudioSendService:
         import numpy as np
         factor = self._gain_percent / 100.0
         return np.clip(recording * factor, -1.0, 1.0).astype("float32", copy=False)
+
+    def monitor_microphone_until(
+        self, stop_event: Event, *, max_duration_seconds: float = 10.0,
+        level_callback: Callable[[float], None] | None = None,
+    ) -> Path | None:
+        """Misst das Mikrofon lokal ohne DMR- oder Netzwerkübertragung.
+
+        Nur bei aktivierter WAV-Audiodiagnose wird das nach Mic Gain
+        verarbeitete 16-kHz-Monosignal zusätzlich gespeichert.
+        """
+        if not 0 < max_duration_seconds <= 30.0:
+            raise ValueError("Die Dauer des Mikrofontests muss zwischen 0 und 30 Sekunden liegen.")
+        if self._selected_input is None:
+            self.microphones()
+        if self._selected_input is None:
+            raise RuntimeError("Es wurde kein Mikrofon gefunden.")
+
+        debug_samples: list[int] = []
+
+        def consume(block) -> None:
+            if not self._audio_debug_wav_enabled:
+                return
+            import numpy as np
+            mono = np.asarray(block, dtype=np.float32).reshape(-1)
+            if not mono.size:
+                return
+            adjusted = np.clip(mono * (self._gain_percent / 100.0), -1.0, 1.0)
+            pcm = np.clip(np.rint(adjusted * 32767.0), -32768, 32767).astype(np.int16)
+            debug_samples.extend(int(value) for value in pcm)
+
+        def report(level: float) -> None:
+            adjusted = max(0.0, min(100.0, float(level) * (self._gain_percent / 100.0)))
+            if level_callback is not None:
+                level_callback(adjusted)
+
+        self.backend.stream_input_blocks_until(
+            input_index=self._selected_input.index, stop_event=stop_event,
+            max_duration_seconds=max_duration_seconds, sample_rate=self.SAMPLE_RATE,
+            channels=self.CHANNELS, block_callback=consume, level_callback=report,
+        )
+        if not self._audio_debug_wav_enabled or not debug_samples:
+            return None
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        path = self.project_root / "logs" / "audio_debug" / (
+            f"mic_test_{stamp}_gain_{self._gain_percent}.wav"
+        )
+        LivePcmCapture._write_mono_pcm16_wav(path, self.SAMPLE_RATE, debug_samples)
+        timing_mark("MIC_TEST_AUDIO_DEBUG_WAV", str(path))
+        return path
 
     def record_test(self, *, duration_seconds: float = 5.0, level_callback: Callable[[float], None] | None = None) -> MicrophoneDiagnostics:
         if duration_seconds <= 0:
