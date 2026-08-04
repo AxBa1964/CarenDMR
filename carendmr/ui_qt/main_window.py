@@ -11,11 +11,11 @@ from pathlib import Path
 from threading import Event, Thread
 
 from PySide6.QtCore import QRegularExpression, QTimer, Qt
-from PySide6.QtGui import QCloseEvent, QKeySequence, QRegularExpressionValidator, QShortcut
+from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QRegularExpressionValidator, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractButton, QButtonGroup, QFormLayout, QGroupBox, QHBoxLayout,
     QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QRadioButton,
-    QStatusBar, QVBoxLayout, QWidget,
+    QStatusBar, QTabWidget, QVBoxLayout, QWidget, QSlider, QCheckBox, QGridLayout,
 )
 
 from carendmr.application import (
@@ -25,6 +25,9 @@ from carendmr.application import (
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.domain import ApplicationState, ConnectionState
 from carendmr.version import __version__
+from carendmr.accessibility.hotkeys import HotkeyManager
+from carendmr.ui_qt.settings_dialog import SettingsDialog
+from carendmr.ui_qt.history_widget import QsoHistoryWidget
 
 
 class MainWindow(QMainWindow):
@@ -57,6 +60,9 @@ class MainWindow(QMainWindow):
         self._tx_stop_event: Event | None = None
         self._tx_active = False
         self._encoder_ready = False
+        self._settings_dialog: SettingsDialog | None = None
+        self.hotkey_manager = HotkeyManager(self.project_root / "config" / "hotkeys.local.json")
+        self._shortcuts: list[QShortcut] = []
 
         self._build_ui()
         self._bind_shortcuts()
@@ -70,10 +76,11 @@ class MainWindow(QMainWindow):
         self._apply_state(self.receive_service.state_store.get())
 
     def _build_ui(self) -> None:
-        central = QWidget(self)
-        root = QVBoxLayout(central)
-        root.setContentsMargins(16, 16, 16, 16)
-        root.setSpacing(12)
+        self.tabs = QTabWidget(self)
+        operation_page = QWidget(self.tabs)
+        root = QVBoxLayout(operation_page)
+        root.setContentsMargins(12, 10, 12, 10)
+        root.setSpacing(7)
 
         target_box = QGroupBox("Funkziel")
         target_form = QFormLayout(target_box)
@@ -133,20 +140,69 @@ class MainWindow(QMainWindow):
         station_form = QFormLayout(station_box)
         self.callsign_label = QLabel("Nicht bekannt")
         self.name_label = QLabel("Nicht bekannt")
+        self.location_label = QLabel("Nicht bekannt")
+        self.country_label = QLabel("Nicht bekannt")
         self.dmr_id_label = QLabel("Kein aktiver Sprecher")
         self.target_label = QLabel("–")
         self.duration_label = QLabel("0 Sekunden")
+        self.qso_status_label = QLabel("Keine Station aktiv")
         station_form.addRow("Rufzeichen:", self.callsign_label)
         station_form.addRow("Name:", self.name_label)
+        station_form.addRow("Ort/Region:", self.location_label)
+        station_form.addRow("Land:", self.country_label)
         station_form.addRow("DMR-ID:", self.dmr_id_label)
         station_form.addRow("Ziel:", self.target_label)
         station_form.addRow("Sprechdauer:", self.duration_label)
+        station_form.addRow("QSO-Status:", self.qso_status_label)
         root.addWidget(station_box)
+
+        info_box = QGroupBox("Betriebsinformationen")
+        info_form = QFormLayout(info_box)
+        self.audio_status_label = QLabel("Audio nicht aktiv")
+        self.statistics_label = QLabel("0 Datagramme, 0 Sprachbursts, 0 Decodierfehler")
+        self.last_event_label = QLabel("Bereit")
+        self.last_event_label.setWordWrap(True)
+        info_form.addRow("Audio:", self.audio_status_label)
+        info_form.addRow("Empfangsstatistik:", self.statistics_label)
+        info_form.addRow("Letztes Ereignis:", self.last_event_label)
+        root.addWidget(info_box)
+
+        daily_box = QGroupBox("Audio im Betrieb")
+        daily_grid = QGridLayout(daily_box)
+        daily_grid.setContentsMargins(10, 6, 10, 6)
+        daily_grid.setHorizontalSpacing(10)
+        daily_grid.setVerticalSpacing(4)
+        self.operation_gain_slider = QSlider(Qt.Orientation.Horizontal)
+        self.operation_gain_slider.setRange(0, 100)
+        self.operation_gain_value = QLabel("100 %")
+        self.operation_gain_value.setMinimumWidth(48)
+        self.operation_volume_slider = QSlider(Qt.Orientation.Horizontal)
+        self.operation_volume_slider.setRange(0, 100)
+        self.operation_volume_value = QLabel("100 %")
+        self.operation_volume_value.setMinimumWidth(48)
+        self.operation_muted_check = QCheckBox("Empfang stumm")
+        self.operation_agc_check = QCheckBox("AGC aktiv")
+        self.operation_gain_slider.valueChanged.connect(self._operation_gain_changed)
+        self.operation_volume_slider.valueChanged.connect(self._operation_volume_changed)
+        self.operation_muted_check.toggled.connect(self._operation_muted_changed)
+        self.operation_agc_check.toggled.connect(self._operation_agc_changed)
+        daily_grid.addWidget(QLabel("Mic-Gain:"), 0, 0)
+        daily_grid.addWidget(self.operation_gain_slider, 0, 1)
+        daily_grid.addWidget(self.operation_gain_value, 0, 2)
+        daily_grid.addWidget(QLabel("RX-Lautstärke:"), 0, 3)
+        daily_grid.addWidget(self.operation_volume_slider, 0, 4)
+        daily_grid.addWidget(self.operation_volume_value, 0, 5)
+        daily_grid.addWidget(self.operation_muted_check, 1, 1, 1, 2)
+        daily_grid.addWidget(self.operation_agc_check, 1, 4, 1, 2)
+        daily_grid.setColumnStretch(1, 1)
+        daily_grid.setColumnStretch(4, 1)
+        root.addWidget(daily_box)
+        self._sync_operation_audio_controls()
 
         send_box = QGroupBox("Senden")
         send_layout = QVBoxLayout(send_box)
         self.ptt_button = QPushButton("PTT – Senden einschalten")
-        self.ptt_button.setMinimumHeight(64)
+        self.ptt_button.setMinimumHeight(52)
         self.ptt_button.clicked.connect(self._toggle_tx)
         self.tx_status = QLabel("Senden nicht aktiv")
         self.encoder_status = QLabel("AMBE-Encoder wird geprüft …")
@@ -156,17 +212,151 @@ class MainWindow(QMainWindow):
         root.addWidget(send_box)
         root.addStretch(1)
 
-        self.setCentralWidget(central)
+        self.tabs.addTab(operation_page, "Betrieb")
+        self.history_widget = QsoHistoryWidget(
+            self.receive_service.history,
+            self._show_status,
+            self._history_worked_changed,
+            self.tabs,
+        )
+        self.tabs.addTab(self.history_widget, "QSO-Historie")
+        self.tabs.currentChanged.connect(self._tab_changed)
+        self.setCentralWidget(self.tabs)
+        self._build_menu()
         self.setStatusBar(QStatusBar(self))
         self.statusBar().showMessage("Bereit")
 
+
+    def _show_status(self, message: str) -> None:
+        self.statusBar().showMessage(message)
+
+    def _history_worked_changed(self, source_id: int, worked: bool) -> None:
+        """Synchronisiert eine Historienänderung sofort mit der Betriebsseite."""
+        state = self.receive_service.state_store.get()
+        call = state.current_call
+        if call is not None and call.source_id == source_id:
+            self.qso_status_label.setText(
+                "Bereits gesprochen" if worked else "Noch nicht gesprochen"
+            )
+
+
+    def _tab_changed(self, index: int) -> None:
+        if hasattr(self, "history_widget") and self.tabs.widget(index) is self.history_widget:
+            self.history_widget.refresh()
+
+    def _build_menu(self) -> None:
+        """Ergänzt nur den Zugang zum separaten Einstellungsfenster."""
+        program_menu = self.menuBar().addMenu("Programm")
+        settings_action = QAction("Einstellungen …", self)
+        settings_action.setShortcut(QKeySequence("Ctrl+,"))
+        settings_action.triggered.connect(self._open_settings)
+        program_menu.addAction(settings_action)
+
+    def _open_settings(self) -> None:
+        if self._settings_dialog is not None and self._settings_dialog.isVisible():
+            self._settings_dialog.raise_()
+            self._settings_dialog.activateWindow()
+            return
+        dialog = SettingsDialog(
+            self.project_root, self.audio_send_service, self.receive_service, self
+        )
+        dialog.settings_applied.connect(self._settings_applied)
+        dialog.finished.connect(lambda _result: setattr(self, "_settings_dialog", None))
+        self._settings_dialog = dialog
+        dialog.show()
+
+
+    def _settings_applied(self) -> None:
+        self._reload_hotkeys()
+        self._sync_operation_audio_controls()
+
+    def _sync_operation_audio_controls(self) -> None:
+        for widget in (getattr(self, "operation_gain_slider", None), getattr(self, "operation_volume_slider", None),
+                       getattr(self, "operation_muted_check", None), getattr(self, "operation_agc_check", None)):
+            if widget is not None:
+                widget.blockSignals(True)
+        try:
+            self.operation_gain_slider.setValue(int(self.audio_send_service.gain_percent))
+            self.operation_volume_slider.setValue(min(100, int(self.audio_send_service.output_volume_percent)))
+            self.operation_muted_check.setChecked(bool(self.audio_send_service.user_muted))
+            self.operation_agc_check.setChecked(bool(self.audio_send_service.agc_enabled))
+            self.operation_gain_value.setText(f"{int(self.audio_send_service.gain_percent)} %")
+            self.operation_volume_value.setText(f"{min(100, int(self.audio_send_service.output_volume_percent))} %")
+        finally:
+            for widget in (self.operation_gain_slider, self.operation_volume_slider, self.operation_muted_check, self.operation_agc_check):
+                widget.blockSignals(False)
+
+    def _save_operation_audio(self) -> None:
+        try:
+            self.audio_send_service.save_settings()
+        except Exception as exc:
+            self.statusBar().showMessage(f"Audioeinstellung konnte nicht gespeichert werden: {exc}")
+
+    def _operation_gain_changed(self, value: int) -> None:
+        self.operation_gain_value.setText(f"{value} %")
+        self.audio_send_service.set_gain_percent(value)
+        self._save_operation_audio()
+
+    def _operation_volume_changed(self, value: int) -> None:
+        self.operation_volume_value.setText(f"{value} %")
+        self.audio_send_service.set_output_volume_percent(value)
+        self.receive_service.set_output_volume_percent(value)
+        self._save_operation_audio()
+
+    def _operation_muted_changed(self, checked: bool) -> None:
+        self.audio_send_service.set_user_muted(checked)
+        self.receive_service.set_user_muted(checked)
+        self._save_operation_audio()
+        self.statusBar().showMessage("Empfang stumm" if checked else "Empfangston aktiv")
+
+    def _operation_agc_changed(self, checked: bool) -> None:
+        self.audio_send_service.set_agc_enabled(checked)
+        self.receive_service.set_agc_enabled(checked)
+        self._save_operation_audio()
+        self.statusBar().showMessage("AGC aktiv" if checked else "AGC ausgeschaltet")
+
     def _bind_shortcuts(self) -> None:
-        QShortcut(QKeySequence("F5"), self, activated=self._toggle_connection)
-        QShortcut(QKeySequence("Space"), self, activated=self._handle_space_shortcut)
-        QShortcut(QKeySequence("Return"), self, activated=self._activate_focused_button)
-        QShortcut(QKeySequence("Enter"), self, activated=self._activate_focused_button)
-        QShortcut(QKeySequence("F6"), self, activated=self._toggle_timeslot)
-        QShortcut(QKeySequence("F7"), self, activated=self._toggle_call_type)
+        for shortcut in self._shortcuts:
+            shortcut.setEnabled(False)
+            shortcut.deleteLater()
+        self._shortcuts.clear()
+        actions = {
+            "TG_CHANGE": self._focus_talkgroup,
+            "CONNECT": self._toggle_connection,
+            "TS_CHANGE": self._toggle_timeslot,
+            "CALLTYPE_CHANGE": self._toggle_call_type,
+            "OPEN_OPERATION": self._open_operation,
+            "OPEN_HISTORY": self._open_history,
+            "OPEN_SETTINGS": self._open_settings,
+            "CONFIRM_QSO": self._confirm_selected_qso,
+            "PTT": self._handle_space_shortcut,
+        }
+        for function, callback in actions.items():
+            sequence = self.hotkey_manager.mapping.get(function, "")
+            if not sequence:
+                continue
+            shortcut = QShortcut(QKeySequence(sequence), self, activated=callback)
+            self._shortcuts.append(shortcut)
+        for sequence in ("Return", "Enter"):
+            self._shortcuts.append(QShortcut(QKeySequence(sequence), self, activated=self._activate_focused_button))
+
+    def _open_operation(self) -> None:
+        self.tabs.setCurrentIndex(0)
+        self.tg_edit.setFocus()
+
+    def _open_history(self) -> None:
+        self.tabs.setCurrentWidget(self.history_widget)
+        self.history_widget.refresh()
+        self.history_widget.table.setFocus()
+
+    def _confirm_selected_qso(self) -> None:
+        if self.tabs.currentWidget() is self.history_widget:
+            self.history_widget.toggle_worked()
+
+    def _reload_hotkeys(self) -> None:
+        self.hotkey_manager.load()
+        self._bind_shortcuts()
+        self.statusBar().showMessage("Hotkeys wurden übernommen.")
 
     def _focused_button(self) -> QAbstractButton | None:
         """Liefert das aktuell fokussierte Qt-Schaltelement, falls vorhanden."""
@@ -399,6 +589,8 @@ class MainWindow(QMainWindow):
                 kind, value = self._updates.get_nowait()
                 if kind == "state":
                     self._apply_state(value)
+                elif kind == "event":
+                    self.last_event_label.setText(str(getattr(value, "message", value)))
                 elif kind == "connect_result":
                     if bool(value):
                         self.statusBar().showMessage("Empfang wird gestartet …")
@@ -447,6 +639,14 @@ class MainWindow(QMainWindow):
 
         self.connection_label.setText(state.connection.value)
         self.server_label.setText(f"Server: {state.server if state.brandmeister_connected else 'Nicht verbunden'}")
+        self.audio_status_label.setText("Audio aktiv" if state.audio_active else "Audio nicht aktiv")
+        stats = state.statistics
+        self.statistics_label.setText(
+            f"{stats.datagrams} Datagramme, {stats.voice_bursts} Sprachbursts, "
+            f"{stats.decoded_codewords} Codewörter, {stats.decode_errors} Decodierfehler"
+        )
+        if state.message:
+            self.last_event_label.setText(state.message)
         if state.talkgroup:
             self.current_tg_label.setText(str(state.talkgroup))
         if state.brandmeister_connected and state.receive_active and not self._tx_active:
@@ -457,15 +657,26 @@ class MainWindow(QMainWindow):
             self.callsign_label.setText("Nicht bekannt")
             self.name_label.setText("Nicht bekannt")
             self.dmr_id_label.setText("Kein aktiver Sprecher")
+            self.location_label.setText("Nicht bekannt")
+            self.country_label.setText("Nicht bekannt")
             self.target_label.setText(f"Talkgroup {state.talkgroup}, Timeslot {state.timeslot}")
             self.duration_label.setText("0 Sekunden")
+            self.qso_status_label.setText("Keine Station aktiv")
         else:
             contact = call.contact
             self.callsign_label.setText(contact.callsign if contact else "Nicht gefunden")
             self.name_label.setText(contact.display_name if contact and contact.display_name else "Nicht angegeben")
             self.dmr_id_label.setText(str(call.source_id))
+            location = ", ".join(part for part in (contact.city, contact.state) if contact and part) if contact else ""
+            self.location_label.setText(location or "Nicht angegeben")
+            self.country_label.setText(contact.country if contact and contact.country else "Nicht angegeben")
             self.target_label.setText(f"Talkgroup {call.talkgroup}, Timeslot {call.timeslot}")
             self.duration_label.setText(f"{call.elapsed_seconds:.0f} Sekunden")
+            self.qso_status_label.setText(
+                "Bereits gesprochen"
+                if self.receive_service.history.is_worked(call.source_id)
+                else "Noch nicht gesprochen"
+            )
         self._set_controls_for_state(self.radio_state.state)
 
     def closeEvent(self, event: QCloseEvent) -> None:

@@ -1,4 +1,62 @@
-# CarenDMR 0.0.26.5 – Qt Stable Baseline
+# CarenDMR 0.0.28.3 – Qt-Einstellungen Bedienkorrekturen
+
+- Betriebsseite wieder für normale Fenstergröße verdichtet.
+- Mic-Gain und RX-Lautstärke stehen kompakt nebeneinander; Stumm und AGC bleiben direkt erreichbar.
+- RX-Lautstärke auf der Betriebsseite auf 0 bis 100 Prozent begrenzt. Erweiterte Verstärkung bis 400 Prozent bleibt im Audio-Reiter als Zusatzverstärkung verfügbar.
+- RadioID-Aktualisierungsstatus wird unmittelbar in der RadioID-Kachel angezeigt.
+- Vocoder-Plugins ohne klassische Dateiendung werden angezeigt und im Pluginordner automatisch erkannt.
+- Keine Änderungen an Funkbetrieb, QSO-Historie oder Bedienlogik.
+
+# CarenDMR 0.0.28.1
+
+- Rekursion in der Tab-Behandlung der QSO-Historie behoben.
+- Tab verlässt die Tabelle jetzt über feste Fokusziele; Shift+Tab kehrt stabil zurück.
+- QSO-Status der aktuellen Station auf der Betriebsseite ergänzt.
+- Änderungen an „Gesprochen“ werden sofort zwischen Historie und Betrieb synchronisiert.
+
+# CarenDMR 0.0.28.0
+
+- QSO-Historie als zweiter Qt-Hauptreiter portiert.
+- Vorhandene SQLite-Daten werden unverändert genutzt.
+- Suche, Stationsübersicht, Detailansicht und QSO-Bestätigung ergänzt.
+- Tabellenbedienung mit Pfeiltasten sowie sauberem Tab-Ausstieg.
+- F8 Betrieb, F9 Historie und F11 QSO bestätigen angebunden.
+- Funkbetrieb und Einstellungen unverändert.
+
+# Changelog
+
+## 0.0.27.3 – Einstellungen abgeschlossen
+
+- Sicherheitsabfrage vor dem Vormerken der Hotkey-Werkseinstellungen.
+- Werkseinstellungen werden weiterhin erst mit Übernehmen oder OK dauerhaft gespeichert.
+- Abbrechen verwirft vorgemerkte Änderungen.
+- Hotkey-Tabelle verhält sich als Auswahlliste: Zeilenwechsel mit Pfeiltasten.
+- Tab verlässt die Tabelle und setzt die normale Dialognavigation fort.
+- Keine Änderungen am Funkbetrieb oder an der bestehenden Bedienlogik.
+
+## 0.0.27.2 – Eingabemanager V1
+
+- Freie Hotkey-Textfelder entfernt.
+- Tastenkombinationen werden über echte Qt-Tastaturereignisse erfasst.
+- Übersicht mit Funktion und aktueller Zuordnung ergänzt.
+- Freie, belegte und gesperrte Kombinationen werden unmittelbar angezeigt.
+- Bereits belegte Kombinationen können nach Rückfrage neu zugeordnet werden.
+- Die bisherige Funktion bleibt danach ohne Zuordnung.
+- Einzelne Zuordnungen können entfernt werden.
+- Nicht zugeordnete Funktionen werden dauerhaft gespeichert.
+- Werkseinstellungen können vorgemerkt und mit Übernehmen oder OK gespeichert werden.
+- Änderungen werden ohne Programmneustart aktiv.
+- Funkbetrieb und Betriebsinformationen aus 0.0.27.1 bleiben unverändert.
+
+## 0.0.27.2 – Qt-Einstellungen, Stufe 1
+
+- Separates Qt-Einstellungsfenster über Programm > Einstellungen oder Strg+,
+- Mikrofon und Wiedergabegerät auswählen und neu einlesen.
+- Mic-Gain und Empfangslautstärke einstellen.
+- Empfang stummschalten und AGC schalten.
+- Diagnosemodus und Audio-Diagnose-WAV schalten.
+- Änderungen mit Übernehmen oder OK speichern; Abbrechen verwirft sie.
+- Stabiler Qt-Betrieb aus 0.0.26.5 bleibt unverändert.
 
 - Radiobutton-Gruppen werden bereits beim Programmstart korrekt in den Tabpfad eingebunden.
 - Tab landet bei Timeslot und Rufart sofort auf dem aktuell ausgewählten Radiobutton.
@@ -116,6 +174,15 @@
 
 # Changelog
 
+## 0.0.27.3 – Einstellungen abgeschlossen
+
+- Sicherheitsabfrage vor dem Vormerken der Hotkey-Werkseinstellungen.
+- Werkseinstellungen werden weiterhin erst mit Übernehmen oder OK dauerhaft gespeichert.
+- Abbrechen verwirft vorgemerkte Änderungen.
+- Hotkey-Tabelle verhält sich als Auswahlliste: Zeilenwechsel mit Pfeiltasten.
+- Tab verlässt die Tabelle und setzt die normale Dialognavigation fort.
+- Keine Änderungen am Funkbetrieb oder an der bestehenden Bedienlogik.
+
 ## 0.0.24.6.1
 
 - Lokaler 10-Sekunden-Mikrofontest ohne Funkübertragung.
@@ -167,6 +234,15 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 
 # Changelog
 
+## 0.0.27.3 – Einstellungen abgeschlossen
+
+- Sicherheitsabfrage vor dem Vormerken der Hotkey-Werkseinstellungen.
+- Werkseinstellungen werden weiterhin erst mit Übernehmen oder OK dauerhaft gespeichert.
+- Abbrechen verwirft vorgemerkte Änderungen.
+- Hotkey-Tabelle verhält sich als Auswahlliste: Zeilenwechsel mit Pfeiltasten.
+- Tab verlässt die Tabelle und setzt die normale Dialognavigation fort.
+- Keine Änderungen am Funkbetrieb oder an der bestehenden Bedienlogik.
+
 ## 0.0.24.1 – Bedienungsframework V1
 
 - Timeslot 1/2 als direkt erreichbare, vertikal angeordnete Auswahlschalter umgesetzt.
@@ -200,6 +276,15 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - TX- und Parrot-RX-Diagnose-WAVs bleiben aktiv.
 
 # Changelog
+
+## 0.0.27.3 – Einstellungen abgeschlossen
+
+- Sicherheitsabfrage vor dem Vormerken der Hotkey-Werkseinstellungen.
+- Werkseinstellungen werden weiterhin erst mit Übernehmen oder OK dauerhaft gespeichert.
+- Abbrechen verwirft vorgemerkte Änderungen.
+- Hotkey-Tabelle verhält sich als Auswahlliste: Zeilenwechsel mit Pfeiltasten.
+- Tab verlässt die Tabelle und setzt die normale Dialognavigation fort.
+- Keine Änderungen am Funkbetrieb oder an der bestehenden Bedienlogik.
 
 ## 0.0.23.8 – Parrot-RX-Audiodiagnose
 
@@ -336,6 +421,15 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Keine Änderung am BrandMeister-Protokoll, Aktivierungsruf oder Decoderverfahren.
 
 # Changelog
+
+## 0.0.27.3 – Einstellungen abgeschlossen
+
+- Sicherheitsabfrage vor dem Vormerken der Hotkey-Werkseinstellungen.
+- Werkseinstellungen werden weiterhin erst mit Übernehmen oder OK dauerhaft gespeichert.
+- Abbrechen verwirft vorgemerkte Änderungen.
+- Hotkey-Tabelle verhält sich als Auswahlliste: Zeilenwechsel mit Pfeiltasten.
+- Tab verlässt die Tabelle und setzt die normale Dialognavigation fort.
+- Keine Änderungen am Funkbetrieb oder an der bestehenden Bedienlogik.
 
 ## 0.0.20.0 – Empfang mit automatisch schaltbarer TG-/Timeslot-Kombination
 

@@ -60,7 +60,7 @@ class HotkeyManager:
             return self.mapping
         if isinstance(raw, dict):
             for function, key in raw.items():
-                if function in DEFAULT_HOTKEYS and isinstance(key, str) and key.strip():
+                if function in DEFAULT_HOTKEYS and isinstance(key, str):
                     self._mapping[function] = self.normalize_key(key)
         return self.mapping
 
@@ -77,7 +77,7 @@ class HotkeyManager:
             raise KeyError(function)
         normalized = self.normalize_key(key)
         for other_function, other_key in self._mapping.items():
-            if other_function != function and other_key.lower() == normalized.lower():
+            if normalized and other_function != function and other_key.lower() == normalized.lower():
                 raise ValueError(f"{normalized} ist bereits für {FUNCTION_LABELS.get(other_function, other_function)} belegt.")
         self._mapping[function] = normalized
         self.save()
@@ -85,6 +85,8 @@ class HotkeyManager:
     def conflicts(self) -> list[HotkeyConflict]:
         reverse: dict[str, list[str]] = {}
         for function, key in self._mapping.items():
+            if not key:
+                continue
             reverse.setdefault(key.lower(), []).append(function)
         return [HotkeyConflict(key=self._mapping[functions[0]], functions=tuple(functions))
                 for functions in reverse.values() if len(functions) > 1]

@@ -1,6 +1,6 @@
 # CarenDMR
 
-**Aktueller Entwicklungsstand: 0.0.26.5 – Qt Stable Baseline**
+**Aktueller Entwicklungsstand: 0.0.28.3 – Qt-Einstellungen Bedienkorrekturen**
 
 Die neue Qt-Oberfläche portiert zunächst ausschließlich den echten Funkbetrieb. Sie wird mit `python main.py --gui` gestartet. Die stabile Tkinter-Oberfläche bleibt mit `python main.py --gui-tk` verfügbar. Accessibility-Sonderlogik folgt erst nach technischer Gleichwertigkeit.
 
@@ -181,3 +181,13 @@ Version 0.0.24.3.1 schreibt bei jedem Sendedurchgang eine Millisekunden-Zeitleis
 ### Parrot-RX-Audiodiagnose ab 0.0.24.3.1
 
 Bei einem Parrot-Test auf 9990 / TS2 / Privat speichert CarenDMR zusätzlich das empfangene, nach AMBE decodierte Echo als `logs/audio_debug/rx_..._03_parrot_nach_ambe_8k.wav`. Zusammen mit den beiden TX-WAV-Dateien lässt sich der komplette Signalweg vergleichen.
+
+
+## Eingabemanager
+
+Hotkeys werden unter `Programm > Einstellungen …` nicht als Text eingegeben. Eine Funktion wird ausgewählt und die gewünschte Tastenkombination tatsächlich gedrückt. Konflikte können gezielt neu zugeordnet, Zuordnungen entfernt und Standardwerte wiederhergestellt werden.
+
+
+## QSO-Historie in Qt
+
+Der zweite Hauptreiter zeigt die vorhandene lokale SQLite-Historie als Stationsübersicht. F9 öffnet die Historie, Pfeiltasten wechseln die Station, Tab verlässt die Tabelle und F11 bestätigt oder widerruft das ausgewählte QSO.

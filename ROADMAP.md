@@ -1,3 +1,5 @@
+Aktueller stabiler Qt-Funktionsstand: 0.0.28.3.
+
 Aktueller stabiler Entwicklungsstand: **0.0.19.4** – Hold-to-Talk und bereinigte Sendeoberfläche.
 
 # Roadmap

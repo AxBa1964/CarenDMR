@@ -6,7 +6,7 @@ from carendmr.version import __version__
 
 
 def test_version_is_qt_migration_0265():
-    assert __version__ == "0.0.26.5"
+    assert __version__ == "0.0.28.3"
 
 
 def test_gui_argument_uses_qt_lazily():
@@ -36,7 +36,7 @@ def test_qt_ptt_remains_stoppable_during_transmit():
 
 def test_qt_f5_toggles_connection_and_uses_two_tg_fields():
     source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
-    assert 'QShortcut(QKeySequence("F5"), self, activated=self._toggle_connection)' in source
+    assert '"CONNECT": self._toggle_connection' in source
     assert 'target_form.addRow("Aktuelle Talkgroup:", self.current_tg_label)' in source
     assert 'target_form.addRow("Neue Talkgroup:", self.tg_edit)' in source
     assert 'self._apply_pending_talkgroup()' in source
@@ -58,9 +58,9 @@ def test_qt_rx_state_clears_stale_tx_status():
 
 def test_qt_keyboard_priority_for_focused_buttons():
     source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
-    assert 'QShortcut(QKeySequence("Space"), self, activated=self._handle_space_shortcut)' in source
-    assert 'QShortcut(QKeySequence("Return"), self, activated=self._activate_focused_button)' in source
-    assert 'QShortcut(QKeySequence("Enter"), self, activated=self._activate_focused_button)' in source
+    assert '"PTT": self._handle_space_shortcut' in source
+    assert 'for sequence in ("Return", "Enter")' in source
+    assert 'activated=self._activate_focused_button' in source
     assert 'isinstance(widget, QAbstractButton)' in source
     assert 'self.tg_edit.returnPressed.connect' not in source
 
