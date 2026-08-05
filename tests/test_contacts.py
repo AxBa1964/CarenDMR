@@ -69,7 +69,7 @@ class ContactDownloadTests(unittest.TestCase):
             RadioIdDownloader(opener).download(target)
             self.assertEqual(CSV, target.read_text(encoding="utf-8"))
             self.assertFalse(target.with_suffix(".csv.part").exists())
-            self.assertIn("CarenDMR/0.1.7.3.5", requests[0][0].headers["User-agent"])
+            self.assertIn("CarenDMR/0.1.7.3.8", requests[0][0].headers["User-agent"])
 
 
 if __name__ == "__main__":

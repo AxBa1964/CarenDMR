@@ -1,9 +1,26 @@
-# CarenDMR 0.1.7.3.5 – Statuslayout und Enter-Regression
+# CarenDMR 0.1.7.3.8 – Gespeicherten Talkgroup-Namen wiederherstellen
 
-- Message-Server-Status aus dem DMR-Kanal in den Kopfbereich unter die Statusanzeige verschoben.
-- Unter dem Talkgroup-Feld wird bei bekannten Einträgen der Talkgroup-Name angezeigt.
-- Enter aktiviert wieder gezielt den fokussierten Aktionsbutton, ohne die lokale Enter-Verarbeitung der Talkgroup-Suche zu blockieren.
-- Regressionstests für beide Enter-Abläufe und das neue Statuslayout ergänzt.
+- Beim Programmstart wird der Name der zuletzt gespeicherten bekannten Talkgroup erneut aus dem lokalen Verzeichnis aufgelöst.
+- TG, Timeslot, Rufart und Name werden über den zentralen DMR-Kanalpfad gemeinsam wiederhergestellt.
+- Unbekannte TGs und private DMR-IDs bleiben ohne erfundenen Namen.
+- Regressionstest sichert den Neustart mit bekanntem Talkgroup-Namen ab.
+
+# CarenDMR 0.1.7.3.8 – Zentrale DMR-Kanalübernahme
+
+- Talkgroup-Name bleibt nach Enter-Übernahme aus der Suchliste sichtbar.
+- Suchtextänderungen verändern den Namen der bereits übernommenen aktuellen TG nicht mehr.
+- TG, Name, Timeslot und Rufart werden zentral über einen gemeinsamen Kanalpfad aktualisiert.
+- Manuelle TG-Eingabe und Auswahl aus der Trefferliste verwenden denselben Aktualisierungsweg.
+- Laufende Statusaktualisierungen lösen den bekannten Talkgroup-Namen erneut auf.
+- Regressionstests sichern den Fehler dauerhaft ab.
+
+# CarenDMR 0.1.7.3.6 – Talkgroup-Name bei aktueller TG
+
+- Der bekannte Name des aktuell gewählten DMR-Kanals steht jetzt direkt unter „Aktuelle TG“.
+- Die bisherige Namenszeile unter dem Suchfeld wurde entfernt.
+- Aktualisierung funktioniert bei manueller TG-Eingabe und bei Auswahl aus der Trefferliste.
+- Bei unbekannter TG bleibt die Namenszeile leer.
+- Funklogik, Suche, Enter-Verhalten und Pflicht-Hotkeys bleiben unverändert.
 
 # CarenDMR 0.1.7.3.4 – Enter-Shortcut-Konflikt behoben
 

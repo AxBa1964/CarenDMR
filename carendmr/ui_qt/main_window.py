@@ -24,7 +24,7 @@ from carendmr.application import (
     ParrotTestService, RadioState, RadioStateMachine, ReceiveService, TalkgroupSearchService,
 )
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
-from carendmr.domain import ApplicationState, ConnectionState
+from carendmr.domain import ApplicationState, ConnectionState, DmrChannel
 from carendmr.version import __version__
 from carendmr.ui_qt.theme import METRICS
 from carendmr.accessibility.hotkeys import DEFAULT_HOTKEYS, HotkeyManager
@@ -91,6 +91,7 @@ class MainWindow(QMainWindow):
         self._tx_elapsed_timer.timeout.connect(self._increment_tx_elapsed)
 
         self._build_ui()
+        self._restore_saved_dmr_channel()
         QApplication.instance().installEventFilter(self)
         self._bind_shortcuts()
         self.receive_service.state_store.subscribe(lambda state: self._updates.put(("state", state)))
@@ -164,11 +165,16 @@ class MainWindow(QMainWindow):
         current_caption.setObjectName("fieldCaption")
         self.current_tg_label = QLabel(str(self.preferences.talkgroup))
         self.current_tg_label.setObjectName("currentTalkgroup")
+        self.current_tg_name_label = QLabel("")
+        self.current_tg_name_label.setObjectName("secondaryText")
+        self.current_tg_name_label.setAccessibleName("Name der aktuellen Talkgroup")
+        self.current_tg_name_label.setAccessibleDescription("Name des aktuell gewählten DMR-Kanals")
         current_column = QVBoxLayout()
         current_column.setSpacing(1)
         current_column.addWidget(current_caption)
         current_column.addWidget(self.current_tg_label)
-        target_layout.addLayout(current_column, 1, 0, 2, 1)
+        current_column.addWidget(self.current_tg_name_label)
+        target_layout.addLayout(current_column, 1, 0, 3, 1)
 
         target_layout.addWidget(QLabel("Talkgroup"), 1, 1, 1, 2)
         self.tg_edit = TalkgroupSearchWidget(self.talkgroup_search_service, target_card)
@@ -178,13 +184,7 @@ class MainWindow(QMainWindow):
         self.tg_edit.setAccessibleName("Talkgroup")
         self.tg_edit.setAccessibleDescription("Nach Nummer oder Name suchen")
         self.tg_edit.channel_selected.connect(self._apply_selected_channel)
-        self.tg_edit.textChanged.connect(self._update_known_talkgroup_name)
         target_layout.addWidget(self.tg_edit, 2, 1, 1, 2)
-        self.tg_name_label = QLabel("")
-        self.tg_name_label.setObjectName("secondaryText")
-        self.tg_name_label.setAccessibleName("Talkgroup-Name")
-        self.tg_name_label.setAccessibleDescription("Name der bekannten Talkgroup")
-        target_layout.addWidget(self.tg_name_label, 3, 1, 1, 2)
 
         self.ts1_radio = QPushButton("TS1")
         self.ts2_radio = QPushButton("TS2")
@@ -712,17 +712,53 @@ class MainWindow(QMainWindow):
         if retries > 0:
             QTimer.singleShot(100, lambda: self._focus_ptt_after_connect(retries - 1))
 
+    def _restore_saved_dmr_channel(self) -> None:
+        """Stellt den zuletzt gespeicherten DMR-Kanal vollständig wieder her.
+
+        Der gespeicherte Zustand enthält nur Ziel, Timeslot und Rufart. Der
+        Anzeigename wird deshalb beim Start erneut aus dem lokalen
+        Talkgroup-Verzeichnis aufgelöst. Unbekannte Ziele bleiben namenlos.
+        """
+        known = self._known_channel_for_target(self.preferences.talkgroup)
+        channel = DmrChannel(
+            target=self.preferences.talkgroup,
+            timeslot=self.preferences.timeslot,
+            call_type=self.preferences.call_type,
+            name=known.name if known else "",
+            country=known.country if known else "",
+            description=known.description if known else "",
+        )
+        self._set_current_dmr_channel(channel, clear_input=False)
+
+    def _known_channel_for_target(self, target: int):
+        """Liefert den ersten bekannten Kanal für eine Zielnummer oder ``None``."""
+        for channel in self.talkgroup_search_service.channels:
+            if channel.target == target:
+                return channel.normalized()
+        return None
+
+    def _set_current_dmr_channel(self, channel, *, clear_input: bool = True) -> None:
+        """Aktualisiert den aktuell gewählten DMR-Kanal immer vollständig.
+
+        Diese Methode ist die einzige Quelle für TG, Name, Timeslot und Rufart
+        auf der Betriebsseite. Dadurch bleiben Suche, manuelle Eingabe und
+        spätere Favoriten synchron.
+        """
+        normalized = channel.normalized()
+        self.current_tg_label.setText(str(normalized.target))
+        self.current_tg_name_label.setText(normalized.name or "")
+        self._selected_timeslot = normalized.timeslot
+        self._selected_call_type = normalized.call_type
+        self._sync_radio_controls()
+        if clear_input:
+            self.tg_edit.clear()
+            self._update_talkgroup_accessibility("")
+
     def _update_known_talkgroup_name(self, value: str) -> None:
-        """Zeigt bei eindeutiger bekannter Nummer den Namen unter dem TG-Feld."""
+        """Aktualisiert den Namen zur bereits übernommenen aktuellen TG."""
         text = str(value).strip()
-        name = ""
-        if text.isdigit():
-            target = int(text)
-            for channel in self.talkgroup_search_service.channels:
-                if channel.target == target and channel.name:
-                    name = channel.name
-                    break
-        self.tg_name_label.setText(name)
+        channel = self._known_channel_for_target(int(text)) if text.isdigit() else None
+        self.current_tg_name_label.setText(channel.name if channel else "")
 
     def _apply_selected_channel(self, channel) -> None:
         """Übernimmt einen Treffer vollständig als DMR-Kanal, ohne zu verbinden."""
@@ -732,13 +768,7 @@ class MainWindow(QMainWindow):
             return
         if not self.radio_state.snapshot().can_edit_parameters:
             return
-        self.current_tg_label.setText(str(normalized.target))
-        self.tg_name_label.setText(normalized.name or "")
-        self._selected_timeslot = normalized.timeslot
-        self._selected_call_type = normalized.call_type
-        self._sync_radio_controls()
-        self.tg_edit.clear()
-        self._update_talkgroup_accessibility("")
+        self._set_current_dmr_channel(normalized)
         try:
             self._save_preferences()
         except Exception as error:
@@ -766,10 +796,21 @@ class MainWindow(QMainWindow):
         if not text.isdigit() or int(text) <= 0:
             QMessageBox.warning(self, "CarenDMR", "Bitte eine gültige Talkgroup eingeben.")
             return False
-        self.current_tg_label.setText(str(int(text)))
-        self._update_known_talkgroup_name(text)
-        self.tg_edit.clear()
-        self._update_talkgroup_accessibility("")
+        target = int(text)
+        known = self._known_channel_for_target(target)
+        if known is None:
+            known = DmrChannel(target, self._selected_timeslot, self._selected_call_type)
+        else:
+            # Manuelle Nummerneingabe ändert TS und Rufart nicht heimlich.
+            known = DmrChannel(
+                known.target,
+                self._selected_timeslot,
+                self._selected_call_type,
+                known.name,
+                known.country,
+                known.description,
+            )
+        self._set_current_dmr_channel(known)
         try:
             self._save_preferences()
         except Exception as error:
@@ -1156,6 +1197,7 @@ class MainWindow(QMainWindow):
             }
         ):
             self.current_tg_label.setText(str(state.talkgroup))
+            self._update_known_talkgroup_name(str(state.talkgroup))
         if state.brandmeister_connected and state.receive_active and not self._tx_active:
             self.tx_status.setText("RX")
             self.statusBar().showMessage("Empfang aktiv")

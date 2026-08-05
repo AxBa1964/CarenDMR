@@ -1,6 +1,6 @@
-# CarenDMR 0.1.7.3.5 – Statuslayout und Enter-Regression
+# CarenDMR 0.1.7.3.8 – Talkgroup-Name nach Neustart
 
-Aktueller stabiler Entwicklungsstand: **0.1.7.3.5**.
+Aktueller stabiler Entwicklungsstand: **0.1.7.3.8**. Der zuletzt gespeicherte bekannte DMR-Kanal wird beim Start wieder mit Talkgroup-Name, Timeslot und Rufart angezeigt.
 
 Neu: Das Talkgroup-Feld durchsucht während der Eingabe ein lokales DMR-Kanalverzeichnis nach Nummer oder Name. Treffer werden kompakt in einer Zeile angezeigt und können mit Pfeiltasten und Enter übernommen werden. Dabei werden Talkgroup beziehungsweise DMR-ID, Timeslot und Rufart gemeinsam vorbelegt. Eine beliebige TG kann weiterhin direkt als Zahl eingegeben werden.
 

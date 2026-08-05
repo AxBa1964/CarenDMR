@@ -4,7 +4,7 @@ from carendmr.version import __version__
 
 
 def test_theme_version() -> None:
-    assert __version__ == "0.1.7.3.5"
+    assert __version__ == "0.1.7.3.8"
 
 
 def test_theme_is_centralized_and_contrast_aware() -> None:

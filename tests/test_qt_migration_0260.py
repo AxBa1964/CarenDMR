@@ -6,7 +6,7 @@ from carendmr.version import __version__
 
 
 def test_version_is_qt_migration_0265():
-    assert __version__ == "0.1.7.3.5"
+    assert __version__ == "0.1.7.3.8"
 
 
 def test_gui_argument_uses_qt_lazily():
@@ -91,5 +91,6 @@ def test_enter_is_local_to_focused_buttons_and_does_not_block_talkgroup_search()
 def test_message_server_and_known_talkgroup_name_have_separate_places():
     source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
     assert 'QLabel("Message Server: nicht verbunden")' in source
-    assert 'self.tg_name_label = QLabel("")' in source
-    assert "self.tg_edit.textChanged.connect(self._update_known_talkgroup_name)" in source
+    assert 'self.current_tg_name_label = QLabel("")' in source
+    assert "self.tg_edit.textChanged.connect(self._update_known_talkgroup_name)" not in source
+    assert "def _set_current_dmr_channel" in source
