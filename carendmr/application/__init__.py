@@ -10,10 +10,11 @@ from .qso_history_service import QsoHistoryService
 from .radio_state_machine import RadioState, RadioStateMachine, RadioStateSnapshot
 from .parrot_test_service import ParrotTestService
 from .transmit_history_service import TransmitHistoryService
+from .talkgroup_search_service import TalkgroupSearchService
 from .state_store import ApplicationStateStore
 
 __all__ = [
     "AudioSendService", "MicrophoneDiagnostics", "ContactService", "ConnectionManager", "EncoderService", "CurrentCallService", "EventService", "InformationManager", "InformationDiagnostics", "DispatchMeasurement", "ReceiveService",
     "ApplicationStateStore", "QsoHistoryService", "ParrotTestService", "TransmitHistoryService",
-    "RadioState", "RadioStateMachine", "RadioStateSnapshot",
+    "RadioState", "RadioStateMachine", "RadioStateSnapshot", "TalkgroupSearchService",
 ]

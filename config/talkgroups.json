@@ -1,0 +1,18 @@
+[
+  {"name":"Worldwide","target":91,"timeslot":2,"call_type":"group","country":"International","description":"Weltweit"},
+  {"name":"Europe","target":92,"timeslot":2,"call_type":"group","country":"Europa","description":"Europa"},
+  {"name":"Worldwide English","target":913,"timeslot":2,"call_type":"group","country":"International","description":"Englisch weltweit"},
+  {"name":"Deutschland","target":262,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Deutschland national"},
+  {"name":"Deutschland TAC 1","target":26200,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Taktischer Kanal"},
+  {"name":"Deutschland TAC 2","target":26299,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Taktischer Kanal"},
+  {"name":"Berlin Brandenburg","target":2621,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Region"},
+  {"name":"Hamburg Schleswig-Holstein","target":2622,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Region"},
+  {"name":"Niedersachsen Bremen","target":2623,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Region"},
+  {"name":"Nordrhein-Westfalen","target":2624,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Region"},
+  {"name":"Rheinland-Pfalz Saarland","target":2625,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Region"},
+  {"name":"Hessen","target":2626,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Region"},
+  {"name":"Baden-Württemberg","target":2627,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Region"},
+  {"name":"Bayern","target":2628,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Region"},
+  {"name":"Sachsen Thüringen","target":2629,"timeslot":2,"call_type":"group","country":"Deutschland","description":"Region"},
+  {"name":"Parrot","target":9990,"timeslot":2,"call_type":"private","country":"BrandMeister","description":"Echo-Test"}
+]

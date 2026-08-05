@@ -4,7 +4,7 @@ from pathlib import Path
 def test_layout_v1_keeps_existing_controls_and_dark_theme():
     source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
     for token in (
-        'self.tg_edit = QLineEdit()',
+        'self.tg_edit = TalkgroupSearchWidget(',
         'self.ts1_radio = QPushButton("TS1")',
         'self.ts2_radio = QPushButton("TS2")',
         'self.group_radio = QPushButton("Gruppe")',
@@ -18,7 +18,7 @@ def test_layout_v1_keeps_existing_controls_and_dark_theme():
 
 def test_version_is_010():
     from carendmr.version import __version__
-    assert __version__ == "0.1.6.8"
+    assert __version__ == "0.1.7.3.5"
 
 
 def test_layout_uses_central_theme():

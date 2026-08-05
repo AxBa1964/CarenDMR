@@ -10,8 +10,8 @@ import sys
 from pathlib import Path
 from threading import Event, Thread
 
-from PySide6.QtCore import QRegularExpression, QTimer, Qt
-from PySide6.QtGui import QAction, QAccessible, QCloseEvent, QKeySequence, QRegularExpressionValidator, QShortcut
+from PySide6.QtCore import QEvent, QTimer, Qt
+from PySide6.QtGui import QAction, QAccessible, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractButton, QFormLayout, QGroupBox, QHBoxLayout,
     QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 
 from carendmr.application import (
     AudioSendService, ConnectionManager, EncoderService, EventService,
-    ParrotTestService, RadioState, RadioStateMachine, ReceiveService,
+    ParrotTestService, RadioState, RadioStateMachine, ReceiveService, TalkgroupSearchService,
 )
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.domain import ApplicationState, ConnectionState
@@ -33,6 +33,8 @@ from carendmr.ui_qt.history_widget import QsoHistoryWidget
 from carendmr.ui_qt.theme import apply_theme
 from carendmr.ui_qt.accessibility_manager import AccessibilityManager
 from carendmr.ui_qt.audio_cue import AudioCuePlayer
+from carendmr.ui_qt.operating_indicators import LevelMeter, StatusIndicator
+from carendmr.ui_qt.talkgroup_search_widget import TalkgroupSearchWidget
 from carendmr.audio import AudioDirection
 
 
@@ -70,9 +72,12 @@ class MainWindow(QMainWindow):
         self._tx_stopping = False
         self._tx_pending = False
         self._tx_elapsed_seconds = 0
+        self._rx_level = 0.0
+        self._mic_level = 0.0
         self._encoder_ready = False
         self._settings_dialog: SettingsDialog | None = None
         self.hotkey_manager = HotkeyManager(self.project_root / "config" / "hotkeys.local.json")
+        self.talkgroup_search_service = TalkgroupSearchService(self.project_root / "config" / "talkgroups.json")
         self._shortcuts: list[QShortcut] = []
         self.accessibility = AccessibilityManager()
         self.audio_cues = AudioCuePlayer(self.audio_send_service)
@@ -86,8 +91,10 @@ class MainWindow(QMainWindow):
         self._tx_elapsed_timer.timeout.connect(self._increment_tx_elapsed)
 
         self._build_ui()
+        QApplication.instance().installEventFilter(self)
         self._bind_shortcuts()
         self.receive_service.state_store.subscribe(lambda state: self._updates.put(("state", state)))
+        self.receive_service.set_output_level_callback(lambda level: self._updates.put(("rx_level", level)))
         self.events.subscribe(lambda event: self._updates.put(("event", event)))
 
         self._timer = QTimer(self)
@@ -121,11 +128,18 @@ class MainWindow(QMainWindow):
         title_column.addWidget(subtitle)
         header_layout.addLayout(title_column)
         header_layout.addStretch(1)
-        self.connection_label = QLabel("Getrennt")
-        self.connection_label.setObjectName("connectionBadge")
-        self.connection_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.connection_label.setFixedSize(METRICS.connection_control_width, METRICS.status_control_height)
-        header_layout.addWidget(self.connection_label)
+        self.connection_indicator = StatusIndicator(header)
+        # Kompatibilitätsalias: bestehende Accessibility- und Testlogik kann das
+        # zentrale Statusobjekt weiterhin unter dem bisherigen Namen verwenden.
+        self.connection_label = self.connection_indicator
+        self.server_label = QLabel("Message Server: nicht verbunden")
+        self.server_label.setObjectName("secondaryText")
+        self.server_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        status_column = QVBoxLayout()
+        status_column.setSpacing(3)
+        status_column.addWidget(self.connection_indicator)
+        status_column.addWidget(self.server_label)
+        header_layout.addLayout(status_column)
         root.addWidget(header)
 
         content = QGridLayout()
@@ -135,14 +149,14 @@ class MainWindow(QMainWindow):
         content.setColumnStretch(1, 2)
         root.addLayout(content, 1)
 
-        # Funkziel und Verbindung.
+        # DMR-Kanal und Verbindung.
         target_card = QFrame(operation_page)
         target_card.setObjectName("card")
         target_layout = QGridLayout(target_card)
         target_layout.setContentsMargins(18, 14, 18, 14)
         target_layout.setHorizontalSpacing(12)
         target_layout.setVerticalSpacing(8)
-        target_heading = QLabel("FUNKZIEL")
+        target_heading = QLabel("DMR-KANAL")
         target_heading.setObjectName("sectionTitle")
         target_layout.addWidget(target_heading, 0, 0, 1, 6)
 
@@ -156,14 +170,21 @@ class MainWindow(QMainWindow):
         current_column.addWidget(self.current_tg_label)
         target_layout.addLayout(current_column, 1, 0, 2, 1)
 
-        target_layout.addWidget(QLabel("Neue Talkgroup"), 1, 1, 1, 2)
-        self.tg_edit = QLineEdit()
+        target_layout.addWidget(QLabel("Talkgroup"), 1, 1, 1, 2)
+        self.tg_edit = TalkgroupSearchWidget(self.talkgroup_search_service, target_card)
         self.tg_edit.setObjectName("talkgroupInput")
-        self.tg_edit.setPlaceholderText("Neue TG eingeben")
-        self.tg_edit.setMaxLength(8)
-        self.tg_edit.setValidator(QRegularExpressionValidator(QRegularExpression(r"[0-9]{0,8}"), self.tg_edit))
-        self.tg_edit.setAccessibleName("Neue Talkgroup")
+        self.tg_edit.setPlaceholderText("Talkgroup nach Nummer oder Name suchen")
+        self.tg_edit.setMaxLength(64)
+        self.tg_edit.setAccessibleName("Talkgroup")
+        self.tg_edit.setAccessibleDescription("Nach Nummer oder Name suchen")
+        self.tg_edit.channel_selected.connect(self._apply_selected_channel)
+        self.tg_edit.textChanged.connect(self._update_known_talkgroup_name)
         target_layout.addWidget(self.tg_edit, 2, 1, 1, 2)
+        self.tg_name_label = QLabel("")
+        self.tg_name_label.setObjectName("secondaryText")
+        self.tg_name_label.setAccessibleName("Talkgroup-Name")
+        self.tg_name_label.setAccessibleDescription("Name der bekannten Talkgroup")
+        target_layout.addWidget(self.tg_name_label, 3, 1, 1, 2)
 
         self.ts1_radio = QPushButton("TS1")
         self.ts2_radio = QPushButton("TS2")
@@ -210,10 +231,6 @@ class MainWindow(QMainWindow):
         self.connect_button.setFixedSize(METRICS.connection_control_width, METRICS.action_control_height)
         self.connect_button.clicked.connect(self._toggle_connection)
         target_layout.addWidget(self.connect_button, 1, 5, 2, 1)
-        self.server_label = QLabel("Server: Nicht verbunden")
-        self.server_label.setObjectName("secondaryText")
-        target_layout.addWidget(self.server_label, 3, 0, 1, 6)
-
         self._sync_radio_controls()
         self._update_radio_hotkey_hints()
         content.addWidget(target_card, 0, 0, 1, 2)
@@ -275,6 +292,9 @@ class MainWindow(QMainWindow):
         gain_row.addWidget(QLabel("Mic-Gain"), 0, 0)
         gain_row.addWidget(self.operation_gain_value, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
         gain_row.addWidget(self.operation_gain_slider, 1, 0, 1, 2)
+        self.mic_level_meter = LevelMeter(control_card)
+        gain_row.addWidget(QLabel("MIC-PEGEL"), 2, 0, 1, 2)
+        gain_row.addWidget(self.mic_level_meter, 3, 0, 1, 2)
         control_layout.addLayout(gain_row)
 
         self.operation_volume_slider = QSlider(Qt.Orientation.Horizontal)
@@ -287,6 +307,9 @@ class MainWindow(QMainWindow):
         volume_row.addWidget(QLabel("RX-Lautstärke"), 0, 0)
         volume_row.addWidget(self.operation_volume_value, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
         volume_row.addWidget(self.operation_volume_slider, 1, 0, 1, 2)
+        self.rx_level_meter = LevelMeter(control_card)
+        volume_row.addWidget(QLabel("RX-PEGEL"), 2, 0, 1, 2)
+        volume_row.addWidget(self.rx_level_meter, 3, 0, 1, 2)
         control_layout.addLayout(volume_row)
 
         checks = QHBoxLayout()
@@ -314,13 +337,9 @@ class MainWindow(QMainWindow):
         self.tx_seconds_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self.tx_seconds_label.setFixedHeight(34)
         self.tx_seconds_label.setVisible(True)
-        self.encoder_status = QLabel("AMBE-Encoder wird geprüft …")
-        self.encoder_status.setObjectName("secondaryText")
-        self.encoder_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.tx_status.hide()
         control_layout.addWidget(self.ptt_button)
         control_layout.addWidget(self.tx_seconds_label)
-        control_layout.addWidget(self.encoder_status)
         control_layout.addStretch(1)
         content.addWidget(control_card, 1, 1)
 
@@ -547,11 +566,9 @@ class MainWindow(QMainWindow):
                 continue
             shortcut = QShortcut(QKeySequence(sequence), self, activated=callback)
             self._shortcuts.append(shortcut)
-        for sequence in ("Return", "Enter"):
-            self._shortcuts.append(QShortcut(QKeySequence(sequence), self, activated=self._activate_focused_button))
 
     def _update_radio_hotkey_hints(self) -> None:
-        """Zeigt die aktuell konfigurierten Pflicht-Hotkeys direkt am Funkziel."""
+        """Zeigt die aktuell konfigurierten Pflicht-Hotkeys direkt am DMR-Kanal."""
         mapping = self.hotkey_manager.mapping
         ts_key = mapping.get("TS_CHANGE") or DEFAULT_HOTKEYS["TS_CHANGE"]
         call_key = mapping.get("CALLTYPE_CHANGE") or DEFAULT_HOTKEYS["CALLTYPE_CHANGE"]
@@ -584,8 +601,18 @@ class MainWindow(QMainWindow):
         widget = QApplication.focusWidget()
         return widget if isinstance(widget, QAbstractButton) else None
 
+    def eventFilter(self, watched, event) -> bool:
+        """Aktiviert fokussierte Buttons mit Enter, ohne Eingabefelder zu stören."""
+        if event.type() == QEvent.Type.KeyPress and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            button = self._focused_button()
+            if button is not None and button.isEnabled() and not button.property("radioFlag"):
+                button.click()
+                event.accept()
+                return True
+        return super().eventFilter(watched, event)
+
     def _activate_focused_button(self) -> None:
-        """Enter aktiviert Aktionsbuttons; TS/Rufart werden per F6/F7 geschaltet."""
+        """Kompatibilitätshelfer für Tests und gezielte Button-Aktivierung."""
         button = self._focused_button()
         if button is not None and button.isEnabled() and not button.property("radioFlag"):
             button.click()
@@ -647,7 +674,7 @@ class MainWindow(QMainWindow):
         try:
             self._save_preferences()
         except Exception as error:
-            self.statusBar().showMessage(f"Funkziel konnte nicht gespeichert werden: {error}")
+            self.statusBar().showMessage(f"DMR-Kanal konnte nicht gespeichert werden: {error}")
 
     def _target(self) -> tuple[int, int, str]:
         text = self.current_tg_label.text().strip()
@@ -685,6 +712,46 @@ class MainWindow(QMainWindow):
         if retries > 0:
             QTimer.singleShot(100, lambda: self._focus_ptt_after_connect(retries - 1))
 
+    def _update_known_talkgroup_name(self, value: str) -> None:
+        """Zeigt bei eindeutiger bekannter Nummer den Namen unter dem TG-Feld."""
+        text = str(value).strip()
+        name = ""
+        if text.isdigit():
+            target = int(text)
+            for channel in self.talkgroup_search_service.channels:
+                if channel.target == target and channel.name:
+                    name = channel.name
+                    break
+        self.tg_name_label.setText(name)
+
+    def _apply_selected_channel(self, channel) -> None:
+        """Übernimmt einen Treffer vollständig als DMR-Kanal, ohne zu verbinden."""
+        try:
+            normalized = channel.normalized()
+        except (AttributeError, TypeError, ValueError):
+            return
+        if not self.radio_state.snapshot().can_edit_parameters:
+            return
+        self.current_tg_label.setText(str(normalized.target))
+        self.tg_name_label.setText(normalized.name or "")
+        self._selected_timeslot = normalized.timeslot
+        self._selected_call_type = normalized.call_type
+        self._sync_radio_controls()
+        self.tg_edit.clear()
+        self._update_talkgroup_accessibility("")
+        try:
+            self._save_preferences()
+        except Exception as error:
+            QMessageBox.warning(self, "CarenDMR", str(error))
+            return
+        self.connect_button.setFocus()
+        target_kind = "Talkgroup" if normalized.is_group_call else "DMR-ID"
+        channel_name = f" {normalized.name}" if normalized.name else ""
+        self.statusBar().showMessage(
+            f"{target_kind}{channel_name} {normalized.target}, TS{normalized.timeslot}, "
+            f"{'Gruppe' if normalized.is_group_call else 'Privat'} übernommen."
+        )
+
     def _apply_pending_talkgroup(self) -> bool:
         """Übernimmt eine eingetragene neue TG, bevor verbunden wird."""
         if not self.tg_edit.text().strip():
@@ -700,6 +767,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "CarenDMR", "Bitte eine gültige Talkgroup eingeben.")
             return False
         self.current_tg_label.setText(str(int(text)))
+        self._update_known_talkgroup_name(text)
         self.tg_edit.clear()
         self._update_talkgroup_accessibility("")
         try:
@@ -772,10 +840,15 @@ class MainWindow(QMainWindow):
             badge_state = "busy"
         else:
             badge_state = "disconnected"
-        self.connection_label.setProperty("visualState", badge_state)
-        for widget in (self.connect_button, self.connection_label):
-            widget.style().unpolish(widget)
-            widget.style().polish(widget)
+        if state is RadioState.ERROR:
+            badge_state = "error"
+        self.connection_indicator.set_state(badge_state)
+        self.connect_button.style().unpolish(self.connect_button)
+        self.connect_button.style().polish(self.connect_button)
+        if state not in {RadioState.CONNECTED, RadioState.TRANSMITTING}:
+            self.rx_level_meter.reset()
+        if state is not RadioState.TRANSMITTING:
+            self.mic_level_meter.reset()
 
     def _toggle_connection(self) -> None:
         state = self.radio_state.state
@@ -796,7 +869,7 @@ class MainWindow(QMainWindow):
         self._startup_announcement_timer.stop()
         self._connected_announcement_pending = True
         self.radio_state.synchronize(RadioState.CONNECTING)
-        self.connection_label.setText("Verbindung wird hergestellt …")
+        self.connection_indicator.set_state("busy")
         self.statusBar().showMessage("Verbindung wird hergestellt …")
         self._set_controls_for_state(self.radio_state.state)
 
@@ -906,7 +979,9 @@ class MainWindow(QMainWindow):
 
         def worker() -> None:
             try:
-                result = self.connection_manager.run_parrot_hold_to_talk(stop_event, optimize=True)
+                result = self.connection_manager.run_parrot_hold_to_talk(
+                    stop_event, level_callback=lambda level: self._updates.put(("mic_level", level)), optimize=True
+                )
                 self._updates.put(("tx_result", result))
             except Exception as error:
                 self._updates.put(("tx_error", error))
@@ -998,7 +1073,7 @@ class MainWindow(QMainWindow):
                         self.radio_state.synchronize(RadioState.CONNECTED)
                 elif kind == "connect_error":
                     self.radio_state.synchronize(RadioState.ERROR)
-                    self.connection_label.setText("Verbindungsfehler")
+                    self.connection_indicator.set_state("error")
                     self.statusBar().showMessage(f"Verbindungsfehler: {value}")
                     QMessageBox.critical(self, "CarenDMR", f"Verbindung fehlgeschlagen:\n\n{value}")
                     self._set_controls_for_state(self.radio_state.state)
@@ -1012,12 +1087,16 @@ class MainWindow(QMainWindow):
                     self.statusBar().showMessage(f"Trennen fehlgeschlagen: {value}")
                 elif kind == "encoder_ready":
                     self._encoder_ready = True
-                    self.encoder_status.setText("AMBE-Encoder bereit")
                     self._set_controls_for_state(self.radio_state.state)
                 elif kind == "encoder_error":
                     self._encoder_ready = False
-                    self.encoder_status.setText(f"Senden gesperrt: {value}")
                     self._set_controls_for_state(self.radio_state.state)
+                elif kind == "rx_level":
+                    self._rx_level = float(value)
+                    self.rx_level_meter.set_level(self._rx_level)
+                elif kind == "mic_level":
+                    self._mic_level = float(value)
+                    self.mic_level_meter.set_level(self._mic_level)
                 elif kind == "tx_beep_done":
                     QTimer.singleShot(120, self._begin_tx)
                 elif kind == "tx_beep_error":
@@ -1055,8 +1134,7 @@ class MainWindow(QMainWindow):
         elif not state.receive_active and not self._tx_active and self.radio_state.state not in {RadioState.CONNECTING, RadioState.DISCONNECTING}:
             self.radio_state.synchronize(RadioState.DISCONNECTED)
 
-        self.connection_label.setText(state.connection.value)
-        self.server_label.setText(f"Server: {state.server if state.brandmeister_connected else 'Nicht verbunden'}")
+        self.server_label.setText("Message Server: verbunden" if state.brandmeister_connected else "Message Server: nicht verbunden")
         self.audio_status_label.setText("Audio aktiv" if state.audio_active else "Audio nicht aktiv")
         stats = state.statistics
         self.statistics_label.setText(

@@ -1,3 +1,15 @@
+# CarenDMR 0.1.7.3.5 – Statuslayout und Enter-Regression
+
+Aktueller stabiler Entwicklungsstand: **0.1.7.3.5**.
+
+Neu: Das Talkgroup-Feld durchsucht während der Eingabe ein lokales DMR-Kanalverzeichnis nach Nummer oder Name. Treffer werden kompakt in einer Zeile angezeigt und können mit Pfeiltasten und Enter übernommen werden. Dabei werden Talkgroup beziehungsweise DMR-ID, Timeslot und Rufart gemeinsam vorbelegt. Eine beliebige TG kann weiterhin direkt als Zahl eingegeben werden.
+
+# CarenDMR 0.1.7.2 – DMR-Kanal V1
+
+Aktueller stabiler Entwicklungsstand: **0.1.7.2**.
+
+Neu: Der bisherige Bereich „Funkziel“ heißt fachlich korrekt „DMR-Kanal“. Das Eingabefeld heißt „Talkgroup“. Das neue zentrale Modell `DmrChannel` bildet Talkgroup/DMR-ID, Timeslot und Rufart gemeinsam ab. Suche und Favoriten folgen in den nächsten abgeschlossenen Bausteinen.
+
 # Aktueller Stand: CarenDMR 0.1.6.8
 
 # CarenDMR 0.1.6.6 – Field-Test Audio & Accessibility Final

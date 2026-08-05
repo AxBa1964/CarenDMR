@@ -148,6 +148,22 @@ def build_stylesheet(tokens: ThemeTokens = TOKENS, metrics: DesignMetrics = METR
             selection-color: {t.text};
             border: 1px solid {t.border_strong};
         }}
+        QListWidget#talkgroupSearchPopup {{
+            background-color: {t.surface};
+            color: {t.text};
+            border: 2px solid {t.border_strong};
+            padding: 2px;
+            font-size: 13px;
+        }}
+        QListWidget#talkgroupSearchPopup::item {{
+            min-height: 28px;
+            padding: 4px 8px;
+            border-bottom: 1px solid {t.border};
+        }}
+        QListWidget#talkgroupSearchPopup::item:selected {{
+            background-color: {t.selection};
+            color: {t.text};
+        }}
 
         QRadioButton, QCheckBox {{
             color: {t.text};

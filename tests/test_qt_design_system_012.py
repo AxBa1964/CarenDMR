@@ -12,5 +12,7 @@ def test_design_system_tokens_and_metrics_are_centralized():
 
 def test_status_controls_use_shared_metrics():
     text = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
-    assert "self.connection_label.setFixedSize(METRICS.connection_control_width, METRICS.status_control_height)" in text
+    assert "StatusIndicator(header)" in text
+    indicator = Path("carendmr/ui_qt/operating_indicators.py").read_text(encoding="utf-8")
+    assert "self.setFixedSize(150, 40)" in indicator
     assert "self.connect_button.setFixedSize(METRICS.connection_control_width, METRICS.action_control_height)" in text

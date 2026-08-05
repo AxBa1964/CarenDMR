@@ -1,3 +1,15 @@
+# CarenDMR 0.1.7.3.5 – Statuslayout und Enter-Regression
+
+Aktueller stabiler Entwicklungsstand: **0.1.7.3.5**.
+
+Das Talkgroup-Feld bietet jetzt eine lokale Live-Suche nach Nummer oder Name. Ein Treffer übernimmt Talkgroup beziehungsweise DMR-ID, Timeslot und Rufart als vollständigen DMR-Kanal. Die Verbindung wird weiterhin bewusst erst mit F5 oder „Verbinden“ gestartet.
+
+# CarenDMR 0.1.7.2 – DMR-Kanal V1
+
+Aktueller stabiler Entwicklungsstand: **0.1.7.2**.
+
+Dieser erste Baustein führt den fachlichen DMR-Kanal als Kombination aus Talkgroup oder DMR-ID, Timeslot und Rufart ein. Die Betriebsseite verwendet jetzt die Begriffe „DMR-Kanal“ und „Talkgroup“. Funklogik und Bedienablauf bleiben unverändert.
+
 # CarenDMR 0.1.6.8 – TS/RA Keyboard Workflow Final
 
 - Timeslot und Rufart bleiben sichtbar und per Maus bedienbar.

@@ -6,7 +6,7 @@ from carendmr.version import __version__
 
 
 def test_release_version():
-    assert __version__ == "0.1.6.8"
+    assert __version__ == "0.1.7.3.5"
 
 
 def test_theme_stylesheet_uses_only_defined_tokens():

@@ -1,3 +1,51 @@
+# CarenDMR 0.1.7.3.5 – Statuslayout und Enter-Regression
+
+- Message-Server-Status aus dem DMR-Kanal in den Kopfbereich unter die Statusanzeige verschoben.
+- Unter dem Talkgroup-Feld wird bei bekannten Einträgen der Talkgroup-Name angezeigt.
+- Enter aktiviert wieder gezielt den fokussierten Aktionsbutton, ohne die lokale Enter-Verarbeitung der Talkgroup-Suche zu blockieren.
+- Regressionstests für beide Enter-Abläufe und das neue Statuslayout ergänzt.
+
+# CarenDMR 0.1.7.3.4 – Enter-Shortcut-Konflikt behoben
+
+- Globale Return-/Enter-Shortcuts im Hauptfenster entfernt.
+- Enter erreicht dadurch wieder die lokale Talkgroup-Suche und übernimmt den markierten Treffer.
+- Die bestehende lokale Behandlung für Pfeiltasten, Escape und Enter bleibt unverändert.
+- Buttons verwenden ihr natives Qt-Tastaturverhalten; Pflicht-Hotkeys F5, F6, F7 und Space bleiben unverändert.
+- Regressionstest verhindert eine erneute globale Bindung von Return/Enter.
+
+# CarenDMR 0.1.7.3.4 – Talkgroup-Suche Enter-Übernahme zuverlässig
+
+
+- Enter wird bereits auf der allgemeinen Qt-Event-Ebene abgefangen und übernimmt den markierten Treffer zuverlässig.
+- Die markierte Trefferzeile wird unabhängig vom Fokuszustand des Popups intern nachgeführt.
+- Enter übernimmt den markierten Treffer jetzt zuverlässig über die interne Trefferliste.
+- Pfeil nach unten öffnet eine mit Escape geschlossene Trefferliste erneut, sofern Suchtext vorhanden ist.
+- Escape behält Suchtext und Eingabefokus unverändert.
+- Trefferliste zeigt nur noch zwei ruhige Spalten: Name und TG/DMR-ID.
+- Timeslot und Rufart bleiben Bestandteil des Kanals, werden in der Suchübersicht aber nicht mehr angezeigt.
+- Das Suchfeld behält beim Öffnen der Trefferliste den Tastaturfokus.
+- Weitere Ziffern und Buchstaben grenzen die Treffer fortlaufend ein.
+- Pfeil hoch/runter markiert Treffer, Enter übernimmt den Kanal zuverlässig.
+- Escape schließt die Liste, erhält den Suchtext und lässt den Fokus im Talkgroup-Feld.
+- Keine automatische Verbindung; F5 bleibt der bewusste Verbindungsbefehl.
+
+# CarenDMR 0.1.7.2 – DMR-Kanal V1
+
+- Bereich „Funkziel“ auf der Betriebsseite in „DMR-Kanal“ umbenannt.
+- Eingabefeld fachlich einheitlich als „Talkgroup“ bezeichnet.
+- Neues zentrales Domain-Modell `DmrChannel` für Ziel, Timeslot und Rufart.
+- Modell ist bereits für Namen, Land und Beschreibung des späteren TG-Verzeichnisses vorbereitet.
+- Keine Änderung an Funklogik, Hotkeys, Fokusfolge oder Verbindungsvorgang.
+
+# CarenDMR 0.1.7.1 – Betriebsanzeigen V1
+
+- Nicht klickbare LED-/Displayanzeige für Getrennt, Verbindet, Empfang, Senden und Fehler.
+- Sichtbares MIC-/TX-Pegelmeter mit Peak-Hold.
+- Sichtbares RX-Pegelmeter mit Peak-Hold.
+- Beide Pegelanzeigen sind nicht fokussierbar und erzeugen keine eigenen Screenreader-Ausgaben.
+- Der AMBE-Bereitschaftstext wurde von der Betriebsseite entfernt; Codec-Prüfung bleibt unter Einstellungen → Codec / Decoder.
+- Hotkeys, Tab-Reihenfolge, PTT-Vorlauf, AudioCue und Funklogik bleiben unverändert.
+
 # CarenDMR 0.1.6.8 – TS/RA Keyboard Workflow Final
 
 - Timeslot und Rufart bleiben sichtbar und per Maus bedienbar.

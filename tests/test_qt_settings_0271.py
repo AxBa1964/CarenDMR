@@ -4,7 +4,7 @@ from carendmr.version import __version__
 
 
 def test_version_0271():
-    assert __version__ == "0.1.6.8"
+    assert __version__ == "0.1.7.3.5"
 
 
 def test_settings_contains_hotkey_management():
