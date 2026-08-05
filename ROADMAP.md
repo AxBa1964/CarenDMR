@@ -1,3 +1,5 @@
+# Aktueller Stand: CarenDMR 0.1.6.8
+
 # Stand 0.1.1
 
 Aktueller stabiler Qt-Funktionsstand: 0.0.28.3.

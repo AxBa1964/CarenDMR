@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSlider,
+    QDoubleSpinBox,
     QVBoxLayout,
     QGridLayout,
     QKeySequenceEdit,
@@ -35,8 +36,9 @@ from carendmr.ui_qt.theme import METRICS
 from carendmr.audio import AudioDirection
 from carendmr.diagnostics import initialize as initialize_diagnostics
 from carendmr.diagnostics import set_enabled as set_diagnostics_enabled
-from carendmr.accessibility.hotkeys import DEFAULT_HOTKEYS, FUNCTION_LABELS, HotkeyManager
+from carendmr.accessibility.hotkeys import DEFAULT_HOTKEYS, FUNCTION_LABELS, REQUIRED_HOTKEYS, HotkeyManager
 from carendmr.application import ContactService, EncoderService
+from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.brandmeister.config import BrandMeisterConfigStore
 
 
@@ -55,6 +57,7 @@ class SettingsDialog(QDialog):
         self.hotkey_manager = HotkeyManager(self.project_root / "config" / "hotkeys.local.json")
         self.contact_service = ContactService(self.project_root)
         self.encoder_service = EncoderService(self.project_root)
+        self.preferences_store = OperatingPreferencesStore(self.project_root / "config" / "operating.local.json")
         self._pending_hotkeys = self.hotkey_manager.mapping
         self._selected_function: str | None = None
 
@@ -177,7 +180,19 @@ class SettingsDialog(QDialog):
         self.audio_debug_check = QCheckBox("Audio-Diagnose als WAV speichern")
         self.log_path_label = QLabel(f"Logverzeichnis: {self.project_root / 'logs'}"); self.log_path_label.setWordWrap(True)
         diag_layout.addWidget(self.diagnostics_check); diag_layout.addWidget(self.audio_debug_check); diag_layout.addWidget(self.log_path_label)
-        diag_root.addWidget(diag_box); diag_root.addStretch(1)
+        accessibility_box = QGroupBox("Accessibility-Test")
+        accessibility_form = QFormLayout(accessibility_box)
+        self.ptt_lead_in_spin = QDoubleSpinBox()
+        self.ptt_lead_in_spin.setRange(0.0, 5.0)
+        self.ptt_lead_in_spin.setSingleStep(0.1)
+        self.ptt_lead_in_spin.setDecimals(1)
+        self.ptt_lead_in_spin.setSuffix(" s")
+        self.ptt_lead_in_spin.setAccessibleName("PTT-Vorlauf für Screenreader")
+        accessibility_form.addRow("PTT-Vorlauf bei aktivem Screenreader:", self.ptt_lead_in_spin)
+        accessibility_note = QLabel("Verzögert nur den tatsächlichen Sendestart, damit die kurze Screenreader-Ansage nicht mitgesendet wird.")
+        accessibility_note.setWordWrap(True)
+        accessibility_form.addRow("", accessibility_note)
+        diag_root.addWidget(diag_box); diag_root.addWidget(accessibility_box); diag_root.addStretch(1)
         self.tabs.addTab(diag_page, "Diagnose")
 
         # Hotkeys
@@ -352,6 +367,8 @@ class SettingsDialog(QDialog):
         self.agc_check.setChecked(bool(self.audio_service.agc_enabled))
         self.audio_debug_check.setChecked(bool(self.audio_service.audio_debug_wav_enabled))
         self.diagnostics_check.setChecked(bool(initialize_diagnostics(self.project_root)))
+        preferences = self.preferences_store.load()
+        self.ptt_lead_in_spin.setValue(preferences.screenreader_ptt_lead_in_seconds)
 
     def _device_by_key(self, devices, stable_key: str):
         return next((device for device in devices if device.stable_key == stable_key), None)
@@ -395,7 +412,12 @@ class SettingsDialog(QDialog):
         current = self._pending_hotkeys.get(self._selected_function, "")
         self.current_hotkey_label.setText(f"{FUNCTION_LABELS[self._selected_function]} – {self._display_hotkey(current)}")
         self.hotkey_capture.clear()
-        self.hotkey_status.setText("Neue Tastenkombination drücken oder die bestehende Zuordnung entfernen.")
+        required = self._selected_function in REQUIRED_HOTKEYS
+        self.remove_hotkey_button.setEnabled(not required)
+        if required:
+            self.hotkey_status.setText("Pflicht-Hotkey: Neue Tastenkombination drücken; Entfernen ist nicht möglich.")
+        else:
+            self.hotkey_status.setText("Neue Tastenkombination drücken oder die bestehende Zuordnung entfernen.")
 
     def _hotkey_sequence_changed(self, sequence: QKeySequence) -> None:
         text = sequence.toString(QKeySequence.SequenceFormat.PortableText)
@@ -422,6 +444,12 @@ class SettingsDialog(QDialog):
         conflict = next((fn for fn, key in self._pending_hotkeys.items()
                          if fn != self._selected_function and key.lower() == value.lower()), None)
         if conflict:
+            if conflict in REQUIRED_HOTKEYS:
+                self.hotkey_status.setText(
+                    f"{value} ist für {FUNCTION_LABELS[conflict]} zwingend erforderlich. "
+                    "Weisen Sie dieser Funktion zuerst eine andere Taste zu."
+                )
+                return
             answer = QMessageBox.question(
                 self, "Tastenkombination neu zuordnen",
                 f"{value} ist bereits für {FUNCTION_LABELS[conflict]} vergeben.\n\n"
@@ -441,6 +469,9 @@ class SettingsDialog(QDialog):
     def _remove_hotkey(self) -> None:
         if not self._selected_function:
             self.hotkey_status.setText("Bitte zuerst eine Funktion auswählen.")
+            return
+        if self._selected_function in REQUIRED_HOTKEYS:
+            self.hotkey_status.setText("Diese Kernfunktion benötigt zwingend einen Hotkey.")
             return
         self._pending_hotkeys[self._selected_function] = ""
         self._refresh_hotkey_table()
@@ -468,6 +499,10 @@ class SettingsDialog(QDialog):
         self.status_label.setText("Hotkeys wurden auf Werkseinstellungen vorgemerkt.")
 
     def _save_hotkeys(self) -> None:
+        missing_required = [fn for fn in REQUIRED_HOTKEYS if not self._pending_hotkeys.get(fn, "").strip()]
+        if missing_required:
+            labels = ", ".join(FUNCTION_LABELS[fn] for fn in sorted(missing_required))
+            raise ValueError(f"Pflicht-Hotkeys fehlen: {labels}")
         normalized: dict[str, str] = {}
         used: dict[str, str] = {}
         for function in DEFAULT_HOTKEYS:
@@ -503,6 +538,14 @@ class SettingsDialog(QDialog):
             self.audio_service.set_audio_debug_wav_enabled(self.audio_debug_check.isChecked())
             self.audio_service.save_settings()
             self._save_hotkeys()
+            preferences = self.preferences_store.load()
+            self.preferences_store.save(OperatingPreferences(
+                preferences.talkgroup,
+                preferences.timeslot,
+                preferences.call_type,
+                preferences.speech_enabled,
+                self.ptt_lead_in_spin.value(),
+            ))
 
             self.receive_service.set_output_volume_percent(self.audio_service.output_volume_percent)
             self.receive_service.set_user_muted(self.audio_service.user_muted)

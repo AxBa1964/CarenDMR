@@ -21,6 +21,8 @@ DEFAULT_HOTKEYS: dict[str, str] = {
     "PTT": "Space",
 }
 
+REQUIRED_HOTKEYS: frozenset[str] = frozenset({"CONNECT", "TS_CHANGE", "CALLTYPE_CHANGE", "PTT"})
+
 FUNCTION_LABELS: dict[str, str] = {
     "HELP": "Kontext-Hilfe",
     "TG_CHANGE": "Talkgroup wechseln",
@@ -61,7 +63,10 @@ class HotkeyManager:
         if isinstance(raw, dict):
             for function, key in raw.items():
                 if function in DEFAULT_HOTKEYS and isinstance(key, str):
-                    self._mapping[function] = self.normalize_key(key)
+                    normalized = self.normalize_key(key)
+                    if function in REQUIRED_HOTKEYS and not normalized:
+                        normalized = DEFAULT_HOTKEYS[function]
+                    self._mapping[function] = normalized
         return self.mapping
 
     def save(self) -> None:
@@ -76,6 +81,8 @@ class HotkeyManager:
         if function not in DEFAULT_HOTKEYS:
             raise KeyError(function)
         normalized = self.normalize_key(key)
+        if function in REQUIRED_HOTKEYS and not normalized:
+            raise ValueError(f"{FUNCTION_LABELS[function]} benötigt zwingend einen Hotkey.")
         for other_function, other_key in self._mapping.items():
             if normalized and other_function != function and other_key.lower() == normalized.lower():
                 raise ValueError(f"{normalized} ist bereits für {FUNCTION_LABELS.get(other_function, other_function)} belegt.")

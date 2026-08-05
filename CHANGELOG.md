@@ -1,3 +1,112 @@
+# CarenDMR 0.1.6.8 – TS/RA Keyboard Workflow Final
+
+- Timeslot und Rufart bleiben sichtbar und per Maus bedienbar.
+- Beide Statusgruppen sind aus der Tab-Reihenfolge entfernt.
+- Tastaturbedienung erfolgt ausschließlich über die konfigurierten Hotkeys.
+- Hotkey-Hinweise werden dynamisch aus dem Eingabemanager angezeigt.
+- F6/F7 beziehungsweise die individuell belegten Tasten erzeugen genau eine kurze Fachansage.
+- Verbinden, PTT, Timeslot und Rufart sind Pflicht-Hotkeys und können nicht gelöscht werden.
+
+# CarenDMR 0.1.6.7 – AudioCue Initialisierungsfix
+
+- Startabsturz behoben: `AudioCuePlayer` verwendet den bereits initialisierten `AudioSendService`.
+- Keine Installationsänderung erforderlich.
+- Radio Controls, Accessibility und Funklogik unverändert.
+
+---
+
+# CarenDMR 0.1.6.6 – Field-Test Audio & Accessibility Final
+
+- Programmstart setzt den Fokus direkt auf „Neue Talkgroup“.
+- Timeslot und Rufart haben kurze Accessibility-Namen ohne zusätzliche Hilfetexte.
+- F6/F7 erzeugen keine zweite parallele Manager-Ansage mehr.
+- PTT-Vorlauf wird explizit aus der Einstellung verwendet und hängt nicht mehr von der unzuverlässigen Qt-Erkennung des Screenreaders ab.
+- Ein eigener lokaler heller Start-Beep erklingt vollständig vor dem tatsächlichen TX.
+- Nach sicher beendetem TX erklingen zwei kurze lokale End-Beeps.
+- Quittungstöne werden über das gewählte Wiedergabegerät abgespielt und gelangen nicht in den Mikrofon-/Sendepfad.
+
+# CarenDMR 0.1.6.6 – Accessibility Field-Test Polish
+
+
+## Accessibility Field-Test Polish
+
+- Timeslot und Rufart geben beim Tabben den aktuellen Wert in der zugänglichen Beschreibung aus.
+- Verbinden/Trennen besitzt in jedem Zustand einen eindeutigen zugänglichen Namen.
+- Eigener heller Doppelton (1200/1600 Hz) direkt vor dem tatsächlichen TX-Start.
+- Übergeordnete Betriebsseite liefert keine unnötige Gruppenansage mehr.
+- Funklogik, Layout und Hotkeys unverändert.
+
+## Korrektur
+
+- Der getrennte Initialzustand mit der historischen Default-TG 91 überschreibt nicht mehr die aus `config/operating.local.json` geladene letzte Talkgroup.
+- TG, Timeslot und Rufart erscheinen nach einem Neustart wieder exakt wie vor dem Beenden.
+
+
+- Letzte Talkgroup, Timeslot und Rufart werden dauerhaft gespeichert und beim Start geladen.
+- F6/F7 sowie Mausklicks speichern TS und Rufart unmittelbar.
+- TS1/TS2 und Gruppe/Privat besitzen feste Breiten; das Layout verschiebt sich beim Umschalten nicht.
+- Der Sendebutton heißt durchgehend TX: grün sendebereit, rot während tatsächlichem TX.
+- Der Sekundenzähler läuft nur während tatsächlichem TX, stoppt sofort und wird danach geleert.
+
+- TS und Rufart als kleine, optisch zurückhaltende TG-Flags
+- Maus wählt direkt; Tastatur schaltet weiterhin ausschließlich mit F6/F7
+- Tab erreicht jeweils den aktiven TS- und Rufart-Status
+- TX-Zähler stoppt und verschwindet sofort beim Wechsel zurück zu RX
+- TX/RX-Schaltfläche bleibt positionsstabil
+- eigener lokaler 880-Hz-Funkton statt Windows-Systemton
+- tatsächlicher TX startet erst nach vollständig abgespieltem Startton
+
+# CarenDMR 0.1.6.1 – Radio Controls Polish
+
+- TS1/TS2 und Gruppe/Privat sind jetzt normale, nicht checkbare Segment-Schaltflächen. Dadurch meldet der Screenreader keine Checkbox-/Kontrollkästchen-Rolle mehr.
+- CarenDMR verwaltet die Auswahl intern und kennzeichnet den aktiven Segment-Schalter nur optisch sowie mit einem kurzen fachlichen AccessibleName.
+- Tab-Reihenfolge korrigiert: Neue TG → aktiver Timeslot → aktive Rufart → Verbinden.
+- Segment-Schaltflächen kleiner und dezenter gestaltet, damit sie die Betriebsseite nicht dominieren.
+- Der TX-Sekundenzähler reserviert dauerhaft seinen Platz. Der TX/RX-Button bewegt sich beim Ein- und Ausblenden der Zahl nicht mehr.
+- Der Zähler enthält nur während tatsächlichem TX eine Zahl, beginnt bei jeder Aussendung wieder bei 0 und bleibt für Screenreader stumm.
+- Bei aktivem nativen Accessibility-System ertönt nach dem eingestellten PTT-Vorlauf ein kurzer lokaler Signalton. Erst 150 ms danach werden Mikrofon und DMR-TX gestartet; der Ton gelangt nicht in den Sendepfad.
+- Funkkern, F5/F6/F7, Space, Audio, QSO-Historie und bestehende Konfiguration bleiben unverändert.
+
+# CarenDMR 0.1.5.0 – Radio Workflow
+
+- PTT-Bedienung auf kurze Funkbegriffe umgestellt: `TX` im Empfang und `RX` während einer laufenden Sendung.
+- Bei aktivem nativen Accessibility-System wartet CarenDMR 1,2 Sekunden, bevor Mikrofon und DMR-TX tatsächlich starten. Dadurch kann Narrator/VoiceOver die kurze `RX`-Ansage beenden, bevor die Aussendung beginnt.
+- Sichtbarer TX-Sekundenzähler zählt 0, 1, 2, 3 … hoch.
+- Der Sekundenzähler ist nicht fokussierbar und besitzt keinen zugänglichen Namen; er wird nicht vorgelesen.
+- Timeslot und Rufart verwenden auch sichtbar die vollständigen Bezeichnungen `Timeslot 1/2`, `Gruppenruf` und `Privatruf`, damit Screenreader den fachlichen Namen sicher erhalten.
+- Zweiter Druck während des Screenreader-Vorlaufs bricht den noch nicht gestarteten TX sauber ab.
+- Funkkern, Verbindung, Hotkeys, Tab-Reihenfolge, Einstellungen und QSO-Historie bleiben unverändert.
+
+# CarenDMR 0.1.3.5 – Funkorientierte Accessibility
+
+- Eigene Ansagen während der TG-Eingabe vollständig entfernt.
+- Keine zusätzlichen Accessibility-Ereignisse mehr für einzelne Ziffern oder Backspace.
+- Narrator/NVDA/JAWS/VoiceOver übernehmen das native Zeichen-Echo allein.
+- Beim Verbinden wird der tatsächlich im Feld stehende Wert genau einmal ziffernweise als neue Talkgroup bestätigt.
+- Funklogik, Layout, Hotkeys und Tab-Reihenfolge unverändert.
+
+# CarenDMR 0.1.3.2 – Accessibility-Ereigniskette bereinigt
+
+- Verbindungsbutton bleibt während Aufbau/Trennung fokussierbar; kein Zwischenfokus auf Mic-Gain.
+- Keine gesprochenen Übergangsmeldungen für CONNECTING/DISCONNECTING.
+- Nach F5: Fokus auf PTT, danach genau eine kurze Meldung „Verbunden“.
+- Startkontext-Timer wird beim Verbindungsaufbau gestoppt, damit keine verspätete Vollansage dazwischenfunkt.
+- Wiederholte State-Updates erzeugen keine zusätzlichen Ansagen.
+
+# CarenDMR 0.1.3.1.1 – Accessibility Workflow Fix
+
+- Native Qt-Ankündigungen über QAccessibleAnnouncementEvent.
+- Nach erfolgreichem F5-Verbinden springt der Fokus auf PTT.
+- Nach Trennen bleibt der Fokusablauf Neue Talkgroup erhalten.
+- Kurze Accessibility-Namen für Mic-Gain und RX-Lautstärke ohne doppelte Beschreibung.
+
+- Mic-Gain und RX-Lautstärke besitzen eindeutige native Accessibility-Namen und Prozentwerte.
+- Beim Programmstart und beim Wechsel auf Betrieb wird der aktuelle Funkkontext kompakt bereitgestellt.
+- Verbinden, Trennen, Senden und Rückkehr zum Empfang melden kurze native Zustandsänderungen.
+- QSO-Historienzellen liefern zusätzlich zum Zellinhalt die jeweilige Spaltenüberschrift.
+- Keine eigene Desktop-TTS; Narrator, NVDA, JAWS und VoiceOver bleiben für die Sprachausgabe zuständig.
+- Keine Änderung an Funklogik, Hotkeys, Tab-Reihenfolge oder sichtbarem Layout.
+
 # CarenDMR 0.1.2.1 – Design-System-Fix
 
 - Initialisierungsfehler im Hotkey-Reiter beim Öffnen der Einstellungen behoben.
@@ -788,3 +897,11 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Test2 als Referenzimplementierung integriert (tools/brandmeister_dynamic_receiver.py).
 - Dynamische TG-Umschaltung per API + UDP-Trigger übernommen.
 - Keine statische BrandMeister-Subscription erforderlich.
+
+## Änderungen
+
+- Timeslot 1 und Timeslot 2 liefern wieder einen eindeutigen Auswahlzustand.
+- Gruppenruf und Privatruf liefern wieder einen eindeutigen Auswahlzustand.
+- F6 kündigt nur den neu gewählten Timeslot kurz an.
+- F7 kündigt nur die neu gewählte Rufart kurz an.
+- TG-Eingabe, Funklogik, Layout und Tab-Reihenfolge bleiben unverändert.

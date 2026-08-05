@@ -1,6 +1,6 @@
 """Zentrale Versionsinformation."""
 
-__version__ = "0.1.2.1"
+__version__ = "0.1.6.8"
 
 
 def get_version() -> str:

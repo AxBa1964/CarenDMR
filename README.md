@@ -1,8 +1,14 @@
-# CarenDMR 0.1.2.1 – Design-System-Fix
+# Aktueller Stand: CarenDMR 0.1.6.8
 
-# CarenDMR 0.1.1 – Theme Engine & Accessibility
+# CarenDMR 0.1.6.6 – Field-Test Audio & Accessibility Final
 
-CarenDMR ist ein eigenständiger Desktop-DMR-Client für BrandMeister.
+## Neu in 0.1.6.1
+
+- kompakte Segment-Schaltflächen ohne Checkbox-Rolle für Timeslot und Rufart
+- korrigierte Tab-Reihenfolge
+- ruhiger TX/RX-Bereich ohne Layoutsprung
+- TX-Sekundenzähler nur während echter Sendung und bei jedem TX ab 0
+- lokaler TX-Startton nach dem einstellbaren Accessibility-Vorlauf
 
 ## Stand 0.1.1
 

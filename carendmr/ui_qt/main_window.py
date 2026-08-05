@@ -11,10 +11,10 @@ from pathlib import Path
 from threading import Event, Thread
 
 from PySide6.QtCore import QRegularExpression, QTimer, Qt
-from PySide6.QtGui import QAction, QCloseEvent, QKeySequence, QRegularExpressionValidator, QShortcut
+from PySide6.QtGui import QAction, QAccessible, QCloseEvent, QKeySequence, QRegularExpressionValidator, QShortcut
 from PySide6.QtWidgets import (
-    QApplication, QAbstractButton, QButtonGroup, QFormLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QRadioButton,
+    QApplication, QAbstractButton, QFormLayout, QGroupBox, QHBoxLayout,
+    QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
     QStatusBar, QTabWidget, QVBoxLayout, QWidget, QSlider, QCheckBox, QGridLayout,
     QFrame, QSizePolicy,
 )
@@ -27,10 +27,13 @@ from carendmr.application.operating_preferences import OperatingPreferences, Ope
 from carendmr.domain import ApplicationState, ConnectionState
 from carendmr.version import __version__
 from carendmr.ui_qt.theme import METRICS
-from carendmr.accessibility.hotkeys import HotkeyManager
+from carendmr.accessibility.hotkeys import DEFAULT_HOTKEYS, HotkeyManager
 from carendmr.ui_qt.settings_dialog import SettingsDialog
 from carendmr.ui_qt.history_widget import QsoHistoryWidget
 from carendmr.ui_qt.theme import apply_theme
+from carendmr.ui_qt.accessibility_manager import AccessibilityManager
+from carendmr.ui_qt.audio_cue import AudioCuePlayer
+from carendmr.audio import AudioDirection
 
 
 class MainWindow(QMainWindow):
@@ -43,6 +46,8 @@ class MainWindow(QMainWindow):
         self.events = EventService()
         self.preferences_store = OperatingPreferencesStore(self.project_root / "config" / "operating.local.json")
         self.preferences = self.preferences_store.load()
+        self._selected_timeslot = self.preferences.timeslot
+        self._selected_call_type = self.preferences.call_type
         self.receive_service = ReceiveService(self.project_root, events=self.events)
         self.encoder_service = EncoderService(self.project_root)
         self.audio_send_service = AudioSendService(
@@ -62,10 +67,23 @@ class MainWindow(QMainWindow):
         self._updates: queue.SimpleQueue[tuple[str, object]] = queue.SimpleQueue()
         self._tx_stop_event: Event | None = None
         self._tx_active = False
+        self._tx_stopping = False
+        self._tx_pending = False
+        self._tx_elapsed_seconds = 0
         self._encoder_ready = False
         self._settings_dialog: SettingsDialog | None = None
         self.hotkey_manager = HotkeyManager(self.project_root / "config" / "hotkeys.local.json")
         self._shortcuts: list[QShortcut] = []
+        self.accessibility = AccessibilityManager()
+        self.audio_cues = AudioCuePlayer(self.audio_send_service)
+        self._last_focus_radio_state: RadioState = RadioState.DISCONNECTED
+        self._startup_announcement_timer = QTimer(self)
+        self._startup_announcement_timer.setSingleShot(True)
+        self._startup_announcement_timer.timeout.connect(self.announce_operation_context)
+        self._connected_announcement_pending = False
+        self._tx_elapsed_timer = QTimer(self)
+        self._tx_elapsed_timer.setInterval(1000)
+        self._tx_elapsed_timer.timeout.connect(self._increment_tx_elapsed)
 
         self._build_ui()
         self._bind_shortcuts()
@@ -144,17 +162,22 @@ class MainWindow(QMainWindow):
         self.tg_edit.setPlaceholderText("Neue TG eingeben")
         self.tg_edit.setMaxLength(8)
         self.tg_edit.setValidator(QRegularExpressionValidator(QRegularExpression(r"[0-9]{0,8}"), self.tg_edit))
+        self.tg_edit.setAccessibleName("Neue Talkgroup")
         target_layout.addWidget(self.tg_edit, 2, 1, 1, 2)
 
-        self.ts1_radio = QRadioButton("TS 1")
-        self.ts2_radio = QRadioButton("TS 2")
-        self.ts_group = QButtonGroup(self)
-        self.ts_group.addButton(self.ts1_radio, 1)
-        self.ts_group.addButton(self.ts2_radio, 2)
-        (self.ts1_radio if self.preferences.timeslot == 1 else self.ts2_radio).setChecked(True)
+        self.ts1_radio = QPushButton("TS1")
+        self.ts2_radio = QPushButton("TS2")
+        self.ts1_radio.setObjectName("segmentButton")
+        self.ts2_radio.setObjectName("segmentButton")
+        for button in (self.ts1_radio, self.ts2_radio):
+            button.setFixedSize(48, 28)
+            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.ts1_radio.clicked.connect(lambda: self._select_timeslot(1))
+        self.ts2_radio.clicked.connect(lambda: self._select_timeslot(2))
         ts_column = QVBoxLayout()
         ts_column.setSpacing(3)
-        ts_column.addWidget(QLabel("Timeslot"))
+        self.timeslot_caption = QLabel("Timeslot")
+        ts_column.addWidget(self.timeslot_caption)
         ts_row = QHBoxLayout()
         ts_row.setSpacing(10)
         ts_row.addWidget(self.ts1_radio)
@@ -162,15 +185,19 @@ class MainWindow(QMainWindow):
         ts_column.addLayout(ts_row)
         target_layout.addLayout(ts_column, 1, 3, 2, 1)
 
-        self.group_radio = QRadioButton("Gruppe")
-        self.private_radio = QRadioButton("Privat")
-        self.call_group = QButtonGroup(self)
-        self.call_group.addButton(self.group_radio)
-        self.call_group.addButton(self.private_radio)
-        (self.private_radio if self.preferences.call_type == "private" else self.group_radio).setChecked(True)
+        self.group_radio = QPushButton("Gruppe")
+        self.private_radio = QPushButton("Privat")
+        self.group_radio.setObjectName("segmentButton")
+        self.private_radio.setObjectName("segmentButton")
+        for button in (self.group_radio, self.private_radio):
+            button.setFixedSize(68, 28)
+            button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.group_radio.clicked.connect(lambda: self._select_call_type("group"))
+        self.private_radio.clicked.connect(lambda: self._select_call_type("private"))
         call_column = QVBoxLayout()
         call_column.setSpacing(3)
-        call_column.addWidget(QLabel("Rufart"))
+        self.calltype_caption = QLabel("Rufart")
+        call_column.addWidget(self.calltype_caption)
         call_row = QHBoxLayout()
         call_row.setSpacing(10)
         call_row.addWidget(self.group_radio)
@@ -187,11 +214,8 @@ class MainWindow(QMainWindow):
         self.server_label.setObjectName("secondaryText")
         target_layout.addWidget(self.server_label, 3, 0, 1, 6)
 
-        self.ts1_radio.toggled.connect(self._sync_radio_tab_focus)
-        self.ts2_radio.toggled.connect(self._sync_radio_tab_focus)
-        self.group_radio.toggled.connect(self._sync_radio_tab_focus)
-        self.private_radio.toggled.connect(self._sync_radio_tab_focus)
-        self._sync_radio_tab_focus()
+        self._sync_radio_controls()
+        self._update_radio_hotkey_hints()
         content.addWidget(target_card, 0, 0, 1, 2)
 
         # Aktuelle Station: wichtigste Empfangsinformationen prominent, Details kompakt.
@@ -243,6 +267,8 @@ class MainWindow(QMainWindow):
 
         self.operation_gain_slider = QSlider(Qt.Orientation.Horizontal)
         self.operation_gain_slider.setRange(0, 100)
+        self.operation_gain_slider.setAccessibleName("Mic-Gain")
+        self.operation_gain_slider.setAccessibleDescription("")
         self.operation_gain_value = QLabel("100 %")
         self.operation_gain_value.setObjectName("valueLabel")
         gain_row = QGridLayout()
@@ -253,6 +279,8 @@ class MainWindow(QMainWindow):
 
         self.operation_volume_slider = QSlider(Qt.Orientation.Horizontal)
         self.operation_volume_slider.setRange(0, 100)
+        self.operation_volume_slider.setAccessibleName("RX-Lautstärke")
+        self.operation_volume_slider.setAccessibleDescription("")
         self.operation_volume_value = QLabel("100 %")
         self.operation_volume_value.setObjectName("valueLabel")
         volume_row = QGridLayout()
@@ -269,21 +297,31 @@ class MainWindow(QMainWindow):
         checks.addStretch(1)
         control_layout.addLayout(checks)
 
-        self.ptt_button = QPushButton("PTT – Senden einschalten")
+        self.ptt_button = QPushButton("TX")
         self.ptt_button.setObjectName("pttButton")
         self.ptt_button.setMinimumHeight(74)
         self.ptt_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.ptt_button.clicked.connect(self._toggle_tx)
-        self.tx_status = QLabel("Senden nicht aktiv")
+        self.tx_status = QLabel("RX")
         self.tx_status.setObjectName("txStatus")
         self.tx_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.tx_seconds_label = QLabel("")
+        self.tx_seconds_label.setObjectName("txSeconds")
+        self.tx_seconds_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.tx_seconds_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.tx_seconds_label.setAccessibleName("")
+        self.tx_seconds_label.setAccessibleDescription("")
+        self.tx_seconds_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.tx_seconds_label.setFixedHeight(34)
+        self.tx_seconds_label.setVisible(True)
         self.encoder_status = QLabel("AMBE-Encoder wird geprüft …")
         self.encoder_status.setObjectName("secondaryText")
         self.encoder_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        control_layout.addStretch(1)
+        self.tx_status.hide()
         control_layout.addWidget(self.ptt_button)
-        control_layout.addWidget(self.tx_status)
+        control_layout.addWidget(self.tx_seconds_label)
         control_layout.addWidget(self.encoder_status)
+        control_layout.addStretch(1)
         content.addWidget(control_card, 1, 1)
 
         # Betriebsinformationen nur einmal und bewusst kompakt.
@@ -313,12 +351,16 @@ class MainWindow(QMainWindow):
         self.operation_agc_check.toggled.connect(self._operation_agc_changed)
         self._sync_operation_audio_controls()
 
+        operation_page.setAccessibleName("")
+        operation_page.setAccessibleDescription("")
+        self.tabs.tabBar().setAccessibleName("Hauptbereiche")
         self.tabs.addTab(operation_page, "Betrieb")
         self.history_widget = QsoHistoryWidget(
             self.receive_service.history,
             self._show_status,
             self._history_worked_changed,
             self.tabs,
+            self.accessibility,
         )
         self.tabs.addTab(self.history_widget, "QSO-Historie")
         self.tabs.currentChanged.connect(self._tab_changed)
@@ -338,11 +380,7 @@ class MainWindow(QMainWindow):
 
     def _restore_tab_order(self) -> None:
         """Bewahrt die etablierte Tastaturreihenfolge trotz neuem Layout."""
-        selected_ts = self.ts1_radio if self.ts1_radio.isChecked() else self.ts2_radio
-        selected_call = self.private_radio if self.private_radio.isChecked() else self.group_radio
-        QWidget.setTabOrder(self.tg_edit, selected_ts)
-        QWidget.setTabOrder(selected_ts, selected_call)
-        QWidget.setTabOrder(selected_call, self.connect_button)
+        QWidget.setTabOrder(self.tg_edit, self.connect_button)
         QWidget.setTabOrder(self.connect_button, self.operation_gain_slider)
         QWidget.setTabOrder(self.operation_gain_slider, self.operation_volume_slider)
         QWidget.setTabOrder(self.operation_volume_slider, self.operation_muted_check)
@@ -352,6 +390,44 @@ class MainWindow(QMainWindow):
 
     def _show_status(self, message: str) -> None:
         self.statusBar().showMessage(message)
+
+    def _operation_context_text(self) -> str:
+        tg, ts, call_type = self._target()
+        call_label = "Privatruf" if call_type == "private" else "Gruppenruf"
+        state = self.radio_state.state
+        if state is RadioState.TRANSMITTING:
+            state_label = "Senden aktiv"
+        elif state is RadioState.CONNECTED:
+            state_label = "Verbunden, Empfang aktiv"
+        elif state is RadioState.CONNECTING:
+            state_label = "Verbindung wird hergestellt"
+        elif state is RadioState.DISCONNECTING:
+            state_label = "Verbindung wird getrennt"
+        else:
+            state_label = "Getrennt"
+        return f"Betrieb. Talkgroup {tg}. Timeslot {ts}. Rufart {call_label}. {state_label}."
+
+    def announce_operation_context(self) -> None:
+        """Meldet beim Start oder Betreten des Betriebs den aktuellen Kontext."""
+        if self.tabs.currentIndex() != 0 or not self.isVisible():
+            return
+        tg, ts, call_type = self._target()
+        state_label = self._operation_context_text().rsplit(". ", 1)[-1].rstrip(".")
+        self.accessibility.announce_operation_context(
+            self.connection_label,
+            talkgroup=tg,
+            timeslot=ts,
+            call_type=call_type,
+            state_label=state_label,
+        )
+
+    def _announce_radio_state(self, state: RadioState, *, force: bool = False) -> None:
+        """Delegiert abgeschlossene Funkzustände zentral an den AccessibilityManager."""
+        if state in {RadioState.CONNECTING, RadioState.DISCONNECTING}:
+            return
+        self.accessibility.announce_radio_state(
+            self.connection_label, state.name, force=force
+        )
 
     def _history_worked_changed(self, source_id: int, worked: bool) -> None:
         """Synchronisiert eine Historienänderung sofort mit der Betriebsseite."""
@@ -364,8 +440,11 @@ class MainWindow(QMainWindow):
 
 
     def _tab_changed(self, index: int) -> None:
-        if hasattr(self, "history_widget") and self.tabs.widget(index) is self.history_widget:
+        if index == 0:
+            QTimer.singleShot(0, self.announce_operation_context)
+        elif hasattr(self, "history_widget") and self.tabs.widget(index) is self.history_widget:
             self.history_widget.refresh()
+            QTimer.singleShot(0, self.history_widget.announce_context)
 
     def _build_menu(self) -> None:
         """Ergänzt nur den Zugang zum separaten Einstellungsfenster."""
@@ -390,7 +469,11 @@ class MainWindow(QMainWindow):
 
 
     def _settings_applied(self) -> None:
+        self.preferences = self.preferences_store.load()
+        self._selected_timeslot = self.preferences.timeslot
+        self._selected_call_type = self.preferences.call_type
         self._reload_hotkeys()
+        self._sync_radio_controls()
         self._sync_operation_audio_controls()
 
     def _sync_operation_audio_controls(self) -> None:
@@ -430,13 +513,17 @@ class MainWindow(QMainWindow):
         self.audio_send_service.set_user_muted(checked)
         self.receive_service.set_user_muted(checked)
         self._save_operation_audio()
-        self.statusBar().showMessage("Empfang stumm" if checked else "Empfangston aktiv")
+        message = "Empfang stumm" if checked else "Empfangston aktiv"
+        self.statusBar().showMessage(message)
+        self.accessibility.announce_toggle(self.operation_muted_check, "Empfang stumm", checked)
 
     def _operation_agc_changed(self, checked: bool) -> None:
         self.audio_send_service.set_agc_enabled(checked)
         self.receive_service.set_agc_enabled(checked)
         self._save_operation_audio()
-        self.statusBar().showMessage("AGC aktiv" if checked else "AGC ausgeschaltet")
+        message = "AGC aktiv" if checked else "AGC ausgeschaltet"
+        self.statusBar().showMessage(message)
+        self.accessibility.announce_toggle(self.operation_agc_check, "AGC", checked)
 
     def _bind_shortcuts(self) -> None:
         for shortcut in self._shortcuts:
@@ -463,6 +550,16 @@ class MainWindow(QMainWindow):
         for sequence in ("Return", "Enter"):
             self._shortcuts.append(QShortcut(QKeySequence(sequence), self, activated=self._activate_focused_button))
 
+    def _update_radio_hotkey_hints(self) -> None:
+        """Zeigt die aktuell konfigurierten Pflicht-Hotkeys direkt am Funkziel."""
+        mapping = self.hotkey_manager.mapping
+        ts_key = mapping.get("TS_CHANGE") or DEFAULT_HOTKEYS["TS_CHANGE"]
+        call_key = mapping.get("CALLTYPE_CHANGE") or DEFAULT_HOTKEYS["CALLTYPE_CHANGE"]
+        if hasattr(self, "timeslot_caption"):
+            self.timeslot_caption.setText(f"Timeslot  [{ts_key}]")
+        if hasattr(self, "calltype_caption"):
+            self.calltype_caption.setText(f"Rufart  [{call_key}]")
+
     def _open_operation(self) -> None:
         self.tabs.setCurrentIndex(0)
         self.tg_edit.setFocus()
@@ -479,6 +576,7 @@ class MainWindow(QMainWindow):
     def _reload_hotkeys(self) -> None:
         self.hotkey_manager.load()
         self._bind_shortcuts()
+        self._update_radio_hotkey_hints()
         self.statusBar().showMessage("Hotkeys wurden übernommen.")
 
     def _focused_button(self) -> QAbstractButton | None:
@@ -487,47 +585,105 @@ class MainWindow(QMainWindow):
         return widget if isinstance(widget, QAbstractButton) else None
 
     def _activate_focused_button(self) -> None:
-        """Enter aktiviert nur das aktuell fokussierte Schaltelement."""
+        """Enter aktiviert Aktionsbuttons; TS/Rufart werden per F6/F7 geschaltet."""
         button = self._focused_button()
-        if button is not None and button.isEnabled():
+        if button is not None and button.isEnabled() and not button.property("radioFlag"):
             button.click()
 
     def _handle_space_shortcut(self) -> None:
         """Leertaste bedient fokussierte Buttons, sonst dient sie als PTT-Toggle."""
         button = self._focused_button()
         if button is not None:
+            if button.property("radioFlag"):
+                return
             if button.isEnabled():
                 button.click()
             return
         self._toggle_tx()
 
-    def _sync_radio_tab_focus(self) -> None:
-        """Macht beim Tabben nur den aktuell gewählten Radiobutton erreichbar.
+    def _refresh_segment_style(self, button: QPushButton, selected: bool) -> None:
+        """Visualisiert eine Auswahl, ohne dem Widget eine Checkbox-Rolle zu geben."""
+        button.setProperty("selected", selected)
+        button.style().unpolish(button)
+        button.style().polish(button)
 
-        Qt synchronisiert diesen Startzustand nach einem manuellen Klick selbst.
-        Beim ersten Programmstart war jedoch stets der erste Button der Gruppe
-        im Tabpfad. Deshalb wird die Fokuspolicy nach dem Laden und nach jeder
-        Auswahländerung ausdrücklich an den markierten Button gebunden.
-        """
-        for button in (self.ts1_radio, self.ts2_radio):
-            button.setFocusPolicy(
-                Qt.FocusPolicy.StrongFocus if button.isChecked() else Qt.FocusPolicy.ClickFocus
-            )
-        for button in (self.group_radio, self.private_radio):
-            button.setFocusPolicy(
-                Qt.FocusPolicy.StrongFocus if button.isChecked() else Qt.FocusPolicy.ClickFocus
-            )
+    def _sync_radio_controls(self) -> None:
+        """Synchronisiert Auswahloptik, Fokuspfad und kurze Screenreader-Namen."""
+        controls = (
+            (self.ts1_radio, self._selected_timeslot == 1, "Timeslot 1"),
+            (self.ts2_radio, self._selected_timeslot == 2, "Timeslot 2"),
+            (self.group_radio, self._selected_call_type == "group", "Gruppenruf"),
+            (self.private_radio, self._selected_call_type == "private", "Privatruf"),
+        )
+        for button, selected, label in controls:
+            self._refresh_segment_style(button, selected)
+            button.setProperty("radioFlag", True)
+            button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            button.setAccessibleName("")
+            button.setAccessibleDescription("")
+        if hasattr(self, "operation_gain_slider") and hasattr(self, "connect_button"):
+            self._restore_tab_order()
+
+    def _select_timeslot(self, timeslot: int, *, announce: bool = False) -> None:
+        if timeslot not in {1, 2} or not self.radio_state.snapshot().can_edit_parameters:
+            return
+        self._selected_timeslot = timeslot
+        self._sync_radio_controls()
+        self._persist_current_target()
+        if announce:
+            self.accessibility.announce_timeslot(self.connection_label, timeslot)
+
+    def _select_call_type(self, call_type: str, *, announce: bool = False) -> None:
+        if call_type not in {"group", "private"} or not self.radio_state.snapshot().can_edit_parameters:
+            return
+        self._selected_call_type = call_type
+        self._sync_radio_controls()
+        self._persist_current_target()
+        if announce:
+            self.accessibility.announce_call_type(self.connection_label, call_type)
+
+    def _persist_current_target(self) -> None:
+        """Speichert TG, Timeslot und Rufart ohne den Fokusablauf zu verändern."""
+        try:
+            self._save_preferences()
+        except Exception as error:
+            self.statusBar().showMessage(f"Funkziel konnte nicht gespeichert werden: {error}")
 
     def _target(self) -> tuple[int, int, str]:
         text = self.current_tg_label.text().strip()
         if not text or not text.isdigit() or int(text) <= 0:
             raise ValueError("Bitte eine gültige Talkgroup eingeben.")
-        return int(text), 1 if self.ts1_radio.isChecked() else 2, "private" if self.private_radio.isChecked() else "group"
+        return int(text), self._selected_timeslot, self._selected_call_type
+
+    def _update_talkgroup_accessibility(self, value: str) -> None:
+        """Hält nur den zugänglichen Feldkontext aktuell, ohne Ansage."""
+        spoken = self.accessibility.formatter.digits(value)
+        description = f"Aktueller Wert, Ziffern {spoken}" if spoken else "Feld ist leer"
+        self.tg_edit.setAccessibleDescription(description)
+
+    def _announce_pending_talkgroup(self) -> None:
+        value = self.tg_edit.text().strip()
+        if value:
+            self.accessibility.announce_pending_talkgroup(self.tg_edit, value)
 
     def _focus_talkgroup(self) -> None:
         """Setzt nach dem Trennen den Fokus in das Feld für eine neue Talkgroup."""
         self.tg_edit.setFocus()
         self.tg_edit.selectAll()
+
+    def _focus_ptt_after_connect(self, retries: int = 12) -> None:
+        """Setzt nach erfolgreichem Verbinden den Fokus zuverlässig auf PTT.
+
+        Die Encoder-Prüfung kann wenige Millisekunden später fertig werden.
+        Solange der Button noch gesperrt ist, wird deshalb kurz erneut versucht.
+        """
+        if self.radio_state.state is not RadioState.CONNECTED:
+            return
+        if self.ptt_button.isEnabled():
+            self.ptt_button.setFocus(Qt.FocusReason.ShortcutFocusReason)
+            return
+        if retries > 0:
+            QTimer.singleShot(100, lambda: self._focus_ptt_after_connect(retries - 1))
 
     def _apply_pending_talkgroup(self) -> bool:
         """Übernimmt eine eingetragene neue TG, bevor verbunden wird."""
@@ -545,6 +701,7 @@ class MainWindow(QMainWindow):
             return False
         self.current_tg_label.setText(str(int(text)))
         self.tg_edit.clear()
+        self._update_talkgroup_accessibility("")
         try:
             self._save_preferences()
         except Exception as error:
@@ -556,7 +713,10 @@ class MainWindow(QMainWindow):
 
     def _save_preferences(self) -> None:
         tg, ts, call_type = self._target()
-        self.preferences_store.save(OperatingPreferences(tg, ts, call_type, False))
+        self.preferences_store.save(OperatingPreferences(tg, ts, call_type, False, self.preferences.screenreader_ptt_lead_in_seconds))
+        self.preferences = self.preferences_store.load()
+        self._selected_timeslot = self.preferences.timeslot
+        self._selected_call_type = self.preferences.call_type
 
     def _set_controls_for_state(self, state: RadioState) -> None:
         """Spiegelt den realen Betriebszustand vollständig in den Qt-Controls.
@@ -574,19 +734,33 @@ class MainWindow(QMainWindow):
 
         connected_or_tx = state in {RadioState.CONNECTED, RadioState.TRANSMITTING}
         self.ptt_button.setEnabled(connected_or_tx and self._encoder_ready)
+        self.ptt_button.setText("TX")
+        if state is RadioState.TRANSMITTING and self._tx_active:
+            ptt_state = "tx"
+        elif state is RadioState.CONNECTED:
+            ptt_state = "ready"
+        else:
+            ptt_state = "idle"
+        self.ptt_button.setProperty("visualState", ptt_state)
+        self.ptt_button.style().unpolish(self.ptt_button)
+        self.ptt_button.style().polish(self.ptt_button)
 
         if state in {RadioState.CONNECTED, RadioState.TRANSMITTING}:
-            self.connect_button.setText("Trennen")
+            connect_text = "Trennen"
         elif state is RadioState.CONNECTING:
-            self.connect_button.setText("Verbindungsaufbau …")
+            connect_text = "Verbindung wird hergestellt"
         elif state is RadioState.DISCONNECTING:
-            self.connect_button.setText("Trennen …")
+            connect_text = "Verbindung wird getrennt"
         else:
-            self.connect_button.setText("Verbinden")
+            connect_text = "Verbinden"
+        self.connect_button.setText(connect_text)
+        self.connect_button.setAccessibleName(connect_text)
+        self.connect_button.setAccessibleDescription("")
 
-        self.connect_button.setEnabled(
-            state not in {RadioState.CONNECTING, RadioState.DISCONNECTING, RadioState.TRANSMITTING}
-        )
+        # Der fokussierte Verbindungsbutton bleibt während Aufbau/Trennung
+        # fokussierbar. Ein Deaktivieren würde Qt den Fokus kurz auf Mic-Gain
+        # verschieben lassen. _toggle_connection() ignoriert Übergangszustände.
+        self.connect_button.setEnabled(state is not RadioState.TRANSMITTING)
         self.connect_button.setProperty(
             "visualState", "disconnect" if state in {RadioState.CONNECTED, RadioState.TRANSMITTING} else "connect"
         )
@@ -608,6 +782,7 @@ class MainWindow(QMainWindow):
         if state in {RadioState.CONNECTED, RadioState.TRANSMITTING}:
             self._disconnect()
         elif state in {RadioState.DISCONNECTED, RadioState.ERROR}:
+            self._announce_pending_talkgroup()
             if self._apply_pending_talkgroup():
                 self._connect()
 
@@ -618,6 +793,8 @@ class MainWindow(QMainWindow):
         except Exception as error:
             QMessageBox.warning(self, "CarenDMR", str(error))
             return
+        self._startup_announcement_timer.stop()
+        self._connected_announcement_pending = True
         self.radio_state.synchronize(RadioState.CONNECTING)
         self.connection_label.setText("Verbindung wird hergestellt …")
         self.statusBar().showMessage("Verbindung wird hergestellt …")
@@ -648,7 +825,11 @@ class MainWindow(QMainWindow):
         Thread(target=worker, name="CarenDMR-Qt-Disconnect", daemon=True).start()
 
     def _toggle_tx(self) -> None:
-        if self._tx_active:
+        if self._tx_stopping:
+            return
+        if self._tx_pending:
+            self._cancel_pending_tx()
+        elif self._tx_active:
             self._stop_tx()
         else:
             self._start_tx()
@@ -660,15 +841,66 @@ class MainWindow(QMainWindow):
         if not self._encoder_ready:
             self.statusBar().showMessage("AMBE-Encoder ist noch nicht bereit.")
             return
+
+        # Bei aktivem Screenreader bekommt dessen kurze RX-Ansage Zeit, bevor
+        # das Mikrofon geöffnet wird. Qt liefert keinen verlässlichen Callback
+        # für das Ende einer Narrator-/VoiceOver-Ansage; ein kurzer Vorlauf ist
+        # deshalb die robuste, plattformneutrale Lösung.
+        self._tx_pending = True
+        self.ptt_button.setText("TX")
+        self.ptt_button.setProperty("visualState", "pending")
+        self.ptt_button.style().unpolish(self.ptt_button)
+        self.ptt_button.style().polish(self.ptt_button)
+        self.tx_status.setText("TX wird vorbereitet")
+        self.statusBar().showMessage("TX wird vorbereitet")
+        # Die konfigurierte Vorlaufzeit ist zugleich der explizite Accessibility-Testmodus.
+        # Die automatische Qt-Erkennung ist unter Windows/Narrator nicht zuverlässig genug.
+        delay_ms = int(round(self.preferences.screenreader_ptt_lead_in_seconds * 1000))
+        QTimer.singleShot(delay_ms, self._play_tx_ready_beep if delay_ms > 0 else self._begin_tx)
+
+    def _play_tx_ready_beep(self) -> None:
+        """Spielt den lokalen Start-Beep; TX beginnt erst nach dessen Ende."""
+        if not self._tx_pending or self.radio_state.state is not RadioState.CONNECTED:
+            return
+
+        def worker() -> None:
+            try:
+                self.audio_cues.play_tx_start()
+                self._updates.put(("tx_beep_done", None))
+            except Exception as error:
+                self._updates.put(("tx_beep_error", error))
+
+        Thread(target=worker, name="CarenDMR-TX-Start-Cue", daemon=True).start()
+
+    def _play_tx_stop_beeps(self, message: str) -> None:
+        """Spielt nach geschlossenem TX zwei lokale Quittungstöne."""
+        def worker() -> None:
+            try:
+                self.audio_cues.play_tx_stop()
+                self._updates.put(("tx_stop_beeps_done", message))
+            except Exception as error:
+                self._updates.put(("tx_stop_beeps_error", (message, error)))
+
+        Thread(target=worker, name="CarenDMR-TX-Stop-Cue", daemon=True).start()
+
+    def _begin_tx(self) -> None:
+        if not self._tx_pending or self.radio_state.state is not RadioState.CONNECTED:
+            return
+        self._tx_pending = False
         self._tx_stop_event = Event()
         self._tx_active = True
-        self.radio_state.synchronize(RadioState.TRANSMITTING)
-        self.ptt_button.setText("PTT – Senden ausschalten")
+        self._tx_stopping = False
+        self._tx_elapsed_seconds = 0
+        self.tx_seconds_label.setText("0")
+        self.tx_seconds_label.setVisible(True)
+        self._tx_elapsed_timer.start()
+        self.ptt_button.setText("TX")
         self.ptt_button.setProperty("visualState", "tx")
         self.ptt_button.style().unpolish(self.ptt_button)
         self.ptt_button.style().polish(self.ptt_button)
-        self.tx_status.setText("Senden aktiv")
-        self.statusBar().showMessage("Senden aktiv")
+        self.radio_state.synchronize(RadioState.TRANSMITTING)
+        self.tx_status.setText("TX")
+        self.statusBar().showMessage("TX")
         self._set_controls_for_state(self.radio_state.state)
         stop_event = self._tx_stop_event
 
@@ -680,33 +912,61 @@ class MainWindow(QMainWindow):
                 self._updates.put(("tx_error", error))
         Thread(target=worker, name="CarenDMR-Qt-TX", daemon=True).start()
 
+    def _cancel_pending_tx(self) -> None:
+        self._tx_pending = False
+        self.ptt_button.setText("TX")
+        self.ptt_button.setProperty("visualState", "ready")
+        self.ptt_button.style().unpolish(self.ptt_button)
+        self.ptt_button.style().polish(self.ptt_button)
+        self.tx_status.setText("RX")
+        self.tx_seconds_label.clear()
+        self.statusBar().showMessage("RX")
+
+    def _increment_tx_elapsed(self) -> None:
+        if not self._tx_active:
+            self._tx_elapsed_timer.stop()
+            return
+        self._tx_elapsed_seconds += 1
+        # Rein visuelle Anzeige: nicht fokussierbar und ohne zugänglichen Namen.
+        self.tx_seconds_label.setText(str(self._tx_elapsed_seconds))
+
     def _stop_tx(self) -> None:
         if not self._tx_active:
             return
         if self._tx_stop_event is not None:
             self._tx_stop_event.set()
-        # Der Worker beendet Aufnahme, TX und RX-Neustart. Der Button bleibt
-        # bis zum Ergebnis sichtbar, wird aber gegen Mehrfachklicks gesperrt.
-        self.ptt_button.setEnabled(False)
-        self.ptt_button.setText("PTT – Sendung wird beendet …")
-        self.ptt_button.setProperty("visualState", "ending")
+        self._tx_stopping = True
+        # Bediener sieht sofort, dass TX beendet wurde. Der Worker darf im
+        # Hintergrund noch sauber auslaufen, aber Zähler und TX-Anzeige stoppen.
+        self._tx_elapsed_timer.stop()
+        self._tx_elapsed_seconds = 0
+        self.tx_seconds_label.clear()
+        self.ptt_button.setEnabled(True)
+        self.ptt_button.setText("TX")
+        self.ptt_button.setProperty("visualState", "ready")
         self.ptt_button.style().unpolish(self.ptt_button)
         self.ptt_button.style().polish(self.ptt_button)
-        self.tx_status.setText("Sendung wird beendet …")
-        self.statusBar().showMessage("Sendung wird beendet …")
+        self.tx_status.setText("RX")
+        self.statusBar().showMessage("Sendung wird beendet; Empfang wird wieder aktiv")
 
     def _finish_tx(self, message: str) -> None:
         self._tx_active = False
+        self._tx_stopping = False
+        self._tx_pending = False
         self._tx_stop_event = None
+        self._tx_elapsed_timer.stop()
+        self._tx_elapsed_seconds = 0
+        self.tx_seconds_label.clear()
         state = RadioState.CONNECTED if self.receive_service.is_running else RadioState.DISCONNECTED
         self.radio_state.synchronize(state)
-        self.ptt_button.setText("PTT – Senden einschalten")
-        self.ptt_button.setProperty("visualState", "idle")
+        self.ptt_button.setText("TX")
+        self.ptt_button.setProperty("visualState", "ready" if state is RadioState.CONNECTED else "idle")
         self.ptt_button.style().unpolish(self.ptt_button)
         self.ptt_button.style().polish(self.ptt_button)
-        self.tx_status.setText("Senden nicht aktiv")
+        self.tx_status.setText("RX")
         self.statusBar().showMessage(message)
         self._set_controls_for_state(state)
+        # Keine zusätzliche RX-Ansage; der fokussierte Button meldet nur TX.
 
     def _verify_encoder(self) -> None:
         def worker() -> None:
@@ -718,17 +978,10 @@ class MainWindow(QMainWindow):
         Thread(target=worker, name="CarenDMR-Qt-Encoder", daemon=True).start()
 
     def _toggle_timeslot(self) -> None:
-        if self.radio_state.snapshot().can_edit_parameters:
-            select_ts2 = self.ts1_radio.isChecked()
-            self.ts2_radio.setChecked(select_ts2)
-            self.ts1_radio.setChecked(not select_ts2)
+        self._select_timeslot(2 if self._selected_timeslot == 1 else 1, announce=True)
 
     def _toggle_call_type(self) -> None:
-        if not self.radio_state.snapshot().can_edit_parameters:
-            return
-        select_private = not self.private_radio.isChecked()
-        self.private_radio.setChecked(select_private)
-        self.group_radio.setChecked(not select_private)
+        self._select_call_type("private" if self._selected_call_type == "group" else "group", announce=True)
 
     def _process_updates(self) -> None:
         try:
@@ -765,11 +1018,29 @@ class MainWindow(QMainWindow):
                     self._encoder_ready = False
                     self.encoder_status.setText(f"Senden gesperrt: {value}")
                     self._set_controls_for_state(self.radio_state.state)
+                elif kind == "tx_beep_done":
+                    QTimer.singleShot(120, self._begin_tx)
+                elif kind == "tx_beep_error":
+                    self.statusBar().showMessage(f"TX-Startton nicht verfügbar: {value}")
+                    QTimer.singleShot(0, self._begin_tx)
                 elif kind == "tx_result":
-                    self._finish_tx("Sendung beendet; Empfang wieder aktiv.")
+                    self._tx_elapsed_timer.stop()
+                    self._tx_elapsed_seconds = 0
+                    self.tx_seconds_label.clear()
+                    self.ptt_button.setText("TX")
+                    self.ptt_button.setProperty("visualState", "ready")
+                    self.ptt_button.style().unpolish(self.ptt_button)
+                    self.ptt_button.style().polish(self.ptt_button)
+                    self._play_tx_stop_beeps("Sendung beendet; Empfang wieder aktiv.")
                 elif kind == "tx_error":
                     self._finish_tx(f"Sendefehler: {value}")
                     QMessageBox.critical(self, "CarenDMR", f"Senden fehlgeschlagen:\n\n{value}")
+                elif kind == "tx_stop_beeps_done":
+                    self._finish_tx(str(value))
+                elif kind == "tx_stop_beeps_error":
+                    message, error = value
+                    self.statusBar().showMessage(f"TX-Endton nicht verfügbar: {error}")
+                    self._finish_tx(str(message))
         except queue.Empty:
             pass
 
@@ -794,10 +1065,21 @@ class MainWindow(QMainWindow):
         )
         if state.message:
             self.last_event_label.setText(state.message)
-        if state.talkgroup:
+        # Im getrennten Initialzustand enthält ApplicationState weiterhin den
+        # historischen Default TG 91. Dieser darf die bereits geladenen lokalen
+        # Betriebspräferenzen nicht überschreiben. Erst ein realer Verbindungs-
+        # beziehungsweise Empfangszustand ist für die Anzeige maßgeblich.
+        if state.talkgroup and (
+            state.brandmeister_connected
+            or state.connection in {
+                ConnectionState.CONNECTING,
+                ConnectionState.CONNECTED,
+                ConnectionState.RECEIVING,
+            }
+        ):
             self.current_tg_label.setText(str(state.talkgroup))
         if state.brandmeister_connected and state.receive_active and not self._tx_active:
-            self.tx_status.setText("Senden nicht aktiv")
+            self.tx_status.setText("RX")
             self.statusBar().showMessage("Empfang aktiv")
         call = state.current_call
         if call is None:
@@ -825,8 +1107,37 @@ class MainWindow(QMainWindow):
                 else "Noch nicht gesprochen"
             )
         self._set_controls_for_state(self.radio_state.state)
+        current_radio_state = self.radio_state.state
+        previous_radio_state = self._last_focus_radio_state
+        self._last_focus_radio_state = current_radio_state
+
+        if (
+            current_radio_state is RadioState.CONNECTED
+            and previous_radio_state not in {RadioState.CONNECTED, RadioState.TRANSMITTING}
+        ):
+            # Genau eine kontrollierte Ereigniskette: zuerst Fokus auf PTT,
+            # danach einmal "Verbunden". Keine Zwischenansage und keine
+            # Wiederholung des kompletten Betriebskontexts.
+            QTimer.singleShot(0, self._focus_ptt_after_connect)
+            if self._connected_announcement_pending:
+                self._connected_announcement_pending = False
+                QTimer.singleShot(450, lambda: self._announce_radio_state(RadioState.CONNECTED))
+        elif current_radio_state not in {
+            RadioState.CONNECTING,
+            RadioState.DISCONNECTING,
+            RadioState.TRANSMITTING,
+        }:
+            # CONNECTED direkt nach TX wird nicht eigens gesprochen. Der
+            # PTT-Button bleibt fokussiert und liefert bereits den Zustand.
+            if not (
+                current_radio_state is RadioState.CONNECTED
+                and previous_radio_state is RadioState.TRANSMITTING
+            ):
+                self._announce_radio_state(current_radio_state)
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        self._tx_pending = False
+        self._tx_elapsed_timer.stop()
         if self._tx_active and self._tx_stop_event is not None:
             self._tx_stop_event.set()
         self.connection_manager.disconnect()
@@ -839,4 +1150,6 @@ def run_gui(project_root: Path) -> int:
     apply_theme(app)
     window = MainWindow(project_root)
     window.show()
+    QTimer.singleShot(150, window._focus_talkgroup)
+    window._startup_announcement_timer.start(1100)
     return int(app.exec())

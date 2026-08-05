@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 from carendmr.application import QsoHistoryService
 from carendmr.domain import QsoHistorySummary
 from carendmr.ui_qt.theme import METRICS
+from carendmr.ui_qt.accessibility_manager import AccessibilityManager
 
 
 class HistoryTable(QTableWidget):
@@ -58,11 +59,13 @@ class QsoHistoryWidget(QWidget):
         status_callback: Callable[[str], None] | None = None,
         worked_changed_callback: Callable[[int, bool], None] | None = None,
         parent: QWidget | None = None,
+        accessibility: AccessibilityManager | None = None,
     ) -> None:
         super().__init__(parent)
         self.service = service
         self.status_callback = status_callback or (lambda _message: None)
         self.worked_changed_callback = worked_changed_callback or (lambda _source_id, _worked: None)
+        self.accessibility = accessibility or AccessibilityManager()
         self._rows: list[QsoHistorySummary] = []
         self._selected_source_id: int | None = None
         self._build_ui()
@@ -88,8 +91,7 @@ class QsoHistoryWidget(QWidget):
 
         content = QHBoxLayout()
         self.table = HistoryTable(0, 8, self)
-        self.table.setHorizontalHeaderLabels(
-            (
+        self._column_headers = (
                 "Zuletzt gehört",
                 "Rufzeichen",
                 "Name",
@@ -99,7 +101,9 @@ class QsoHistoryWidget(QWidget):
                 "Gesamtdauer",
                 "QSO",
             )
-        )
+        self.table.setHorizontalHeaderLabels(self._column_headers)
+        self.table.setAccessibleName("QSO-Historie")
+        self.table.setAccessibleDescription("Stationsliste. Mit Pfeiltasten zwischen Zeilen und Zellen navigieren.")
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -187,6 +191,14 @@ class QsoHistoryWidget(QWidget):
             for column, value in enumerate(values):
                 item = QTableWidgetItem(value)
                 item.setData(Qt.ItemDataRole.UserRole, summary.source_id)
+                item.setData(
+                    Qt.ItemDataRole.AccessibleTextRole,
+                    f"{self._column_headers[column]}: {value}",
+                )
+                item.setData(
+                    Qt.ItemDataRole.AccessibleDescriptionRole,
+                    f"Spalte {column + 1} von {len(self._column_headers)}",
+                )
                 self.table.setItem(row, column, item)
             if summary.source_id == selected_source:
                 restore_row = row
@@ -202,6 +214,9 @@ class QsoHistoryWidget(QWidget):
         else:
             self._selected_source_id = None
             self._show_summary(None)
+
+    def announce_context(self) -> None:
+        self.accessibility.announce_history_context(self.table, len(self._rows))
 
     def _selection_changed(self) -> None:
         row = self.table.currentRow()

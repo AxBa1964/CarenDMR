@@ -85,6 +85,7 @@ def build_stylesheet(tokens: ThemeTokens = TOKENS, metrics: DesignMetrics = METR
         QLabel#qsoStatus {{ color: {t.success}; font-weight: 700; }}
         QLabel#valueLabel {{ color: {t.text}; font-weight: 700; }}
         QLabel#txStatus {{ color: {t.text_secondary}; font-weight: 700; }}
+        QLabel#txSeconds {{ color: {t.text}; font-size: 24px; font-weight: 800; min-height: 30px; }}
 
         QFrame#headerCard, QFrame#card, QGroupBox {{
             background-color: {t.surface};
@@ -193,13 +194,28 @@ def build_stylesheet(tokens: ThemeTokens = TOKENS, metrics: DesignMetrics = METR
         }}
         QPushButton:hover {{ background-color: {t.border}; }}
         QPushButton:pressed {{ background-color: {t.border_strong}; }}
+        QPushButton#segmentButton {{
+            min-width: 34px;
+            min-height: 24px;
+            padding: 2px 7px;
+            font-size: 11px;
+            font-weight: 650;
+            background-color: {t.surface_input};
+            border-color: {t.border_strong};
+        }}
+        QPushButton#segmentButton[selected="true"] {{
+            background-color: {t.primary_strong};
+            border-color: {t.primary};
+            color: {t.text};
+        }}
         QPushButton:focus {{ border: {m.focus_width}px solid {t.focus}; padding: 6px 13px; }}
         QPushButton:disabled {{ color: {t.disabled_text}; background-color: {t.surface_alt}; border-color: {t.border}; }}
         QPushButton#connectButton {{ background-color: {t.success_bg}; border-color: {t.success}; }}
         QPushButton#connectButton[visualState="disconnect"] {{ background-color: {t.danger_bg}; border-color: {t.danger}; }}
-        QPushButton#pttButton {{ background-color: {t.danger_bg}; border-color: {t.danger}; font-size: 18px; font-weight: 800; }}
+        QPushButton#pttButton {{ background-color: {t.surface_alt}; border-color: {t.border_strong}; font-size: 18px; font-weight: 800; }}
+        QPushButton#pttButton[visualState="ready"] {{ background-color: {t.success_bg}; border-color: {t.success}; }}
+        QPushButton#pttButton[visualState="pending"] {{ background-color: {t.warning_bg}; border-color: {t.warning}; }}
         QPushButton#pttButton[visualState="tx"] {{ background-color: {t.danger_bg_active}; border-color: #FF9CA1; }}
-        QPushButton#pttButton[visualState="ending"] {{ background-color: {t.warning_bg}; border-color: {t.warning}; }}
 
         QLabel#connectionBadge {{
             background-color: {t.surface_alt};
