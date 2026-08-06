@@ -22,6 +22,9 @@ class DmrChannel:
     name: str = ""
     country: str = ""
     description: str = ""
+    language: str = ""
+    language_source: str = ""
+    language_confidence: float = 0.0
 
     def normalized(self) -> "DmrChannel":
         target = int(self.target)
@@ -39,6 +42,9 @@ class DmrChannel:
             name=str(self.name).strip(),
             country=str(self.country).strip(),
             description=str(self.description).strip(),
+            language=str(self.language).strip(),
+            language_source=str(self.language_source).strip(),
+            language_confidence=max(0.0, min(1.0, float(self.language_confidence))),
         )
 
     @property

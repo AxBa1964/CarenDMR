@@ -1,6 +1,6 @@
 """Zentrale Versionsnummer für CarenDMR."""
 
-__version__ = "0.1.7.3.8"
+__version__ = "0.1.9.1.3"
 
 
 def get_version() -> str:

@@ -6,18 +6,20 @@ import json
 import os
 import queue
 import time
-import wave
+from collections import deque
 from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
 from threading import Event, Thread
 from typing import Callable, Iterator
 
-from carendmr.diagnostics.tx_rx_timing import mark as timing_mark
+from carendmr.diagnostics.tx_rx_timing import mark as timing_mark, attach_session as timing_attach_session
+from carendmr.diagnostics.wav_io import write_pcm16_mono
 
 from carendmr.audio import (
     AudioDevice, AudioDirection, AudioManager, SoundDeviceBackend,
-    OptimizerDiagnostics, optimize_transmit_pcm,
+    OptimizerDiagnostics, StreamingTxSpeechProcessor, optimize_transmit_pcm,
+    TxAudioTunerSettings, StreamingTxAudioTuner, tuner_preset,
 )
 
 
@@ -54,16 +56,84 @@ class _SpeechBandDecimator16kTo8k:
         return filtered[::2].astype(np.float32, copy=False)
 
 
+class _AudioTestPreRoll:
+    """Kurzzeitiger Mikrofon-Ringpuffer für den geführten Audio-Test."""
+
+    def __init__(self, service: "AudioSendService", seconds: float = 2.0) -> None:
+        self.service = service
+        self.seconds = float(seconds)
+        self.stop_event = Event()
+        self.samples = deque(maxlen=max(1, int(service.SAMPLE_RATE * self.seconds)))
+        self.error: Exception | None = None
+        self.thread = Thread(target=self._run, name="CarenDMR-AudioTest-Vorlauf", daemon=True)
+
+    def start(self) -> None:
+        self.thread.start()
+
+    def _run(self) -> None:
+        try:
+            if self.service._selected_input is None:
+                self.service.microphones()
+            if self.service._selected_input is None:
+                raise RuntimeError("Es wurde kein Mikrofon gefunden.")
+            def on_block(block) -> None:
+                import numpy as np
+                mono = np.asarray(block, dtype=np.float32).reshape(-1)
+                if not mono.size:
+                    return
+                pcm = np.clip(np.rint(np.clip(mono, -1.0, 1.0) * 32767.0), -32768, 32767).astype(np.int16)
+                self.samples.extend(int(v) for v in pcm)
+            self.service.backend.stream_input_blocks_until(
+                input_index=self.service._selected_input.index,
+                stop_event=self.stop_event,
+                max_duration_seconds=3600.0,
+                sample_rate=self.service.SAMPLE_RATE,
+                channels=self.service.CHANNELS,
+                block_callback=on_block,
+                level_callback=None,
+            )
+        except Exception as exc:
+            self.error = exc
+
+    def stop(self) -> tuple[int, ...]:
+        self.stop_event.set()
+        self.thread.join(timeout=2.0)
+        return tuple(self.samples)
+
+
 class LivePcmCapture:
     _END = object()
-    def __init__(self, service: "AudioSendService", stop_event: Event, *, max_duration_seconds: float, level_callback=None) -> None:
+    def __init__(self, service: "AudioSendService", stop_event: Event, *, max_duration_seconds: float, level_callback=None, pre_roll_samples: tuple[int, ...] = (), one_shot_audio_test: bool = False, session_dir: Path | None = None) -> None:
         self.service=service; self.stop_event=stop_event; self.max_duration_seconds=float(max_duration_seconds); self.level_callback=level_callback
+        self._one_shot_audio_test = bool(one_shot_audio_test)
         self.queue: queue.Queue[object]=queue.Queue(); self.sample_count=0; self.error: Exception|None=None
         self.queue_max_chunks=0; self.queue_puts=0; self.queue_gets=0; self.queue_empty_waits=0
-        self._raw_pcm_16k: list[int] = []
+        self._pre_roll_pcm_16k: list[int] = list(pre_roll_samples)
+        self._input_pcm_16k: list[int] = []
+        self._gain_pcm_16k: list[int] = []
+        self._processed_pcm_16k: list[int] = []
         self._ambe_pcm_8k: list[int] = []
+        self._collect_debug = bool(service.audio_debug_wav_enabled or self._one_shot_audio_test)
+        self.debug_pre_roll_path: Path | None = None
         self.debug_raw_path: Path | None = None
+        self.debug_gain_path: Path | None = None
         self.debug_ambe_path: Path | None = None
+        self.audio_lab_dir: Path | None = None
+        self.ambe_frames_path: Path | None = None
+        if service.audio_debug_wav_enabled or self._one_shot_audio_test:
+            if self._one_shot_audio_test:
+                if session_dir is None:
+                    raise RuntimeError("Für den geführten Audio-Test fehlt der Sitzungsordner.")
+                self.audio_lab_dir = Path(session_dir)
+            else:
+                stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+                self.audio_lab_dir = service.project_root / "logs" / "audio_lab" / f"TX_{stamp}"
+            self.audio_lab_dir.mkdir(parents=True, exist_ok=True)
+            if self._one_shot_audio_test:
+                timing_attach_session(self.audio_lab_dir)
+            self.ambe_frames_path = self.audio_lab_dir / "04_ambe_frames.bin"
+        self._speech_processor = StreamingTxSpeechProcessor(sample_rate=service.SAMPLE_RATE, enabled=service.tx_speech_processing_enabled)
+        self._audio_tuner = StreamingTxAudioTuner(service.tx_audio_tuner_settings, sample_rate=service.SAMPLE_RATE)
         self._resampler = _SpeechBandDecimator16kTo8k()
         self.thread=Thread(target=self._run, name="CarenDMR-Live-Audio", daemon=True)
     def start(self)->None: self.thread.start()
@@ -79,13 +149,23 @@ class LivePcmCapture:
             def on_block(block)->None:
                 mono=np.asarray(block,dtype=np.float32).reshape(-1)
                 if not mono.size: return
+                input_pcm=np.clip(np.rint(np.clip(mono,-1.0,1.0)*32767.0),-32768,32767).astype(np.int16)
+                if self._collect_debug:
+                    self._input_pcm_16k.extend(int(v) for v in input_pcm)
                 mono=np.clip(mono*factor,-1.0,1.0)
-                raw_pcm=np.clip(np.rint(mono*32767.0),-32768,32767).astype(np.int16)
-                self._raw_pcm_16k.extend(int(v) for v in raw_pcm)
-                down=self._resampler.process(mono)
+                gain_pcm=np.clip(np.rint(mono*32767.0),-32768,32767).astype(np.int16)
+                if self._collect_debug:
+                    self._gain_pcm_16k.extend(int(v) for v in gain_pcm)
+                processed = self._speech_processor.process(mono)
+                processed = self._audio_tuner.process(processed)
+                if self._collect_debug:
+                    processed_pcm=np.clip(np.rint(processed*32767.0),-32768,32767).astype(np.int16)
+                    self._processed_pcm_16k.extend(int(v) for v in processed_pcm)
+                down=self._resampler.process(processed)
                 pcm=np.clip(np.rint(down*32767.0),-32768,32767).astype(np.int16)
                 chunk=tuple(int(v) for v in pcm)
-                self._ambe_pcm_8k.extend(chunk)
+                if self._collect_debug:
+                    self._ambe_pcm_8k.extend(chunk)
                 self.sample_count += len(chunk); self.queue.put(chunk)
                 self.queue_puts += 1; self.queue_max_chunks=max(self.queue_max_chunks,self.queue.qsize())
             service._mute_receive()
@@ -94,11 +174,15 @@ class LivePcmCapture:
         except Exception as error: self.error=error
         finally:
             timing_mark("TX_LETZTER_AUDIOBLOCK_GELESEN", f"Samples={self.sample_count}")
-            if service.audio_debug_wav_enabled:
+            if service.audio_debug_wav_enabled or self._one_shot_audio_test:
                 try:
                     self._write_debug_wavs()
                 except Exception as error:
                     timing_mark("TX_AUDIO_DEBUG_FEHLER", str(error))
+            if self._one_shot_audio_test:
+                timing_mark("TX_SPRACHAUFBEREITUNG", json.dumps(self._speech_processor.diagnostics(), ensure_ascii=False))
+                timing_mark("TX_AUDIO_TUNER", json.dumps(self._audio_tuner.diagnostics(), ensure_ascii=False))
+                timing_mark("AUDIO_TEST_TX_ABGESCHLOSSEN", f"Ordner={self.audio_lab_dir}")
             service._unmute_receive(); self.queue.put(self._END)
 
     @staticmethod
@@ -112,20 +196,30 @@ class LivePcmCapture:
             import sys
             if sys.byteorder != "little":
                 pcm.byteswap()
-        with wave.open(str(path), "wb") as wav_file:
-            wav_file.setnchannels(1)
-            wav_file.setsampwidth(2)
-            wav_file.setframerate(sample_rate)
-            wav_file.writeframes(pcm.tobytes())
+        write_pcm16_mono(path, sample_rate, pcm.tobytes())
 
     def _write_debug_wavs(self) -> None:
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-        debug_dir = self.service.project_root / "logs" / "audio_debug"
-        self.debug_raw_path = debug_dir / f"tx_{stamp}_01_roh_16k.wav"
-        self.debug_ambe_path = debug_dir / f"tx_{stamp}_02_vor_ambe_8k.wav"
-        self._write_mono_pcm16_wav(self.debug_raw_path, 16000, self._raw_pcm_16k)
-        self._write_mono_pcm16_wav(self.debug_ambe_path, 8000, self._ambe_pcm_8k)
-        timing_mark("TX_AUDIO_DEBUG_WAV", f"Roh16k={self.debug_raw_path};VorAMBE8k={self.debug_ambe_path}")
+        if self.audio_lab_dir is None:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            self.audio_lab_dir = self.service.project_root / "logs" / "audio_lab" / f"TX_{stamp}"
+            self.audio_lab_dir.mkdir(parents=True, exist_ok=True)
+        self.debug_pre_roll_path = self.audio_lab_dir / "00_vor_ptt_mikrofon_16k.wav"
+        self.debug_raw_path = self.audio_lab_dir / "01_mikrofon_roh_16k.wav"
+        self.debug_gain_path = self.audio_lab_dir / "02_nach_mic_gain_16k.wav"
+        self.debug_processed_path = self.audio_lab_dir / "02a_nach_sprachaufbereitung_16k.wav"
+        self.debug_ambe_path = self.audio_lab_dir / "03_vor_ambe_8k.wav"
+        self.ambe_frames_path = self.audio_lab_dir / "04_ambe_frames.bin"
+        if self._pre_roll_pcm_16k:
+            self._write_mono_pcm16_wav(self.debug_pre_roll_path, 16000, self._pre_roll_pcm_16k)
+        if self._input_pcm_16k:
+            self._write_mono_pcm16_wav(self.debug_raw_path, 16000, self._input_pcm_16k)
+        if self._gain_pcm_16k:
+            self._write_mono_pcm16_wav(self.debug_gain_path, 16000, self._gain_pcm_16k)
+        if self._processed_pcm_16k:
+            self._write_mono_pcm16_wav(self.debug_processed_path, 16000, self._processed_pcm_16k)
+        if self._ambe_pcm_8k:
+            self._write_mono_pcm16_wav(self.debug_ambe_path, 8000, self._ambe_pcm_8k)
+        timing_mark("TX_AUDIO_LAB_DATEN_GESICHERT", f"Ordner={self.audio_lab_dir}")
 
     def chunks(self)->Iterator[tuple[int,...]]:
         while True:
@@ -186,10 +280,16 @@ class AudioSendService:
         self._output_volume_percent = self._validate_output_volume(settings.get("output_volume_percent", 100))
         self._user_muted = bool(settings.get("output_muted", False))
         self._agc_enabled = bool(settings.get("agc_enabled", True))
+        self._tx_speech_processing_enabled = bool(settings.get("tx_speech_processing_enabled", True))
+        self._tx_audio_tuner_settings = TxAudioTunerSettings.from_dict(settings.get("tx_audio_tuner", {}))
         self._tx_safety_limit_seconds = self._validate_tx_safety_limit(
             settings.get("tx_safety_limit_seconds", 60)
         )
         self._audio_debug_wav_enabled = bool(settings.get("audio_debug_wav_enabled", False))
+        self._audio_test_armed = False
+        self._audio_test_pre_roll: _AudioTestPreRoll | None = None
+        self._audio_test_session_dir: Path | None = None
+        self._audio_test_waiting_for_rx = False
 
     def _load_settings(self) -> dict[str, object]:
         try:
@@ -241,6 +341,26 @@ class AudioSendService:
         return self._agc_enabled
 
     @property
+    def tx_speech_processing_enabled(self) -> bool:
+        return self._tx_speech_processing_enabled
+
+    def set_tx_speech_processing_enabled(self, value: object) -> bool:
+        self._tx_speech_processing_enabled = bool(value)
+        return self._tx_speech_processing_enabled
+
+    @property
+    def tx_audio_tuner_settings(self) -> TxAudioTunerSettings:
+        return self._tx_audio_tuner_settings
+
+    def set_tx_audio_tuner_settings(self, value: TxAudioTunerSettings | dict[str, object]) -> TxAudioTunerSettings:
+        self._tx_audio_tuner_settings = value.normalized() if isinstance(value, TxAudioTunerSettings) else TxAudioTunerSettings.from_dict(value)
+        return self._tx_audio_tuner_settings
+
+    def set_tx_audio_tuner_preset(self, name: str) -> TxAudioTunerSettings:
+        self._tx_audio_tuner_settings = tuner_preset(name)
+        return self._tx_audio_tuner_settings
+
+    @property
     def tx_safety_limit_seconds(self) -> int:
         return self._tx_safety_limit_seconds
 
@@ -268,19 +388,65 @@ class AudioSendService:
         self._tx_safety_limit_seconds = self._validate_tx_safety_limit(value)
         return self._tx_safety_limit_seconds
 
+    @property
+    def audio_test_armed(self) -> bool:
+        return self._audio_test_armed
+
+    @property
+    def audio_test_session_dir(self) -> Path | None:
+        return self._audio_test_session_dir
+
+    def arm_audio_test(self, *, pre_roll_seconds: float = 2.0) -> None:
+        if self._audio_test_pre_roll is not None:
+            return
+        self._audio_test_armed = True
+        # Der geführte Test ist ein passiver Beobachter. Er aktiviert niemals
+        # die allgemeine RX-/TX-Dauerdiagnose und greift damit nicht in die
+        # bestehende Funk-Zustandsmaschine ein.
+        self._audio_test_session_dir = None
+        self._audio_test_waiting_for_rx = False
+        self._audio_test_pre_roll = _AudioTestPreRoll(self, pre_roll_seconds)
+        self._audio_test_pre_roll.start()
+        timing_mark("AUDIO_TEST_BEREIT", f"Vorlauf={pre_roll_seconds:.1f}s")
+
+    def cancel_audio_test(self) -> None:
+        pre_roll = self._audio_test_pre_roll
+        self._audio_test_pre_roll = None
+        if pre_roll is not None:
+            pre_roll.stop()
+        self._audio_test_armed = False
+        self._audio_debug_wav_enabled = False
+        self._audio_test_waiting_for_rx = False
+        timing_mark("AUDIO_TEST_ABGEBROCHEN")
+
+    def _take_audio_test_pre_roll(self) -> tuple[int, ...]:
+        pre_roll = self._audio_test_pre_roll
+        self._audio_test_pre_roll = None
+        if pre_roll is None:
+            return ()
+        samples = pre_roll.stop()
+        if pre_roll.error is not None:
+            timing_mark("AUDIO_TEST_VORLAUF_FEHLER", str(pre_roll.error))
+        return samples
+
     def set_audio_debug_wav_enabled(self, value: object) -> bool:
         self._audio_debug_wav_enabled = bool(value)
         return self._audio_debug_wav_enabled
 
     def save_settings(self) -> None:
         self._settings_path.parent.mkdir(parents=True, exist_ok=True)
+        # Ein geführter Test ist immer flüchtig und darf nach einem Neustart
+        # keine allgemeine RX-Daueraufzeichnung aktivieren.
+        debug_enabled_to_persist = self._audio_debug_wav_enabled and not (self._audio_test_armed or self._audio_test_waiting_for_rx)
         payload = {
             "microphone_gain_percent": self._gain_percent,
             "output_volume_percent": self._output_volume_percent,
             "output_muted": self._user_muted,
             "agc_enabled": self._agc_enabled,
+            "tx_speech_processing_enabled": self._tx_speech_processing_enabled,
+            "tx_audio_tuner": self._tx_audio_tuner_settings.to_dict(),
             "tx_safety_limit_seconds": self._tx_safety_limit_seconds,
-            "audio_debug_wav_enabled": self._audio_debug_wav_enabled,
+            "audio_debug_wav_enabled": debug_enabled_to_persist,
         }
         self._settings_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
@@ -510,8 +676,28 @@ class AudioSendService:
             self._unmute_receive()
 
     def start_live_capture(self, stop_event: Event, *, max_duration_seconds: float, level_callback: Callable[[float], None] | None = None) -> LivePcmCapture:
-        capture=LivePcmCapture(self, stop_event, max_duration_seconds=max_duration_seconds, level_callback=level_callback)
-        capture.start(); return capture
+        one_shot = self._audio_test_armed
+        pre_roll = self._take_audio_test_pre_roll() if one_shot else ()
+        session_dir = None
+        if one_shot:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            session_dir = self.project_root / "logs" / "audio_lab" / f"AudioTest_{stamp}"
+            session_dir.mkdir(parents=True, exist_ok=True)
+            self._audio_test_session_dir = session_dir
+        capture=LivePcmCapture(self, stop_event, max_duration_seconds=max_duration_seconds, level_callback=level_callback, pre_roll_samples=pre_roll, one_shot_audio_test=one_shot, session_dir=session_dir)
+        capture.start()
+        if one_shot:
+            self._audio_test_armed = False
+            timing_mark("AUDIO_TEST_TX_GESTARTET", f"VorlaufSamples={len(pre_roll)}")
+        return capture
+
+    def finish_audio_test_session(self) -> None:
+        """Schließt den flüchtigen Testzustand nach TX und Parrot-RX sauber ab."""
+        if self._audio_test_session_dir is not None:
+            timing_mark("AUDIO_TEST_SITZUNG_ABGESCHLOSSEN", f"Ordner={self._audio_test_session_dir}")
+        self._audio_test_armed = False
+        self._audio_test_waiting_for_rx = False
+        self._audio_test_session_dir = None
 
     def play_test(self) -> None:
         if self._recording is None:

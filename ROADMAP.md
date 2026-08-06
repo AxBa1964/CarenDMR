@@ -1,3 +1,30 @@
+## 0.1.9.1.3 – RX-Initialisierung (umgesetzt)
+
+- Erster Parrot-Test nach Programmstart wird deterministisch vorbereitet.
+- RX-Decoder, Jitterpuffer und Audioausgabe sind vor dem ersten Echo bereit.
+
+## 0.1.9.1.1 – DMR Audio-Tuner V1 (umgesetzt)
+
+- Ausklappbarer Tuner im Betrieb
+- Profile Neutral/Klar/DX/Warm/Eigene
+- Tiefen, Sprachmitten, Präsenz, Höhen, Dynamik, Limiter
+- PTT-Vorlauf direkt im Betrieb
+- Parrot-Vorbereitung und geführter Audio-Assistent
+
+## 0.1.9.1.1 – Audioqualität (umgesetzt)
+- natürliche TX-Sprachaufbereitung
+- zustandsbehafteter Hochpass
+- transparenter Spitzenbegrenzer
+- Vergleichsmesspunkt im Audio-Labor
+
+CarenDMR 0.1.8.5 – Codec-Diagnose und TX-Timing
+
+# Stand 0.1.7.4.3
+
+- Länder- und Sprachmetadaten im Talkgroup-Verzeichnis abgeschlossen.
+- Favoritenstatus im Bearbeiten-Dialog und über getrennte Aktionen bedienbar.
+- Nächster Schritt: Praxistest und anschließender UX-/Industrial-Design-Sprint.
+
 # Aktueller Stand: CarenDMR 0.1.6.8
 
 # Stand 0.1.1

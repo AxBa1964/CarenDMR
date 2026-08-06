@@ -1,5 +1,6 @@
 """Echter DMR-Live-Sendepfad: PCM wird während gedrückter PTT codiert und gesendet."""
 from __future__ import annotations
+from carendmr.diagnostics.wav_io import write_pcm16_mono
 
 import ctypes
 import math
@@ -18,7 +19,8 @@ from carendmr.encoder import AmbeEncoder
 from carendmr.network import NetworkReceiveTimeout
 from carendmr.vocoder import NativeMbeReceiveVocoder, extract_ambe_codewords
 from carendmr.vocoder.playout import DmrJitterBuffer
-from carendmr.diagnostics.tx_rx_timing import mark as timing_mark
+from carendmr.diagnostics.tx_rx_timing import mark as timing_mark, detach_session as timing_detach_session
+from carendmr.diagnostics.audio_report_worker import schedule_session_report
 
 from .client import BrandMeisterClient
 from .config import BrandMeisterConfig
@@ -88,7 +90,7 @@ def execute_live_voice_once(
     wait_for_parrot_echo: bool = False, lead_in_seconds: float = 0.240,
     client_factory=BrandMeisterClient, output_factory=BufferedPcmOutput,
     decoder_factory=NativeMbeReceiveVocoder, monotonic=time.monotonic, sleep=time.sleep,
-    rx_debug_dir: Path | None = None, rx_playback_gate=None,
+    rx_debug_dir: Path | None = None, rx_playback_gate=None, ambe_debug_path: Path | None = None,
 ) -> VoiceTransmitResult:
     """Sendet PCM fortlaufend. Nach Ende des Iterators folgen nur Pad/Terminator."""
     source_id = config.dmr_id
@@ -100,6 +102,11 @@ def execute_live_voice_once(
     client = client_factory(config)
     output = output_factory(sample_rate=8000) if wait_for_parrot_echo else None
     decoder = None
+    loopback_decoder = None
+    loopback_samples: list[int] = []
+    loopback_corrected_errors = 0
+    loopback_decode_exceptions = 0
+    loopback_frames = 0
     jitter = DmrJitterBuffer()
     sent = voice = echo_voice = decoded_words = output_samples = decode_errors = 0
     authenticated = closed = echo_received = timed_out = False
@@ -113,6 +120,15 @@ def execute_live_voice_once(
     rx_debug_samples: list[int] = []
     rx_debug_path: Path | None = None
     pending_rx_frames: list[tuple[int, ...]] = []
+    echo_stream_id: int | None = None
+    rx_trace_limit = 24
+    rx_trace_packets = 0
+    rx_trace_parse_errors = 0
+    rx_trace_filter_rejects = 0
+    rx_trace_non_voice = 0
+    rx_trace_voice_packets = 0
+    rx_trace_decoded_frames = 0
+    rx_trace_pcm_samples = 0
 
     def play_rx_frame(frame) -> None:
         nonlocal output_samples
@@ -178,8 +194,20 @@ def execute_live_voice_once(
     timer_resolution.__enter__()
     try:
         if output is not None:
+            # Der RX-Ausgabepfad wird vor Login und TX vollständig geöffnet.
+            # Dadurch initialisiert nicht erst der erste Parrot-Stream zufällig
+            # Decoder, Queue oder Audio-Backend.
+            timing_mark("RX_INITIALISIERUNG_START")
             output.start()
             decoder = decoder_factory()
+            jitter.reset()
+            pending_rx_frames.clear()
+            timing_mark("RX_INITIALISIERUNG_BEREIT")
+        if ambe_debug_path is not None:
+            try:
+                loopback_decoder = decoder_factory()
+            except Exception as exc:
+                timing_mark("CODEC_LOOPBACK_NICHT_VERFUEGBAR", str(exc))
         timing_mark('TX_LOGIN_START')
         client.login()
         timing_mark('TX_LOGIN_FERTIG')
@@ -201,18 +229,40 @@ def execute_live_voice_once(
         burst_number = 0
 
         def drain(final: bool = False) -> None:
-            nonlocal sequence, burst_number
+            nonlocal sequence, burst_number, loopback_corrected_errors, loopback_decode_exceptions, loopback_frames
             while len(pcm_buffer) >= PCM_FRAME_SAMPLES or (final and pcm_buffer):
                 frame = tuple(pcm_buffer[:PCM_FRAME_SAMPLES])
                 del pcm_buffer[:PCM_FRAME_SAMPLES]
                 if len(frame) < PCM_FRAME_SAMPLES:
                     frame += (0,) * (PCM_FRAME_SAMPLES - len(frame))
                 encode_started = monotonic()
+                if not ambe_frames and burst_number == 0:
+                    timing_mark("TX_ERSTES_PCM_FRAME", f"Samples={len(frame)};Min={min(frame)};Max={max(frame)}")
                 word = encoder.encode_2450x1150(frame)
                 encoder_times_ms.append((monotonic() - encode_started) * 1000.0)
+                if not ambe_frames and burst_number == 0:
+                    timing_mark("TX_ERSTES_AMBE_CODEWORT", f"Bytes={len(word)}")
                 if len(word) != 9:
                     raise ParrotSafetyError('Der Encoder lieferte keinen 9-Byte-AMBE-Rahmen.')
                 ambe_frames.append(word)
+                if loopback_decoder is not None:
+                    try:
+                        decoded_loop = loopback_decoder.decode(word)
+                        loopback_frames += 1
+                        loopback_samples.extend(int(v) for v in decoded_loop.samples)
+                        # Der native Decoder meldet hier korrigierte Bitfehler,
+                        # keine fehlgeschlagenen Frames. Der alte Zähler nannte
+                        # jedes Codewort fälschlich einen "Loopback-Fehler".
+                        loopback_corrected_errors += max(0, int(decoded_loop.corrected_errors))
+                        if loopback_frames == 1:
+                            timing_mark("CODEC_LOOPBACK_ERSTER_FRAME", f"KorrigierteBits={decoded_loop.corrected_errors};Samples={len(decoded_loop.samples)}")
+                    except Exception as exc:
+                        loopback_decode_exceptions += 1
+                        timing_mark("CODEC_LOOPBACK_FEHLER", str(exc))
+                if ambe_debug_path is not None:
+                    Path(ambe_debug_path).parent.mkdir(parents=True, exist_ok=True)
+                    with Path(ambe_debug_path).open("ab") as ambe_file:
+                        ambe_file.write(word)
                 if len(ambe_frames) == 3:
                     burst = _pack_ambe(tuple(ambe_frames))
                     number = burst_number % 6
@@ -243,6 +293,14 @@ def execute_live_voice_once(
             drain()
         drain(final=True)
         timing_mark("TX_LETZTER_AMBE_FRAME_CODIERT", f"Restframes={len(ambe_frames)}")
+        if ambe_debug_path is not None and loopback_samples:
+            loopback_path = Path(ambe_debug_path).parent / "04_codec_loopback_8k.wav"
+            pcm_loop = array.array("h", loopback_samples)
+            import sys
+            if sys.byteorder != "little":
+                pcm_loop.byteswap()
+            write_pcm16_mono(loopback_path, 8000, pcm_loop.tobytes())
+            timing_mark("CODEC_LOOPBACK_WAV", f"Pfad={loopback_path};Samples={len(loopback_samples)};KorrigierteBits={loopback_corrected_errors};DecodeAusnahmen={loopback_decode_exceptions};Frames={loopback_frames}")
         while ambe_frames:
             encode_started = monotonic()
             pad_word = encoder.encode_2450x1150((0,) * PCM_FRAME_SAMPLES)
@@ -283,6 +341,17 @@ def execute_live_voice_once(
         tx_elapsed = monotonic() - tx_start
 
         if wait_for_parrot_echo:
+            # Vor jedem Echo wird der RX-Streamzustand deterministisch geleert.
+            # Insbesondere der erste Parrot-Test nach Programmstart darf keine
+            # implizite Initialisierung durch eingehende Pakete benötigen.
+            timing_mark("PARROT_RX_RESET_START")
+            if decoder is not None:
+                decoder.close()
+            decoder = decoder_factory()
+            jitter.reset()
+            pending_rx_frames.clear()
+            echo_stream_id = None
+            timing_mark("PARROT_RX_BEREIT")
             timing_mark("PARROT_ECHO_WARTE_START")
             echo_start = monotonic()
             first_echo_packet_marked = False
@@ -301,12 +370,43 @@ def execute_live_voice_once(
                     first_echo_packet_marked = True
                 try:
                     packet = parse_dmrd_packet(datagram)
-                except (TypeError, ValueError):
+                except (TypeError, ValueError) as exc:
+                    rx_trace_parse_errors += 1
+                    if rx_trace_packets < rx_trace_limit:
+                        timing_mark("RX_TRACE_PARSE_FEHLER", f"Index={rx_trace_packets + 1};Fehler={type(exc).__name__}")
+                    rx_trace_packets += 1
                     continue
-                if packet.call_type is not DmrdCallType.PRIVATE or packet.timeslot != 2 or 9990 not in (packet.source_id, packet.destination_id):
+                rx_trace_packets += 1
+                frame_name = getattr(packet.frame_class, "name", str(packet.frame_class))
+                call_name = getattr(packet.call_type, "name", str(packet.call_type))
+                if rx_trace_packets <= rx_trace_limit:
+                    timing_mark(
+                        "RX_TRACE_DMRD",
+                        f"Index={rx_trace_packets};Seq={packet.sequence};Stream={packet.stream_id:08X};"
+                        f"Src={packet.source_id};Dst={packet.destination_id};TS={packet.timeslot};"
+                        f"Call={call_name};Frame={frame_name};LC={int(packet.is_voice_lc_header)};"
+                        f"Term={int(packet.is_terminator_with_lc)}"
+                    )
+                reject_reasons = []
+                if packet.call_type is not DmrdCallType.PRIVATE:
+                    reject_reasons.append("Rufart")
+                if packet.timeslot != 2:
+                    reject_reasons.append("Timeslot")
+                if 9990 not in (packet.source_id, packet.destination_id):
+                    reject_reasons.append("Ziel")
+                if reject_reasons:
+                    rx_trace_filter_rejects += 1
+                    if rx_trace_packets <= rx_trace_limit:
+                        timing_mark("RX_TRACE_VERWORFEN", f"Index={rx_trace_packets};Grund={'+'.join(reject_reasons)}")
                     continue
                 if packet.is_voice_lc_header:
-                    decoder.close(); decoder = decoder_factory(); jitter.reset(first_voice_sequence=(packet.sequence + 1) & 0xFF)
+                    # Jeder neue Stream beginnt mit einem frischen Decoder- und
+                    # Jitterzustand. Das gilt auch für den allerersten Stream.
+                    echo_stream_id = packet.stream_id
+                    decoder.close()
+                    decoder = decoder_factory()
+                    jitter.reset(first_voice_sequence=(packet.sequence + 1) & 0xFF)
+                    timing_mark("PARROT_STREAM_INITIALISIERT", f"Stream={packet.stream_id:08X};Header=1")
                     continue
                 if packet.is_terminator_with_lc:
                     for frame in jitter.flush().frames:
@@ -315,18 +415,52 @@ def execute_live_voice_once(
                     timing_mark("PARROT_TERMINATOR_EMPFANGEN", f"VoiceBursts={echo_voice}")
                     break
                 if packet.frame_class not in (DmrdFrameClass.VOICE, DmrdFrameClass.VOICE_SYNC):
+                    rx_trace_non_voice += 1
+                    if rx_trace_packets <= rx_trace_limit:
+                        timing_mark("RX_TRACE_KEIN_VOICE", f"Index={rx_trace_packets};Frame={frame_name}")
                     continue
+                rx_trace_voice_packets += 1
+                # Manche Gegenstellen liefern beim Streamstart keinen verwertbaren
+                # LC-Header. Das erste gültige Voice-Paket muss deshalb ebenfalls
+                # einen neuen Stream deterministisch eröffnen können.
+                if echo_stream_id != packet.stream_id:
+                    echo_stream_id = packet.stream_id
+                    decoder.close()
+                    decoder = decoder_factory()
+                    jitter.reset(first_voice_sequence=packet.sequence)
+                    timing_mark("PARROT_STREAM_INITIALISIERT", f"Stream={packet.stream_id:08X};Header=0")
                 echo_voice += 1
                 decoded = []
                 try:
-                    for word in extract_ambe_codewords(packet):
-                        frame = decoder.decode(word); decoded.extend(frame.samples); decoded_words += 1
-                except Exception:
-                    decode_errors += 1; continue
-                for frame in jitter.push(packet.sequence, tuple(decoded)).frames:
+                    words = tuple(extract_ambe_codewords(packet))
+                    for word in words:
+                        frame = decoder.decode(word)
+                        decoded.extend(frame.samples)
+                        decoded_words += 1
+                        rx_trace_decoded_frames += 1
+                        rx_trace_pcm_samples += len(frame.samples)
+                except Exception as exc:
+                    decode_errors += 1
+                    if rx_trace_packets <= rx_trace_limit:
+                        timing_mark("RX_TRACE_DECODE_FEHLER", f"Index={rx_trace_packets};Fehler={type(exc).__name__}:{exc}")
+                    continue
+                released = jitter.push(packet.sequence, tuple(decoded)).frames
+                if rx_trace_packets <= rx_trace_limit:
+                    timing_mark(
+                        "RX_TRACE_DECODE_OK",
+                        f"Index={rx_trace_packets};Codewords={len(words)};PCM={len(decoded)};JitterFreigabe={len(released)}"
+                    )
+                for frame in released:
                     play_rx_frame(frame)
             flush_rx_frames()
             timed_out = not echo_received
+            timing_mark(
+                "RX_TRACE_SUMME",
+                f"DMRD={rx_trace_packets};ParseFehler={rx_trace_parse_errors};FilterVerworfen={rx_trace_filter_rejects};"
+                f"KeinVoice={rx_trace_non_voice};VoicePakete={rx_trace_voice_packets};"
+                f"DecodeFrames={rx_trace_decoded_frames};PCM={rx_trace_pcm_samples};"
+                f"EchoVoice={echo_voice};DecodeFehler={decode_errors}"
+            )
             timing_mark("PARROT_ECHO_WARTE_ENDE", "Timeout" if timed_out else "Echo vollständig")
             if rx_debug_dir is not None and rx_debug_samples:
                 rx_debug_dir = Path(rx_debug_dir)
@@ -337,11 +471,7 @@ def execute_live_voice_once(
                 import sys
                 if sys.byteorder != "little":
                     pcm.byteswap()
-                with wave.open(str(rx_debug_path), "wb") as wav_file:
-                    wav_file.setnchannels(1)
-                    wav_file.setsampwidth(2)
-                    wav_file.setframerate(8000)
-                    wav_file.writeframes(pcm.tobytes())
+                write_pcm16_mono(rx_debug_path, 8000, pcm.tobytes())
                 timing_mark("RX_AUDIO_DEBUG_WAV", f"ParrotNachAMBE8k={rx_debug_path};Samples={len(rx_debug_samples)}")
         return VoiceTransmitResult(authenticated, sent, voice, tx_elapsed, False,
                                    echo_received, echo_voice, timed_out,
@@ -354,3 +484,17 @@ def execute_live_voice_once(
         if output is not None:
             output.close()
         timing_mark('TX_VERBINDUNG_GESCHLOSSEN')
+        if loopback_decoder is not None:
+            loopback_decoder.close()
+        if rx_debug_dir is not None:
+            try:
+                schedule_session_report(Path(rx_debug_dir), extra={
+                    "codec_loopback_frames": loopback_frames,
+                    "codec_loopback_corrected_errors": loopback_corrected_errors,
+                    "codec_loopback_decode_exceptions": loopback_decode_exceptions,
+                    "codec_loopback_samples": len(loopback_samples),
+                    "echo_received": echo_received,
+                    "decode_errors": decode_errors,
+                })
+            finally:
+                timing_detach_session()

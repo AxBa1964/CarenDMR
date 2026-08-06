@@ -1,9 +1,14 @@
 """Dynamischer Gruppenruf-Empfang mit Audio-Decodierung und Wiedergabe."""
 
 from __future__ import annotations
+from carendmr.diagnostics.wav_io import write_pcm16_mono
 
 import math
 import time
+import wave
+import array
+from datetime import datetime
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Callable
 
@@ -11,6 +16,7 @@ from carendmr.audio.pcm_output import BufferedPcmOutput
 from carendmr.network import NetworkReceiveTimeout
 from carendmr.diagnostics import diagnostic_print
 from carendmr.diagnostics.tx_rx_timing import mark as timing_mark
+from carendmr.diagnostics.audio_report_worker import schedule_session_report
 from carendmr.vocoder import NativeMbeReceiveVocoder, extract_ambe_codewords
 from carendmr.vocoder.playout import DmrJitterBuffer
 
@@ -93,6 +99,7 @@ def listen_receive_only(
     output_volume: Callable[[], float] | None = None,
     output_agc_enabled: Callable[[], bool] | None = None,
     output_level_callback: Callable[[float], None] | None = None,
+    audio_debug_dir: Path | Callable[[], Path | None] | None = None,
     client_factory=BrandMeisterClient,
     output_factory=BufferedPcmOutput,
     decoder_factory=NativeMbeReceiveVocoder,
@@ -115,9 +122,33 @@ def listen_receive_only(
         raise ValueError("Das Heartbeat-Intervall muss größer als null sein.")
 
     client = client_factory(config)
+    rx_decoded_samples: list[int] = []
+    rx_output_samples: list[int] = []
+    session_dir: Path | None = None
+    def resolve_session_dir() -> Path | None:
+        nonlocal session_dir
+        if session_dir is not None:
+            return session_dir
+        if audio_debug_dir is None:
+            return None
+        candidate = audio_debug_dir() if callable(audio_debug_dir) else Path(audio_debug_dir)
+        if candidate is None:
+            return None
+        candidate = Path(candidate)
+        if callable(audio_debug_dir):
+            session_dir = candidate
+        else:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            session_dir = candidate / f"RX_{stamp}"
+        session_dir.mkdir(parents=True, exist_ok=True)
+        return session_dir
+    def output_tap(values: tuple[int, ...]) -> None:
+        if values and resolve_session_dir() is not None:
+            rx_output_samples.extend(int(v) for v in values)
     output = output_factory(
         sample_rate=8000, muted=output_muted, volume=output_volume,
         agc_enabled=output_agc_enabled, level_callback=output_level_callback,
+        processed_tap=output_tap,
     )
     decoder = None
     jitter = DmrJitterBuffer()
@@ -334,6 +365,8 @@ def listen_receive_only(
                     for word in extract_ambe_codewords(packet):
                         frame = decoder.decode(word)
                         decoded.extend(frame.samples)
+                        if frame.samples and resolve_session_dir() is not None:
+                            rx_decoded_samples.extend(int(v) for v in frame.samples)
                         codewords += 1
                         corrected += frame.corrected_errors
                 except Exception as error:
@@ -388,6 +421,19 @@ def listen_receive_only(
         elapsed = max(0.0, monotonic() - started_at)
         if decoder is not None:
             decoder.close()
+        session_dir = resolve_session_dir() if (rx_decoded_samples or rx_output_samples) else session_dir
+        if session_dir is not None and (rx_decoded_samples or rx_output_samples):
+            def write_wav(path: Path, values: list[int]) -> None:
+                import sys
+                pcm=array.array("h", values)
+                if sys.byteorder != "little": pcm.byteswap()
+                write_pcm16_mono(path, 8000, pcm.tobytes())
+            if rx_decoded_samples:
+                write_wav(session_dir / "05_nach_ambe_decoder_8k.wav", rx_decoded_samples)
+            if rx_output_samples:
+                write_wav(session_dir / "06_vor_lautsprecher_8k.wav", rx_output_samples)
+            schedule_session_report(session_dir, extra={"talkgroup": target_talkgroup, "timeslot": target_timeslot, "call_type": target_call_type})
+            timing_mark("RX_AUDIO_LAB", f"Ordner={session_dir}")
         timing_mark("RX_CLOSE_START")
         client.close()
         output.close()

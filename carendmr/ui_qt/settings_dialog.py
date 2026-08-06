@@ -114,7 +114,10 @@ class SettingsDialog(QDialog):
         audio_form.addRow("RX-Pegel / Zusatzverstärkung:", volume_row)
         self.muted_check = QCheckBox("Empfang stummschalten")
         self.agc_check = QCheckBox("Automatische Lautstärkeanpassung (AGC)")
+        self.tx_speech_processing_check = QCheckBox("DMR-Sprachaufbereitung (empfohlen)")
+        self.tx_speech_processing_check.setToolTip("Entfernt tieffrequentes Rumpeln und begrenzt nur einzelne Spitzen weich. Keine automatische Lautheitsanhebung.")
         audio_form.addRow("", self.muted_check); audio_form.addRow("", self.agc_check)
+        audio_form.addRow("", self.tx_speech_processing_check)
         audio_root.addWidget(audio_box); audio_root.addStretch(1)
         self.tabs.addTab(audio_page, "Audio")
 
@@ -177,9 +180,14 @@ class SettingsDialog(QDialog):
         diag_box = QGroupBox("Diagnose")
         diag_layout = QVBoxLayout(diag_box)
         self.diagnostics_check = QCheckBox("Diagnosemodus aktiv")
-        self.audio_debug_check = QCheckBox("Audio-Diagnose als WAV speichern")
+        self.audio_debug_check = QCheckBox("Audio-Labor dauerhaft aktiv")
+        self.audio_debug_check.setVisible(False)
+        self.audio_test_button = QPushButton("Geführten Audio-Test starten")
+        self.audio_test_button.clicked.connect(self._toggle_audio_test)
+        self.audio_test_status = QLabel("Bereit: Nach dem Start werden 2 Sekunden vor PTT und genau die nächste Sendung aufgezeichnet.")
+        self.audio_test_status.setWordWrap(True)
         self.log_path_label = QLabel(f"Logverzeichnis: {self.project_root / 'logs'}"); self.log_path_label.setWordWrap(True)
-        diag_layout.addWidget(self.diagnostics_check); diag_layout.addWidget(self.audio_debug_check); diag_layout.addWidget(self.log_path_label)
+        diag_layout.addWidget(self.diagnostics_check); diag_layout.addWidget(self.audio_test_button); diag_layout.addWidget(self.audio_test_status); diag_layout.addWidget(self.audio_debug_check); diag_layout.addWidget(self.log_path_label)
         accessibility_box = QGroupBox("Accessibility-Test")
         accessibility_form = QFormLayout(accessibility_box)
         self.ptt_lead_in_spin = QDoubleSpinBox()
@@ -365,10 +373,40 @@ class SettingsDialog(QDialog):
         self.volume_slider.setValue(int(self.audio_service.output_volume_percent))
         self.muted_check.setChecked(bool(self.audio_service.user_muted))
         self.agc_check.setChecked(bool(self.audio_service.agc_enabled))
-        self.audio_debug_check.setChecked(bool(self.audio_service.audio_debug_wav_enabled))
+        self.tx_speech_processing_check.setChecked(bool(self.audio_service.tx_speech_processing_enabled))
+        self.audio_debug_check.setChecked(False)
+        self._refresh_audio_test_status()
         self.diagnostics_check.setChecked(bool(initialize_diagnostics(self.project_root)))
         preferences = self.preferences_store.load()
         self.ptt_lead_in_spin.setValue(preferences.screenreader_ptt_lead_in_seconds)
+
+
+    def _refresh_audio_test_status(self) -> None:
+        armed = bool(getattr(self.audio_service, "audio_test_armed", False))
+        self.audio_test_button.setText("Audio-Test abbrechen" if armed else "Geführten Audio-Test starten")
+        if armed:
+            self.audio_test_status.setText("Audio-Test bereit. Jetzt verbinden und genau eine Sendung durchführen. Der 2-Sekunden-Vorlauf liegt nur im RAM.")
+        else:
+            self.audio_test_status.setText("Bereit: Nach dem Start werden 2 Sekunden vor PTT und genau die nächste Sendung aufgezeichnet.")
+
+    def _toggle_audio_test(self) -> None:
+        try:
+            if bool(getattr(self.audio_service, "audio_test_armed", False)):
+                self.audio_service.cancel_audio_test()
+                self.receive_service.set_audio_debug_enabled(False)
+            else:
+                input_key = str(self.microphone_combo.currentData() or "")
+                input_device = self._device_by_key(self._input_devices, input_key)
+                if input_device is None:
+                    raise ValueError("Bitte zuerst ein verfügbares Mikrofon auswählen.")
+                self.audio_service.select_microphone(input_device.stable_key)
+                self.audio_service.set_gain_percent(self.gain_slider.value())
+                self.audio_service.arm_audio_test(pre_roll_seconds=2.0)
+                self.receive_service.set_audio_debug_enabled(True)
+            self._refresh_audio_test_status()
+        except Exception as exc:
+            QMessageBox.critical(self, "Audio-Test", str(exc))
+            self.audio_test_status.setText(f"Fehler: {exc}")
 
     def _device_by_key(self, devices, stable_key: str):
         return next((device for device in devices if device.stable_key == stable_key), None)
@@ -535,7 +573,10 @@ class SettingsDialog(QDialog):
             self.audio_service.set_output_volume_percent(self.volume_slider.value())
             self.audio_service.set_user_muted(self.muted_check.isChecked())
             self.audio_service.set_agc_enabled(self.agc_check.isChecked())
-            self.audio_service.set_audio_debug_wav_enabled(self.audio_debug_check.isChecked())
+            self.audio_service.set_tx_speech_processing_enabled(self.tx_speech_processing_check.isChecked())
+            # Der Audio-Test ist bewusst ein einmaliger, geführter Test und keine Daueraufnahme.
+            if not bool(getattr(self.audio_service, "audio_test_armed", False)):
+                self.audio_service.set_audio_debug_wav_enabled(False)
             self.audio_service.save_settings()
             self._save_hotkeys()
             preferences = self.preferences_store.load()

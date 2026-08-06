@@ -58,11 +58,11 @@ class TalkgroupSearchWidget(QLineEdit):
         self.popup.setRowCount(0)
         for row, channel in enumerate(results):
             self.popup.insertRow(row)
-            name_item = QTableWidgetItem(channel.name or str(channel.target))
+            name_item = QTableWidgetItem(self.search_service.display_name(channel))
             target_item = QTableWidgetItem(self.search_service.format_target(channel))
             name_item.setData(Qt.ItemDataRole.UserRole, channel)
             target_item.setData(Qt.ItemDataRole.UserRole, channel)
-            name_item.setToolTip(channel.name or str(channel.target))
+            name_item.setToolTip(self.search_service.display_name(channel))
             target_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.popup.setItem(row, 0, name_item)
             self.popup.setItem(row, 1, target_item)

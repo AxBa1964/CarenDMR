@@ -14,14 +14,14 @@ from PySide6.QtCore import QEvent, QTimer, Qt
 from PySide6.QtGui import QAction, QAccessible, QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QAbstractButton, QFormLayout, QGroupBox, QHBoxLayout,
-    QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton,
+    QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QComboBox,
     QStatusBar, QTabWidget, QVBoxLayout, QWidget, QSlider, QCheckBox, QGridLayout,
     QFrame, QSizePolicy,
 )
 
 from carendmr.application import (
     AudioSendService, ConnectionManager, EncoderService, EventService,
-    ParrotTestService, RadioState, RadioStateMachine, ReceiveService, TalkgroupSearchService,
+    FavoriteService, ParrotTestService, RadioState, RadioStateMachine, ReceiveService, TalkgroupSearchService, TalkgroupCatalogService,
 )
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.domain import ApplicationState, ConnectionState, DmrChannel
@@ -35,7 +35,8 @@ from carendmr.ui_qt.accessibility_manager import AccessibilityManager
 from carendmr.ui_qt.audio_cue import AudioCuePlayer
 from carendmr.ui_qt.operating_indicators import LevelMeter, StatusIndicator
 from carendmr.ui_qt.talkgroup_search_widget import TalkgroupSearchWidget
-from carendmr.audio import AudioDirection
+from carendmr.ui_qt.favorites_widget import FavoritesWidget
+from carendmr.audio import AudioDirection, TxAudioTunerSettings, TUNER_PRESETS
 
 
 class MainWindow(QMainWindow):
@@ -57,6 +58,8 @@ class MainWindow(QMainWindow):
             mute_receive=self.receive_service.mute_audio_output,
             unmute_receive=self.receive_service.unmute_audio_output,
         )
+        self.receive_service.set_audio_debug_enabled(self.audio_send_service.audio_debug_wav_enabled)
+        self.receive_service.set_audio_debug_dir_provider(lambda: self.audio_send_service.audio_test_session_dir)
         self.parrot_service = ParrotTestService(
             self.project_root,
             audio_service=self.audio_send_service,
@@ -77,7 +80,11 @@ class MainWindow(QMainWindow):
         self._encoder_ready = False
         self._settings_dialog: SettingsDialog | None = None
         self.hotkey_manager = HotkeyManager(self.project_root / "config" / "hotkeys.local.json")
+        self.favorite_service = FavoriteService(self.project_root / "config" / "favorites.local.json")
         self.talkgroup_search_service = TalkgroupSearchService(self.project_root / "config" / "talkgroups.json")
+        self.talkgroup_catalog_service = TalkgroupCatalogService(self.project_root / "config" / "talkgroups.json")
+        self.talkgroup_search_service.set_favorites(self.favorite_service.favorites)
+        self._current_dmr_channel: DmrChannel | None = None
         self._shortcuts: list[QShortcut] = []
         self.accessibility = AccessibilityManager()
         self.audio_cues = AudioCuePlayer(self.audio_send_service)
@@ -160,7 +167,6 @@ class MainWindow(QMainWindow):
         target_heading = QLabel("DMR-KANAL")
         target_heading.setObjectName("sectionTitle")
         target_layout.addWidget(target_heading, 0, 0, 1, 6)
-
         current_caption = QLabel("Aktuelle TG")
         current_caption.setObjectName("fieldCaption")
         self.current_tg_label = QLabel(str(self.preferences.talkgroup))
@@ -174,9 +180,15 @@ class MainWindow(QMainWindow):
         current_column.addWidget(current_caption)
         current_column.addWidget(self.current_tg_label)
         current_column.addWidget(self.current_tg_name_label)
-        target_layout.addLayout(current_column, 1, 0, 3, 1)
+        target_layout.addLayout(current_column, 1, 0, 4, 1)
 
-        target_layout.addWidget(QLabel("Talkgroup"), 1, 1, 1, 2)
+        target_layout.addWidget(QLabel("Talkgroup"), 2, 1, 1, 2)
+        self.favorite_button = QPushButton("☆")
+        self.favorite_button.setObjectName("favoriteButton")
+        self.favorite_button.setAccessibleName("Aktuellen DMR-Kanal als Favorit speichern")
+        self.favorite_button.setToolTip("Aktuellen DMR-Kanal als Favorit speichern oder bearbeiten")
+        self.favorite_button.setFixedSize(32, 28)
+        self.favorite_button.clicked.connect(self._edit_current_favorite)
         self.tg_edit = TalkgroupSearchWidget(self.talkgroup_search_service, target_card)
         self.tg_edit.setObjectName("talkgroupInput")
         self.tg_edit.setPlaceholderText("Talkgroup nach Nummer oder Name suchen")
@@ -184,7 +196,11 @@ class MainWindow(QMainWindow):
         self.tg_edit.setAccessibleName("Talkgroup")
         self.tg_edit.setAccessibleDescription("Nach Nummer oder Name suchen")
         self.tg_edit.channel_selected.connect(self._apply_selected_channel)
-        target_layout.addWidget(self.tg_edit, 2, 1, 1, 2)
+        talkgroup_row = QHBoxLayout()
+        talkgroup_row.setSpacing(6)
+        talkgroup_row.addWidget(self.favorite_button)
+        talkgroup_row.addWidget(self.tg_edit, 1)
+        target_layout.addLayout(talkgroup_row, 3, 1, 1, 2)
 
         self.ts1_radio = QPushButton("TS1")
         self.ts2_radio = QPushButton("TS2")
@@ -204,7 +220,7 @@ class MainWindow(QMainWindow):
         ts_row.addWidget(self.ts1_radio)
         ts_row.addWidget(self.ts2_radio)
         ts_column.addLayout(ts_row)
-        target_layout.addLayout(ts_column, 1, 3, 2, 1)
+        target_layout.addLayout(ts_column, 2, 3, 2, 1)
 
         self.group_radio = QPushButton("Gruppe")
         self.private_radio = QPushButton("Privat")
@@ -224,13 +240,13 @@ class MainWindow(QMainWindow):
         call_row.addWidget(self.group_radio)
         call_row.addWidget(self.private_radio)
         call_column.addLayout(call_row)
-        target_layout.addLayout(call_column, 1, 4, 2, 1)
+        target_layout.addLayout(call_column, 2, 4, 2, 1)
 
         self.connect_button = QPushButton("Verbinden")
         self.connect_button.setObjectName("connectButton")
         self.connect_button.setFixedSize(METRICS.connection_control_width, METRICS.action_control_height)
         self.connect_button.clicked.connect(self._toggle_connection)
-        target_layout.addWidget(self.connect_button, 1, 5, 2, 1)
+        target_layout.addWidget(self.connect_button, 2, 5, 2, 1)
         self._sync_radio_controls()
         self._update_radio_hotkey_hints()
         content.addWidget(target_card, 0, 0, 1, 2)
@@ -320,6 +336,56 @@ class MainWindow(QMainWindow):
         checks.addStretch(1)
         control_layout.addLayout(checks)
 
+        # Live-DMR-Audio-Tuner: im Normalbetrieb eingeklappt, im Parrot-Test
+        # direkt bedienbar. Alle Regler wirken auf den nächsten TX-Start; ein
+        # laufender TX wird bewusst nicht mitten im Sprachframe umkonfiguriert.
+        self.audio_tuner_toggle = QPushButton("DMR Audio-Tuner  ▶")
+        self.audio_tuner_toggle.setAccessibleName("DMR Audio-Tuner ein- oder ausklappen")
+        self.audio_tuner_panel = QWidget(control_card)
+        tuner_layout = QGridLayout(self.audio_tuner_panel)
+        tuner_layout.setContentsMargins(0, 4, 0, 4)
+        tuner_layout.setHorizontalSpacing(8)
+        tuner_layout.setVerticalSpacing(4)
+        self.audio_tuner_profile = QComboBox(self.audio_tuner_panel)
+        self.audio_tuner_profile.addItems(["Neutral", "Klar", "DX", "Warm", "Eigene"])
+        self.audio_tuner_profile.setAccessibleName("Audio-Profil")
+        tuner_layout.addWidget(QLabel("Profil"), 0, 0)
+        tuner_layout.addWidget(self.audio_tuner_profile, 0, 1, 1, 2)
+        self.audio_tuner_sliders = {}
+        tuner_specs = (
+            ("low_db", "Tiefen", -12, 12, " dB"),
+            ("mids_db", "Sprachmitten", -12, 12, " dB"),
+            ("presence_db", "Präsenz", -12, 12, " dB"),
+            ("high_db", "Höhen", -12, 12, " dB"),
+            ("dynamics_percent", "Dynamik", 0, 100, " %"),
+            ("limiter_percent", "Limiter", 0, 100, " %"),
+            ("ptt_lead", "PTT-Vorlauf", 0, 50, " s"),
+        )
+        for row, (key, label, minimum, maximum, suffix) in enumerate(tuner_specs, start=1):
+            slider = QSlider(Qt.Orientation.Horizontal, self.audio_tuner_panel)
+            slider.setRange(minimum, maximum)
+            slider.setAccessibleName(label)
+            value_label = QLabel("0" + suffix, self.audio_tuner_panel)
+            value_label.setObjectName("valueLabel")
+            tuner_layout.addWidget(QLabel(label), row, 0)
+            tuner_layout.addWidget(slider, row, 1)
+            tuner_layout.addWidget(value_label, row, 2)
+            self.audio_tuner_sliders[key] = (slider, value_label, suffix)
+        action_row = QHBoxLayout()
+        self.audio_tuner_parrot_button = QPushButton("Parrot vorbereiten")
+        self.audio_tuner_assistant_button = QPushButton("Audio-Assistent")
+        self.audio_tuner_reset_button = QPushButton("Zurücksetzen")
+        action_row.addWidget(self.audio_tuner_parrot_button)
+        action_row.addWidget(self.audio_tuner_assistant_button)
+        action_row.addWidget(self.audio_tuner_reset_button)
+        tuner_layout.addLayout(action_row, 8, 0, 1, 3)
+        self.audio_tuner_status = QLabel("Neutral – unveränderte Referenz", self.audio_tuner_panel)
+        self.audio_tuner_status.setWordWrap(True)
+        tuner_layout.addWidget(self.audio_tuner_status, 9, 0, 1, 3)
+        self.audio_tuner_panel.setVisible(False)
+        control_layout.addWidget(self.audio_tuner_toggle)
+        control_layout.addWidget(self.audio_tuner_panel)
+
         self.ptt_button = QPushButton("TX")
         self.ptt_button.setObjectName("pttButton")
         self.ptt_button.setMinimumHeight(74)
@@ -368,6 +434,13 @@ class MainWindow(QMainWindow):
         self.operation_volume_slider.valueChanged.connect(self._operation_volume_changed)
         self.operation_muted_check.toggled.connect(self._operation_muted_changed)
         self.operation_agc_check.toggled.connect(self._operation_agc_changed)
+        self.audio_tuner_toggle.clicked.connect(self._audio_tuner_toggled)
+        self.audio_tuner_profile.currentTextChanged.connect(self._audio_tuner_profile_changed)
+        for key, (slider, _label, _suffix) in self.audio_tuner_sliders.items():
+            slider.valueChanged.connect(lambda _value, tuner_key=key: self._audio_tuner_slider_changed(tuner_key))
+        self.audio_tuner_reset_button.clicked.connect(lambda: self._apply_audio_tuner_preset("Neutral"))
+        self.audio_tuner_parrot_button.clicked.connect(self._prepare_audio_tuner_parrot)
+        self.audio_tuner_assistant_button.clicked.connect(self._start_audio_tuner_assistant)
         self._sync_operation_audio_controls()
 
         operation_page.setAccessibleName("")
@@ -382,6 +455,11 @@ class MainWindow(QMainWindow):
             self.accessibility,
         )
         self.tabs.addTab(self.history_widget, "QSO-Historie")
+        self.favorites_widget = FavoritesWidget(self.favorite_service, self.talkgroup_search_service, self.talkgroup_catalog_service, self.tabs)
+        self.favorites_widget.channel_requested.connect(self._apply_favorite_channel)
+        self.favorites_widget.changed.connect(self._refresh_favorites)
+        self.tabs.addTab(self.favorites_widget, "Talkgroups")
+        self._refresh_favorites()
         self.tabs.currentChanged.connect(self._tab_changed)
         self.setCentralWidget(self.tabs)
         self._build_menu()
@@ -399,6 +477,7 @@ class MainWindow(QMainWindow):
 
     def _restore_tab_order(self) -> None:
         """Bewahrt die etablierte Tastaturreihenfolge trotz neuem Layout."""
+        QWidget.setTabOrder(self.favorite_button, self.tg_edit)
         QWidget.setTabOrder(self.tg_edit, self.connect_button)
         QWidget.setTabOrder(self.connect_button, self.operation_gain_slider)
         QWidget.setTabOrder(self.operation_gain_slider, self.operation_volume_slider)
@@ -507,6 +586,7 @@ class MainWindow(QMainWindow):
             self.operation_agc_check.setChecked(bool(self.audio_send_service.agc_enabled))
             self.operation_gain_value.setText(f"{int(self.audio_send_service.gain_percent)} %")
             self.operation_volume_value.setText(f"{min(100, int(self.audio_send_service.output_volume_percent))} %")
+            self._sync_audio_tuner_controls()
         finally:
             for widget in (self.operation_gain_slider, self.operation_volume_slider, self.operation_muted_check, self.operation_agc_check):
                 widget.blockSignals(False)
@@ -543,6 +623,93 @@ class MainWindow(QMainWindow):
         message = "AGC aktiv" if checked else "AGC ausgeschaltet"
         self.statusBar().showMessage(message)
         self.accessibility.announce_toggle(self.operation_agc_check, "AGC", checked)
+
+    def _audio_tuner_toggled(self) -> None:
+        visible = not self.audio_tuner_panel.isVisible()
+        self.audio_tuner_panel.setVisible(visible)
+        self.audio_tuner_toggle.setText("DMR Audio-Tuner  ▼" if visible else "DMR Audio-Tuner  ▶")
+
+    def _sync_audio_tuner_controls(self) -> None:
+        if not hasattr(self, "audio_tuner_profile"):
+            return
+        settings = self.audio_send_service.tx_audio_tuner_settings
+        widgets = [self.audio_tuner_profile] + [item[0] for item in self.audio_tuner_sliders.values()]
+        for widget in widgets:
+            widget.blockSignals(True)
+        try:
+            index = self.audio_tuner_profile.findText(settings.profile)
+            self.audio_tuner_profile.setCurrentIndex(index if index >= 0 else self.audio_tuner_profile.findText("Eigene"))
+            values = {
+                "low_db": round(settings.low_db), "mids_db": round(settings.mids_db),
+                "presence_db": round(settings.presence_db), "high_db": round(settings.high_db),
+                "dynamics_percent": settings.dynamics_percent, "limiter_percent": settings.limiter_percent,
+                "ptt_lead": round(self.preferences.screenreader_ptt_lead_in_seconds * 10),
+            }
+            for key, value in values.items():
+                slider, label, suffix = self.audio_tuner_sliders[key]
+                slider.setValue(int(value))
+                shown = f"{value / 10:.1f}" if key == "ptt_lead" else f"{int(value):+d}" if key.endswith("_db") else str(int(value))
+                label.setText(shown + suffix)
+        finally:
+            for widget in widgets:
+                widget.blockSignals(False)
+
+    def _audio_tuner_profile_changed(self, name: str) -> None:
+        if name in TUNER_PRESETS:
+            self._apply_audio_tuner_preset(name)
+
+    def _apply_audio_tuner_preset(self, name: str) -> None:
+        settings = self.audio_send_service.set_tx_audio_tuner_preset(name)
+        self.audio_send_service.save_settings()
+        self._sync_audio_tuner_controls()
+        self.audio_tuner_status.setText(f"Profil {settings.profile} aktiv – wirkt ab dem nächsten TX")
+
+    def _audio_tuner_slider_changed(self, changed_key: str) -> None:
+        for key, (slider, label, suffix) in self.audio_tuner_sliders.items():
+            value = slider.value()
+            shown = f"{value / 10:.1f}" if key == "ptt_lead" else f"{value:+d}" if key.endswith("_db") else str(value)
+            label.setText(shown + suffix)
+        if changed_key == "ptt_lead":
+            lead = self.audio_tuner_sliders["ptt_lead"][0].value() / 10.0
+            self.preferences = OperatingPreferences(
+                self.preferences.talkgroup, self.preferences.timeslot, self.preferences.call_type,
+                self.preferences.speech_enabled, lead
+            )
+            self.preferences_store.save(self.preferences)
+        else:
+            values = {key: item[0].value() for key, item in self.audio_tuner_sliders.items()}
+            settings = TxAudioTunerSettings(
+                profile="Eigene", low_db=values["low_db"], mids_db=values["mids_db"],
+                presence_db=values["presence_db"], high_db=values["high_db"],
+                dynamics_percent=values["dynamics_percent"], limiter_percent=values["limiter_percent"],
+            )
+            self.audio_send_service.set_tx_audio_tuner_settings(settings)
+            self.audio_send_service.save_settings()
+            if self.audio_tuner_profile.currentText() != "Eigene":
+                self.audio_tuner_profile.blockSignals(True)
+                self.audio_tuner_profile.setCurrentText("Eigene")
+                self.audio_tuner_profile.blockSignals(False)
+        self.audio_tuner_status.setText("Eigene Einstellung gespeichert – wirkt ab dem nächsten TX")
+
+    def _prepare_audio_tuner_parrot(self) -> None:
+        if self._tx_active or self._tx_pending:
+            self.statusBar().showMessage("Parrot kann während TX nicht vorbereitet werden.")
+            return
+        channel = DmrChannel(target=9990, timeslot=2, call_type="private", name="Parrot")
+        self._set_current_dmr_channel(channel)
+        self.tabs.setCurrentIndex(0)
+        self.connect_button.setFocus()
+        self.statusBar().showMessage("Parrot vorbereitet. Verbinden, TX drücken und Referenztext sprechen.")
+
+    def _start_audio_tuner_assistant(self) -> None:
+        try:
+            self.audio_send_service.arm_audio_test(pre_roll_seconds=2.0)
+        except Exception as exc:
+            QMessageBox.warning(self, "Audio-Assistent", str(exc))
+            return
+        self._prepare_audio_tuner_parrot()
+        self.audio_tuner_status.setText("Audio-Assistent bereit: Parrot verbinden und genau eine Sendung durchführen.")
+        self.statusBar().showMessage("Audio-Assistent bereit. Nach dem Parrot-Test wird ein Messbericht erzeugt.")
 
     def _bind_shortcuts(self) -> None:
         for shortcut in self._shortcuts:
@@ -745,6 +912,7 @@ class MainWindow(QMainWindow):
         spätere Favoriten synchron.
         """
         normalized = channel.normalized()
+        self._current_dmr_channel = normalized
         self.current_tg_label.setText(str(normalized.target))
         self.current_tg_name_label.setText(normalized.name or "")
         self._selected_timeslot = normalized.timeslot
@@ -753,12 +921,43 @@ class MainWindow(QMainWindow):
         if clear_input:
             self.tg_edit.clear()
             self._update_talkgroup_accessibility("")
+        if hasattr(self, "favorite_button"):
+            self._update_favorite_button()
 
     def _update_known_talkgroup_name(self, value: str) -> None:
         """Aktualisiert den Namen zur bereits übernommenen aktuellen TG."""
         text = str(value).strip()
         channel = self._known_channel_for_target(int(text)) if text.isdigit() else None
         self.current_tg_name_label.setText(channel.name if channel else "")
+
+    def _refresh_favorites(self) -> None:
+        """Aktualisiert Favoriten als Metadaten der gemeinsamen Kanalliste."""
+        self.talkgroup_search_service.set_favorites(self.favorite_service.favorites)
+        if hasattr(self, "favorites_widget"):
+            self.favorites_widget.refresh()
+        self._update_favorite_button()
+
+    def _update_favorite_button(self) -> None:
+        if not hasattr(self, "favorite_button") or self._current_dmr_channel is None:
+            return
+        channel = self._current_dmr_channel
+        favorite = self.favorite_service.find(channel.target, channel.timeslot, channel.call_type)
+        self.favorite_button.setText("★" if favorite else "☆")
+        action = "bearbeiten" if favorite else "speichern"
+        self.favorite_button.setAccessibleName(f"Aktuellen DMR-Kanal als Favorit {action}")
+
+    def _edit_current_favorite(self) -> None:
+        channel = self._current_dmr_channel
+        if channel is None:
+            return
+        if self.favorites_widget.add_channel(channel):
+            self._refresh_favorites()
+            self.statusBar().showMessage("Favorit gespeichert.")
+
+    def _apply_favorite_channel(self, channel) -> None:
+        self._apply_selected_channel(channel)
+        self.tabs.setCurrentIndex(0)
+        self.connect_button.setFocus()
 
     def _apply_selected_channel(self, channel) -> None:
         """Übernimmt einen Treffer vollständig als DMR-Kanal, ohne zu verbinden."""

@@ -1,3 +1,160 @@
+# 0.1.9.1.3 – Framegenauer Parrot-RX-Trace
+
+- Die ersten 24 empfangenen DMRD-Pakete werden vor jeder Filterentscheidung protokolliert.
+- Trace enthält Sequenz, Stream-ID, Quelle, Ziel, Timeslot, Rufart, Frameklasse, LC-Header und Terminator.
+- Verwerfungsgründe, Parse- und Decodefehler sowie Jitterfreigaben werden getrennt markiert.
+- Eine kompakte Summenzeile zeigt, an welcher RX-Stufe der erste Parrot-Durchgang endet.
+- Der Trace ist mengenbegrenzt und verändert den Funk- und Audiopfad nicht.
+
+# 0.1.9.1.2 – RX-Initialisierung für den ersten Parrot-Test
+
+- RX-Ausgabe, Decoder, Jitterpuffer und Audio-Queue werden vor dem ersten TX vollständig initialisiert.
+- Vor jeder Parrot-Rückantwort wird der RX-Streamzustand deterministisch zurückgesetzt.
+- Der erste gültige Voice-Burst kann einen Stream auch ohne vorher verwertbaren LC-Header eröffnen.
+- Neue Timeline-Marken dokumentieren RX-Initialisierung, RX-Bereitschaft und Streamstart.
+- Regressionstests sichern den ersten Parrot-Empfang nach Programmstart ab.
+
+# 0.1.9.1.1 – Parrot-Vorbereitung auf TS2 korrigiert
+
+- „Parrot vorbereiten“ setzt nun TG 9990, TS2 und Privatruf.
+- Der Audio-Assistent verwendet dieselbe zentrale Parrot-Vorbereitung.
+- Regressionstest verhindert eine erneute Umstellung auf TS1.
+
+# 0.1.9.1.1 – DMR Audio-Tuner V1
+
+- Ausklappbarer Live-Audio-Tuner direkt auf der Betriebsseite.
+- Profile Neutral, Klar, DX, Warm und Eigene.
+- Regler für Tiefen, Sprachmitten, Präsenz, Höhen, Dynamik, Limiter und PTT-Vorlauf.
+- Leichte zustandsbehaftete Vierband-Verarbeitung ohne FFT oder Dateizugriffe im Echtzeitpfad.
+- Einstellungen werden dauerhaft gespeichert und wirken ab dem nächsten TX.
+- „Parrot vorbereiten“ übernimmt TG 9990, TS1 und Privatruf.
+- „Audio-Assistent“ startet den passiven geführten Audio-Test und bereitet Parrot vor.
+- Neutral bleibt die unveränderte Referenz für A/B-Vergleiche.
+
+# 0.1.9.1.1 – Audioqualität
+
+- Dezente, zustandsbehaftete DMR-Sprachaufbereitung im Live-TX-Pfad.
+- 100-Hz-Hochpass gegen Gleichanteile und tieffrequentes Rumpeln.
+- Transparenter Soft-Limiter nur für einzelne Spitzen; keine automatische Lautheitsnormalisierung.
+- Neue abschaltbare Einstellung „DMR-Sprachaufbereitung (empfohlen)“.
+- Geführte Audiotests speichern wieder die Messpunkte vor und nach der Sprachaufbereitung.
+- Diagnoseerfassung wurde im normalen Funkbetrieb weiter reduziert.
+
+## 0.1.8.8 – Passiver Audio-Analyzer
+
+- Der geführte Audio-Test aktiviert die allgemeine Audio-Dauerdiagnose nicht mehr.
+- Analyzer und Aufzeichnung greifen nicht mehr in RX-/TX-Zustände, Socket-Lebenszyklus oder Audioausgabe ein.
+- Der normale Parrot- und Funkablauf bleibt alleiniger Eigentümer der TX→RX-Umschaltung.
+- Der Sitzungszustand wird erst nach Abschluss des normalen Übertragungsaufrufs bereinigt.
+- Persönliche Audio-Diagnoseeinstellungen bleiben durch den geführten Test unverändert.
+
+## 0.1.8.7 – Geführte Audio-Test-Sitzung V3
+
+- Geführter Audio-Test verwendet exakt einen gemeinsamen `AudioTest_...`-Ordner.
+- TX-, Codec-Loopback-, Parrot-RX-, Timeline- und Analyse-Dateien werden derselben Sitzung zugeordnet.
+- Der flüchtige Audio-Testzustand wird erst nach Abschluss des Netzwerk-/Parrot-Pfads beendet.
+- Doppelte `TX_...`-Ordner während eines geführten Tests werden verhindert.
+
+## 0.1.8.5 – Codec-Loopback korrigiert
+
+- Codec-Loopback verwendet jetzt das tatsächliche `PcmFrame.corrected_errors`-Feld.
+- Die Exception pro AMBE-Frame (`PcmFrame` besitzt kein Attribut `errors`) ist beseitigt.
+- Timeline wird nicht mehr mit hunderten falschen Loopback-Fehlern geflutet.
+- Loopback-WAV und Fehlerstatistik sind wieder belastbar.
+- Der normale TX-/BrandMeister-Pfad bleibt unverändert.
+- Nächster Praxistest entscheidet, ob der auffällige TX-Jitter durch die Exception-Last verursacht wurde.
+
+## 0.1.8.5 – Stabiler WAV-Datei-Lebenszyklus
+
+- WAV-Zieldateien werden zuerst als rohe Binärdateien geöffnet und erst danach an `wave` übergeben.
+- Schlägt das Öffnen durch OneDrive, Zugriffsrechte oder einen ungültigen Pfad fehl, entsteht kein halb initialisiertes `Wave_write`-Objekt mehr.
+- Alle produktiven TX-, RX-, Parrot- und Codec-Loopback-WAV-Schreibpfade verwenden dieselbe zentrale Hilfsfunktion.
+- Ressourcen werden auch bei Fehlern deterministisch geschlossen.
+- Regressionstest für den bisherigen `Wave_write.__del__`-Fehler ergänzt.
+
+## 0.1.8.4 – Codec-Diagnose und TX-Timing
+
+- leere `timeline.json` behoben; Ereignisse werden unabhängig vom optionalen globalen Timing-Log in die Audio-Test-Sitzung geschrieben
+- präzise Marker für erstes PCM-Frame, erstes AMBE-Codewort und erstes gesendetes DMRD-Paket
+- Codec-Loopback unterscheidet jetzt korrigierte Decoder-Bits von echten Decode-Ausnahmen
+- bisher irreführender `codec_loopback_errors`-Wert entfernt
+- Diagnose protokolliert Loopback-Frames, korrigierte Bits, Ausnahmen und Samplezahl getrennt
+- Funk- und Audio-Sendepfad unverändert
+
+## 0.1.8.4 – Codec-Loopback Hotfix
+
+- Absturz beim Start des Sendens im Audio-Pipeline-Analyzer behoben.
+- Ursache: `loopback_errors` wurde in der lokalen Funktion `drain()` verändert, aber nicht als `nonlocal` deklariert.
+- Codec-Loopback, normaler TX und Parrot-Test können wieder starten.
+
+
+## 0.1.8.4 – Audio Pipeline Analyzer
+
+- Codec-Loopback ergänzt: jedes gesendete AMBE-Codewort wird lokal sofort wieder dekodiert.
+- Neue Datei `04_codec_loopback_8k.wav` im geführten Audio-Test.
+- Zeitachse `timeline.json` mit PTT-, PCM-, Encoder-, Netzwerk- und RX-Ereignissen.
+- Abschlussanalyse wird nach TX/Parrot-RX erneut erzeugt und enthält Loopback- und Decoderfehler.
+- Bestehender Funkpfad und gesendete AMBE-Daten bleiben unverändert.
+## 0.1.8.2 – Geführte Audio-Test-Sitzung V2
+
+- Ein geführter Test erzeugt erst beim tatsächlichen TX einen gemeinsamen Ordner `AudioTest_<Zeitstempel>`.
+- TX- und anschließende RX-Messpunkte werden derselben Sitzung zugeordnet.
+- Der RX-Pfad legt beim bloßen Verbinden keine leeren Ordner mehr an.
+- WAV-Dateien werden nur bei tatsächlich vorhandenen Samples erzeugt.
+- Der Testmodus wird nicht dauerhaft in `audio_send.local.json` gespeichert und kann nach einem Neustart keine unbeabsichtigte RX-Aufzeichnung aktivieren.
+- Der Mikrofon-Ringpuffer bleibt bis PTT ausschließlich im RAM.
+- Ressourcen werden bei Abbruch und Programmende kontrolliert beendet; halb initialisierte WAV-Schreiber werden vermieden.
+
+# 0.1.8.0 – Audio-Labor und Qualitätsdiagnose
+
+- TX-Messpunkte: Mikrofon roh, nach Mic-Gain, vor AMBE und AMBE-Rohframes.
+- RX-Messpunkte: nach AMBE-Decoder und nach RX-Gain/AGC direkt vor Lautsprecher.
+- Kennzahlen: Peak/RMS dBFS, Crest-Faktor, Clipping, DC-Offset, Nulldurchgänge, dominante Frequenz, Spektralzentrum und Bandenergie.
+- Analyse als JSON und HTML; Wellenform, Spektrum und Spektrogramm bei installiertem Matplotlib.
+- Getrennte Sitzungsordner unter logs/audio_lab.
+
+# CarenDMR 0.1.8.0 – Talkgroup-Metadaten und Favoritenbedienung
+
+- Im Dialog **DMR-Kanal bearbeiten** kann der Favoritenstatus direkt gesetzt oder entfernt werden.
+- Schaltflächen sind deutsch beschriftet und kompakter dimensioniert.
+- Im Reiter **Talkgroups** gibt es getrennte Aktionen **Favorit setzen** und **Favorit entfernen**.
+- Land und wahrscheinliche Betriebssprache werden aus Talkgroup-Nummer und Name abgeleitet.
+- Neue Spalten **Land** und **Sprache** sowie Filter nach Land und Sprache.
+- Textsuche berücksichtigt zusätzlich Land und Sprache.
+- Die Sprachangabe ist ausdrücklich eine abgeleitete, wahrscheinliche Betriebssprache; persönliche Favoritendaten bleiben unverändert.
+
+# CarenDMR 0.1.7.4.2 – Weltweites Talkgroup-Verzeichnis
+
+- Reiter **Favoriten** heißt jetzt **Talkgroups** und zeigt die vollständige gemeinsame Kanalliste.
+- Favoriten sind Sterne innerhalb dieser Gesamtliste, keine separate Datenquelle.
+- Weltweite BrandMeister-Talkgroups sind im lokalen Offline-Cache enthalten.
+- **BrandMeister aktualisieren** lädt `https://api.brandmeister.network/v2/talkgroup`.
+- Persönliche Namen, Notizen, TS, Rufart und Reihenfolge bleiben lokal erhalten.
+- Die Betriebssuche und der Reiter Talkgroups verwenden exakt dieselbe Datenbasis.
+
+# CarenDMR 0.1.7.4.2 – Einheitliche DMR-Kanalquelle
+
+- Talkgroup-Suche und Favoriten verwenden nun dieselbe zusammengeführte Kanalliste.
+- Favoriten sind Metadaten eines DMR-Kanals statt einer getrennten Auswahlwelt.
+- Persönlicher Name, Notiz und Reihenfolge bleiben in `favorites.local.json` erhalten.
+- Favoriten werden in der Talkgroup-Suche mit Stern gekennzeichnet und zuerst gezeigt.
+- Private Favoriten ohne Eintrag im Basisverzeichnis sind ebenfalls suchbar.
+- Die separate Favoriten-Combobox auf der Betriebsseite wurde entfernt.
+- Der kleine Stern steht direkt links vor dem Talkgroup-Suchfeld.
+- Favoriten-Reiter, Drag-and-drop, Tastatursortierung sowie Import/Export bleiben erhalten.
+
+# CarenDMR 0.1.7.4.2 – DMR-Kanal-Favoriten
+
+- Favoriten-Combobox und Stern direkt im Bereich „DMR-Kanal“.
+- Der aktuelle Kanal kann mit vorbelegtem Standardnamen als Favorit gespeichert und persönlich umbenannt werden.
+- Mehrzeilige Notiz für Runden, Rundsprüche und andere Hinweise.
+- Neuer Hauptreiter „Favoriten“ mit kompakter Tabelle: eigener Name, Standardname, TG/DMR-ID, TS, R und Notizvorschau.
+- Reihenfolge per Drag-and-drop sowie Alt+Pfeil hoch/runter; oberste Favoriten stehen in der Combobox zuerst.
+- Enter oder Doppelklick übernimmt einen Favoriten auf die Betriebsseite und setzt den Fokus auf „Verbinden“; keine automatische Verbindung.
+- Import und Export in CarenDMR-JSON und CSV; Dubletten werden über Ziel, Timeslot und Rufart verhindert.
+- Persönliche Namen und Notizen bleiben getrennt vom offiziellen Talkgroup-Verzeichnis.
+- Persistenz in `config/favorites.local.json`.
+
 # CarenDMR 0.1.7.3.8 – Gespeicherten Talkgroup-Namen wiederherstellen
 
 - Beim Programmstart wird der Name der zuletzt gespeicherten bekannten Talkgroup erneut aus dem lokalen Verzeichnis aufgelöst.
@@ -970,3 +1127,13 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - F6 kündigt nur den neu gewählten Timeslot kurz an.
 - F7 kündigt nur die neu gewählte Rufart kurz an.
 - TG-Eingabe, Funklogik, Layout und Tab-Reihenfolge bleiben unverändert.
+
+## 0.1.8.1 – Geführter Audio-Test
+
+- Einmaliger Audio-Test statt dauerhafter Hintergrundaufnahme.
+- Zwei Sekunden Mikrofon-Vorlauf werden ausschließlich im RAM gepuffert.
+- Die nächste TX-Sendung erzeugt automatisch Roh-, Gain-, AMBE- und Analyse-Dateien.
+- Nach Abschluss wird die Diagnoseaufnahme automatisch deaktiviert.
+- Der Vorlauf wird separat als `00_vor_ptt_mikrofon_16k.wav` gespeichert, aber niemals gesendet.
+- Diagnose-Reiter mit Start-/Abbrechen-Schaltfläche und eindeutigem Status.
+- Matplotlib, SciPy, SoundFile und librosa als Analyseabhängigkeiten aufgenommen.

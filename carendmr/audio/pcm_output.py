@@ -25,6 +25,7 @@ class BufferedPcmOutput:
         volume: Callable[[], float] | None = None,
         agc_enabled: Callable[[], bool] | None = None,
         level_callback: Callable[[float], None] | None = None,
+        processed_tap: Callable[[tuple[int, ...]], None] | None = None,
     ) -> None:
         if sample_rate <= 0 or maximum_buffer_seconds <= 0:
             raise ValueError("Audio rate and buffer duration must be positive.")
@@ -35,6 +36,7 @@ class BufferedPcmOutput:
         self._volume = volume or (lambda: 1.0)
         self._agc_enabled = agc_enabled or (lambda: False)
         self._level_callback = level_callback
+        self._processed_tap = processed_tap
         self._stream: Any | None = None
         self._buffer = bytearray()
         self._lock = threading.Lock()
@@ -152,6 +154,8 @@ class BufferedPcmOutput:
             peak = max(abs(v) for v in processed) / 32767.0 * 100.0 if processed else 0.0
             if self._level_callback is not None:
                 self._level_callback(max(0.0, min(100.0, peak)))
+            if self._processed_tap is not None:
+                self._processed_tap(processed)
             chunk = struct.pack(f"<{len(processed)}h", *processed)
         outdata[:available] = chunk
         if available < required:

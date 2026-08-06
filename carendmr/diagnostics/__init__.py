@@ -15,3 +15,5 @@ __all__ = [
     "is_enabled",
     "set_enabled",
 ]
+
+from .audio_lab import AudioMetrics, analyze_pcm16, build_session_report

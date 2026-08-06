@@ -52,6 +52,8 @@ class ReceiveService:
         self._target_timeslot = 2
         self._target_call_type = "group"
         self._output_level_callback: Callable[[float], None] | None = None
+        self._audio_debug_enabled = False
+        self._audio_debug_dir_provider = None
         self.contacts = ContactService(self.project_root)
         self.history = QsoHistoryService(self.project_root)
         self.current_calls = CurrentCallService(
@@ -59,6 +61,13 @@ class ReceiveService:
             on_finished=self.history.add_completed_call,
         )
 
+
+    def set_audio_debug_dir_provider(self, provider) -> None:
+        self._audio_debug_dir_provider = provider
+
+    def set_audio_debug_enabled(self, enabled: object) -> bool:
+        self._audio_debug_enabled = bool(enabled)
+        return self._audio_debug_enabled
 
     def set_receive_target(self, talkgroup: int, timeslot: int, call_type: str = "group") -> None:
         talkgroup, timeslot = validate_receive_target(talkgroup, timeslot)
@@ -331,6 +340,7 @@ class ReceiveService:
                 output_volume=lambda: self.output_volume_factor,
                 output_agc_enabled=lambda: self.agc_enabled,
                 output_level_callback=self._on_output_level,
+                audio_debug_dir=(self._audio_debug_dir_provider if self._audio_debug_dir_provider is not None else (self.project_root / "logs" / "audio_lab")) if self._audio_debug_enabled else None,
             )
             self.current_calls.finish()
             self._apply_result(result)
