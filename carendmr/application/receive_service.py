@@ -53,6 +53,10 @@ class ReceiveService:
         self._target_call_type = "group"
         self._output_level_callback: Callable[[float], None] | None = None
         self._audio_debug_enabled = False
+        self._decoded_pcm_callback = None
+        self._connection_lost_callback = None
+        self._connection_restored_callback = None
+        self._call_activity_observer = None
         self._audio_debug_dir_provider = None
         self.contacts = ContactService(self.project_root)
         self.history = QsoHistoryService(self.project_root)
@@ -61,6 +65,16 @@ class ReceiveService:
             on_finished=self.history.add_completed_call,
         )
 
+
+    def set_call_activity_observer(self, callback) -> None:
+        self._call_activity_observer = callback
+
+    def set_decoded_pcm_callback(self, callback) -> None:
+        self._decoded_pcm_callback = callback
+
+    def set_connection_callbacks(self, *, lost=None, restored=None) -> None:
+        self._connection_lost_callback = lost
+        self._connection_restored_callback = restored
 
     def set_audio_debug_dir_provider(self, provider) -> None:
         self._audio_debug_dir_provider = provider
@@ -241,6 +255,8 @@ class ReceiveService:
         if self._connected_event_published:
             return
         self._connected_event_published = True
+        if self._connection_restored_callback is not None:
+            self._connection_restored_callback()
         timing_mark("RX_VERBUNDEN_STATUS", "Direkt nach BM-Anmeldung und Zielaktivierung")
         self.events.publish(
             "Anmeldung bei BrandMeister erfolgreich.",
@@ -293,6 +309,8 @@ class ReceiveService:
         )
 
     def _on_call_activity(self, activity: LiveCallActivity) -> None:
+        if self._call_activity_observer is not None:
+            self._call_activity_observer(activity)
         if activity.active:
             self.current_calls.start(
                 source_id=activity.source_id,
@@ -340,12 +358,15 @@ class ReceiveService:
                 output_volume=lambda: self.output_volume_factor,
                 output_agc_enabled=lambda: self.agc_enabled,
                 output_level_callback=self._on_output_level,
+                decoded_pcm_callback=self._decoded_pcm_callback,
                 audio_debug_dir=(self._audio_debug_dir_provider if self._audio_debug_dir_provider is not None else (self.project_root / "logs" / "audio_lab")) if self._audio_debug_enabled else None,
             )
             self.current_calls.finish()
             self._apply_result(result)
         except Exception as error:
             self.current_calls.finish()
+            if self._connection_lost_callback is not None:
+                self._connection_lost_callback()
             self.state_store.update(
                 connection=ConnectionState.ERROR,
                 brandmeister_connected=False,

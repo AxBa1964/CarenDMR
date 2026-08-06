@@ -4,7 +4,7 @@ from carendmr.version import __version__
 
 
 def test_version_0141() -> None:
-    assert __version__ == "0.1.9.1.3"
+    assert __version__ == "0.2.0"
 
 
 def test_timeslot_and_call_type_accessibility_are_centralized() -> None:

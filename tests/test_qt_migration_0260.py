@@ -6,7 +6,7 @@ from carendmr.version import __version__
 
 
 def test_version_is_qt_migration_0265():
-    assert __version__ == "0.1.9.1.3"
+    assert __version__ == "0.2.0"
 
 
 def test_gui_argument_uses_qt_lazily():

@@ -36,6 +36,8 @@ from carendmr.ui_qt.audio_cue import AudioCuePlayer
 from carendmr.ui_qt.operating_indicators import LevelMeter, StatusIndicator
 from carendmr.ui_qt.talkgroup_search_widget import TalkgroupSearchWidget
 from carendmr.ui_qt.favorites_widget import FavoritesWidget
+from carendmr.ui_qt.audio_benchmark_widget import AudioBenchmarkWidget
+from carendmr.benchmark import AudioBenchmarkService
 from carendmr.audio import AudioDirection, TxAudioTunerSettings, TUNER_PRESETS
 
 
@@ -84,6 +86,15 @@ class MainWindow(QMainWindow):
         self.talkgroup_search_service = TalkgroupSearchService(self.project_root / "config" / "talkgroups.json")
         self.talkgroup_catalog_service = TalkgroupCatalogService(self.project_root / "config" / "talkgroups.json")
         self.talkgroup_search_service.set_favorites(self.favorite_service.favorites)
+        self.audio_benchmark_service = AudioBenchmarkService(
+            self.project_root, contact_lookup=self.receive_service.contacts.lookup,
+        )
+        self.receive_service.set_call_activity_observer(self._benchmark_call_activity)
+        self.receive_service.set_decoded_pcm_callback(self._benchmark_pcm)
+        self.receive_service.set_connection_callbacks(
+            lost=lambda: self._updates.put(("benchmark_connection_lost", None)),
+            restored=self.audio_benchmark_service.connection_restored,
+        )
         self._current_dmr_channel: DmrChannel | None = None
         self._shortcuts: list[QShortcut] = []
         self.accessibility = AccessibilityManager()
@@ -459,6 +470,14 @@ class MainWindow(QMainWindow):
         self.favorites_widget.channel_requested.connect(self._apply_favorite_channel)
         self.favorites_widget.changed.connect(self._refresh_favorites)
         self.tabs.addTab(self.favorites_widget, "Talkgroups")
+        self.audio_benchmark_widget = AudioBenchmarkWidget(
+            self.audio_benchmark_service,
+            current_target=lambda: (self._selected_talkgroup_for_benchmark(), self._selected_timeslot),
+            reconnect_request=self._benchmark_reconnect,
+            start_modulation_test=self._start_audio_tuner_assistant,
+            parent=self.tabs,
+        )
+        self.tabs.addTab(self.audio_benchmark_widget, "Audio-Benchmark")
         self._refresh_favorites()
         self.tabs.currentChanged.connect(self._tab_changed)
         self.setCentralWidget(self.tabs)
@@ -931,7 +950,13 @@ class MainWindow(QMainWindow):
         self.current_tg_name_label.setText(channel.name if channel else "")
 
     def _refresh_favorites(self) -> None:
-        """Aktualisiert Favoriten als Metadaten der gemeinsamen Kanalliste."""
+        """Aktualisiert nur Favoriten-Metadaten der gemeinsamen Kanalliste.
+
+        Der Audio-Benchmark ist eine langlebige Hauptfenster-Komponente. Er darf
+        beim Aktualisieren der Favoriten nicht neu erzeugt werden, weil das
+        Benchmark-Widget sonst am alten Service hängt, während der RX-Pfad den
+        neuen Service beliefert.
+        """
         self.talkgroup_search_service.set_favorites(self.favorite_service.favorites)
         if hasattr(self, "favorites_widget"):
             self.favorites_widget.refresh()
@@ -1298,6 +1323,40 @@ class MainWindow(QMainWindow):
     def _toggle_call_type(self) -> None:
         self._select_call_type("private" if self._selected_call_type == "group" else "group", announce=True)
 
+    def _selected_talkgroup_for_benchmark(self) -> int:
+        return int(self.receive_service.target_talkgroup or self.preferences.talkgroup)
+
+    def _benchmark_call_activity(self, activity) -> None:
+        if activity.active:
+            self.audio_benchmark_service.stream_started(
+                activity.source_id, activity.talkgroup, activity.timeslot, activity.stream_id,
+            )
+        else:
+            self.audio_benchmark_service.stream_finished(
+                activity.source_id, activity.talkgroup, activity.timeslot, activity.stream_id,
+            )
+
+    def _benchmark_pcm(self, source_id, talkgroup, timeslot, stream_id, samples, corrected_errors=0) -> None:
+        self.audio_benchmark_service.add_pcm(
+            source_id, talkgroup, timeslot, stream_id, samples,
+            corrected_errors=corrected_errors,
+        )
+
+    def _benchmark_reconnect(self) -> None:
+        if not self.audio_benchmark_service.is_running:
+            return
+        if self.receive_service.is_running or self.receive_service.is_switching:
+            return
+        try:
+            self.receive_service.set_receive_target(
+                self.audio_benchmark_service.state.talkgroup,
+                self.audio_benchmark_service.state.timeslot,
+                "group",
+            )
+            self.receive_service.start()
+        except Exception as error:
+            self._updates.put(("benchmark_connection_lost", str(error)))
+
     def _process_updates(self) -> None:
         try:
             while True:
@@ -1337,6 +1396,13 @@ class MainWindow(QMainWindow):
                 elif kind == "mic_level":
                     self._mic_level = float(value)
                     self.mic_level_meter.set_level(self._mic_level)
+                elif kind == "benchmark_connection_lost":
+                    if self.audio_benchmark_service.connection_lost():
+                        attempts = self.audio_benchmark_service.state.reconnect_attempts
+                        self.statusBar().showMessage(f"Benchmark: BrandMeister getrennt, Wiederverbindung {attempts} von 5 …")
+                        QTimer.singleShot(5000, self._benchmark_reconnect)
+                    else:
+                        self.statusBar().showMessage("Benchmark nach fünf erfolglosen Wiederverbindungen abgebrochen.")
                 elif kind == "tx_beep_done":
                     QTimer.singleShot(120, self._begin_tx)
                 elif kind == "tx_beep_error":
@@ -1461,6 +1527,7 @@ class MainWindow(QMainWindow):
             self._tx_stop_event.set()
         self.connection_manager.disconnect()
         self.receive_service.wait(3.0)
+        self.audio_benchmark_service.close()
         event.accept()
 
 

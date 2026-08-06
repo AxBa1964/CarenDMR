@@ -1,10 +1,53 @@
-# 0.1.9.1.3 – Framegenauer Parrot-RX-Trace
+# Changelog
 
-- Die ersten 24 empfangenen DMRD-Pakete werden vor jeder Filterentscheidung protokolliert.
-- Trace enthält Sequenz, Stream-ID, Quelle, Ziel, Timeslot, Rufart, Frameklasse, LC-Header und Terminator.
-- Verwerfungsgründe, Parse- und Decodefehler sowie Jitterfreigaben werden getrennt markiert.
-- Eine kompakte Summenzeile zeigt, an welcher RX-Stufe der erste Parrot-Durchgang endet.
-- Der Trace ist mengenbegrenzt und verändert den Funk- und Audiopfad nicht.
+## 0.2.0 – Eigene Modulation vergleichen
+
+- Neuer Button **Eigene Modulation testen** im Reiter Audio-Benchmark.
+- Geführter Parrot-Test mit festem, reproduzierbarem Referenztext.
+- Methodisch fairer Vergleich: eigener AMBE-Codec-Loopback gegen empfangene AMBE-Referenzstationen.
+- Vergleichstabelle für Pegel, Dynamik, Tiefen, Sprachmitten, Präsenz und Höhen.
+- Konkrete, zunächst nur angezeigte Vorschläge für Mic-Gain und Audio-Tuner.
+- Automatische Erkennung des abgeschlossenen Audio-Tests.
+- Persistenz unter `comparisons/` und `latest_comparison.json`.
+- Keine automatische Änderung produktiver Audioeinstellungen.
+
+# Änderungsverlauf
+
+## 0.1.9.4 – Benannte Audio-Referenzen
+
+- bestehende TG91-Benchmarkdaten werden beim ersten Start einmalig nach `data/audio_benchmarks/references/TG91_Global/` migriert
+- `benchmark.db`, `current.json`, `reference.json` und `metadata.json` liegen künftig gemeinsam in der benannten Referenz
+- `index.json` merkt sich die aktive Referenz und bereitet weitere TG-Referenzen vor
+- die Benchmark-Oberfläche zeigt den aktiven Referenznamen an
+- Metadaten werden nach jeder Analyse mit Stationen, gültigen QSOs und Sprachzeit aktualisiert
+- keine Messdaten werden verworfen oder neu berechnet
+
+# Änderungsprotokoll
+
+## 0.1.9.3
+
+- Referenz-Engine mit SQLite-Persistenz eingeführt.
+- Bestehende 0.1.9.2-Benchmarkfälle werden automatisch aus `current.json` migriert.
+- Mehrere QSOs eines Rufzeichens werden zu einer robusten Stationsreferenz aggregiert.
+- Neue direkt einstellungsrelevante Kennzahlen: aktive Sprachlautheit, Bass, Sprachmitten, Präsenz, Höhen, Sprechpausen und Pegelstabilität.
+- Referenzreife, gültige Sprachzeit, QSO-Anzahl und Qualitätsindex werden live angezeigt.
+- Rohfälle liegen in `data/audio_benchmarks/benchmark.db`; `reference.json` enthält die aktuelle TG-Referenz.
+
+# Changelog
+
+## 0.1.9.3
+
+- Audio-Benchmark bleibt jetzt über die gesamte Laufzeit des Hauptfensters dieselbe Service-Instanz.
+- Das Aktualisieren von Favoriten ersetzt den Benchmark-Service nicht mehr.
+- RX-Ereignisse, PCM-Daten und Benchmark-Anzeige verwenden dadurch wieder denselben Datenstrom.
+- Regressionstest gegen eine erneute Trennung von Widget und RX-Service ergänzt.
+
+
+## 0.1.9.3
+
+- Audio-Benchmark erkennt wiederholte Voice-Aktivitätsmeldungen desselben Streams korrekt und zerlegt einen Sprechdurchgang nicht mehr in Einzelpakete.
+- Aktuelle Station, laufende Sprechdauer und Analysewarteschlange werden live angezeigt.
+- Fremde oder verspätete Stream-Ende-Ereignisse können den aktiven Testfall nicht mehr beenden.
 
 # 0.1.9.1.2 – RX-Initialisierung für den ersten Parrot-Test
 
@@ -1064,7 +1107,6 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Regressionstest für das nicht-personale Koordinatenformat ergänzt.
 - Lokale Konfigurationsdateien werden nicht im Update-Paket ausgeliefert.
 
-# Änderungsverlauf
 
 ## 0.0.7 – BrandMeister-Login
 
@@ -1137,3 +1179,14 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Der Vorlauf wird separat als `00_vor_ptt_mikrofon_16k.wav` gespeichert, aber niemals gesendet.
 - Diagnose-Reiter mit Start-/Abbrechen-Schaltfläche und eindeutigem Status.
 - Matplotlib, SciPy, SoundFile und librosa als Analyseabhängigkeiten aufgenommen.
+
+## 0.1.9.2 – DMR-Audio-Benchmark V1
+
+- Neuer Reiter **Audio-Benchmark** für passive Referenzmessungen auf der aktuell verbundenen Talkgroup.
+- Messreihen können gestartet, pausiert, über Programmneustarts fortgesetzt und gezielt beendet werden.
+- Ein Sprechdurchgang wird ab fünf Sekunden als eigener Testfall erfasst; Analyse und Speicherung laufen in einem getrennten Hintergrundthread.
+- Der RX-Echtzeitpfad schreibt nur kurze PCM-Blöcke in eine begrenzte Queue und wartet niemals auf FFT, Statistik oder Datenträgerzugriffe.
+- Live-Anzeige für Laufzeit, Rufzeichen, gültige und verworfene Testfälle, Wiederverbindungsstatus und wachsende Referenzwerte.
+- Robuste Referenz aus dem besten technisch gültigen Durchgang je Rufzeichen mit Median und Quartilbereich.
+- Bei BrandMeister-Verlust bis zu fünf automatische Wiederverbindungsversuche; danach kontrollierter Abbruch ohne Datenverlust.
+- Zwischenstand wird nach jedem abgeschlossenen Sprecher atomar unter `data/audio_benchmarks/current.json` gesichert.

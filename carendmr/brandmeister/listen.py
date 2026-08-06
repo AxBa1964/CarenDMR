@@ -99,6 +99,7 @@ def listen_receive_only(
     output_volume: Callable[[], float] | None = None,
     output_agc_enabled: Callable[[], bool] | None = None,
     output_level_callback: Callable[[float], None] | None = None,
+    decoded_pcm_callback: Callable[[int, int, int, int | None, tuple[int, ...], int], None] | None = None,
     audio_debug_dir: Path | Callable[[], Path | None] | None = None,
     client_factory=BrandMeisterClient,
     output_factory=BufferedPcmOutput,
@@ -362,6 +363,7 @@ def listen_receive_only(
                 voice += 1
                 decoded: list[int] = []
                 try:
+                    packet_corrected = 0
                     for word in extract_ambe_codewords(packet):
                         frame = decoder.decode(word)
                         decoded.extend(frame.samples)
@@ -369,6 +371,12 @@ def listen_receive_only(
                             rx_decoded_samples.extend(int(v) for v in frame.samples)
                         codewords += 1
                         corrected += frame.corrected_errors
+                        packet_corrected += frame.corrected_errors
+                    if decoded_pcm_callback is not None and decoded:
+                        decoded_pcm_callback(
+                            packet.source_id, packet.destination_id, packet.timeslot,
+                            packet.stream_id or None, tuple(decoded), packet_corrected,
+                        )
                 except Exception as error:
                     decode_errors += 1
                     diagnostic_print(
