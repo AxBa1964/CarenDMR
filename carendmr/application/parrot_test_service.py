@@ -41,7 +41,7 @@ class ParrotTestService:
         # Der Analyzer beobachtet nur. Der normale TX-/Parrot-Ablauf bleibt
         # vollständig Eigentümer von Socket, RX-Wiederaufnahme und Audioausgabe.
         with DroidStarPluginEncoder(self.project_root, plugin_path) as encoder:
-            result=execute_live_voice_once(config,destination_id=destination_id,timeslot=timeslot,call_type=DmrdCallType.PRIVATE if call_type=="private" else DmrdCallType.GROUP,pcm_chunks=capture.chunks(),encoder=encoder,wait_for_parrot_echo=is_parrot,lead_in_seconds=TX_LEAD_IN_SECONDS,rx_debug_dir=capture.audio_lab_dir if capture.audio_lab_dir is not None else None,rx_playback_gate=rx_playback_gate,ambe_debug_path=capture.ambe_frames_path if capture.ambe_frames_path is not None else None)
+            result=execute_live_voice_once(config,destination_id=destination_id,timeslot=timeslot,call_type=DmrdCallType.PRIVATE if call_type=="private" else DmrdCallType.GROUP,pcm_chunks=capture.chunks(),encoder=encoder,wait_for_parrot_echo=is_parrot,lead_in_seconds=TX_LEAD_IN_SECONDS,rx_debug_dir=capture.audio_lab_dir if capture.audio_lab_dir is not None else None,rx_playback_gate=rx_playback_gate,ambe_debug_path=capture.ambe_frames_path if capture.ambe_frames_path is not None else None,output_factory=self.audio_service.create_pcm_output)
         if getattr(capture, "_one_shot_audio_test", False):
             self.audio_service.finish_audio_test_session()
         duration=capture.duration_seconds

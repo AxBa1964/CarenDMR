@@ -18,7 +18,7 @@ def test_layout_v1_keeps_existing_controls_and_dark_theme():
 
 def test_version_is_010():
     from carendmr.version import __version__
-    assert __version__ == "0.2.0"
+    assert __version__ == "0.2.1.9"
 
 
 def test_layout_uses_central_theme():

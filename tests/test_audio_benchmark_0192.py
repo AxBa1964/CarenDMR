@@ -133,7 +133,7 @@ def test_named_reference_migrates_existing_tg91_data_once(tmp_path: Path):
         "active_seconds": 3600.0, "reconnect_attempts": 0, "max_reconnect_attempts": 5,
     }
     (root / "current.json").write_text(json.dumps(state), encoding="utf-8")
-    # Legacy database is created by an initial service and moved back to simulate 0.2.0.
+    # Legacy database is created by an initial service and moved back to simulate 0.2.1.
     legacy = AudioBenchmarkService(tmp_path)
     legacy.close()
     named = root / "references" / "TG91_Global"

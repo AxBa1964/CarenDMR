@@ -352,11 +352,20 @@ def execute_live_voice_once(
             pending_rx_frames.clear()
             echo_stream_id = None
             timing_mark("PARROT_RX_BEREIT")
+            # Das Echo-Fenster muss sowohl die BrandMeister-Anlaufzeit als auch
+            # die vollständig gesendete Sprachdauer umfassen. Der frühere feste
+            # 15-s-Wert kappte eine 15-s-Aufnahme nach rund 11,7 s Wiedergabe,
+            # weil bereits etwa 3,3 s bis zum ersten Echo-Paket verstrichen waren.
+            echo_wait_seconds = min(
+                PARROT_TRANSMIT_CAP_SECONDS + 15.0,
+                max(PARROT_ECHO_CAP_SECONDS, tx_elapsed + 10.0),
+            )
             timing_mark("PARROT_ECHO_WARTE_START")
+            timing_mark("PARROT_ECHO_FENSTER", f"Fenster={echo_wait_seconds:.3f}s;TX={tx_elapsed:.3f}s")
             echo_start = monotonic()
             first_echo_packet_marked = False
-            while monotonic() - echo_start < PARROT_ECHO_CAP_SECONDS:
-                remaining = PARROT_ECHO_CAP_SECONDS - (monotonic() - echo_start)
+            while monotonic() - echo_start < echo_wait_seconds:
+                remaining = echo_wait_seconds - (monotonic() - echo_start)
                 if hasattr(client.transport, 'set_receive_timeout'):
                     client.transport.set_receive_timeout(min(0.5, remaining))
                 try:

@@ -26,6 +26,7 @@ from carendmr.application import (
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.domain import ApplicationState, ConnectionState, DmrChannel
 from carendmr.version import __version__
+from carendmr.diagnostics.tx_rx_timing import initialize as initialize_tx_rx_timing, mark as timing_mark
 from carendmr.ui_qt.theme import METRICS
 from carendmr.accessibility.hotkeys import DEFAULT_HOTKEYS, HotkeyManager
 from carendmr.ui_qt.settings_dialog import SettingsDialog
@@ -36,7 +37,7 @@ from carendmr.ui_qt.audio_cue import AudioCuePlayer
 from carendmr.ui_qt.operating_indicators import LevelMeter, StatusIndicator
 from carendmr.ui_qt.talkgroup_search_widget import TalkgroupSearchWidget
 from carendmr.ui_qt.favorites_widget import FavoritesWidget
-from carendmr.ui_qt.audio_benchmark_widget import AudioBenchmarkWidget
+from carendmr.ui_qt.audio_tool_windows import AudioBenchmarkWindow, AudioCoachWindow
 from carendmr.benchmark import AudioBenchmarkService
 from carendmr.audio import AudioDirection, TxAudioTunerSettings, TUNER_PRESETS
 
@@ -45,6 +46,8 @@ class MainWindow(QMainWindow):
     def __init__(self, project_root: Path) -> None:
         super().__init__()
         self.project_root = Path(project_root)
+        timing_log = initialize_tx_rx_timing(self.project_root)
+        timing_mark("PROGRAMMSTART_QT", f"Version {__version__}; Log={timing_log}")
         self.setWindowTitle(f"CarenDMR {__version__} – Funkgerät auf dem Desktop")
         self.resize(920, 650)
 
@@ -60,6 +63,7 @@ class MainWindow(QMainWindow):
             mute_receive=self.receive_service.mute_audio_output,
             unmute_receive=self.receive_service.unmute_audio_output,
         )
+        self.receive_service.set_output_factory(self.audio_send_service.create_pcm_output)
         self.receive_service.set_audio_debug_enabled(self.audio_send_service.audio_debug_wav_enabled)
         self.receive_service.set_audio_debug_dir_provider(lambda: self.audio_send_service.audio_test_session_dir)
         self.parrot_service = ParrotTestService(
@@ -81,6 +85,8 @@ class MainWindow(QMainWindow):
         self._mic_level = 0.0
         self._encoder_ready = False
         self._settings_dialog: SettingsDialog | None = None
+        self._audio_benchmark_window: AudioBenchmarkWindow | None = None
+        self._audio_coach_window: AudioCoachWindow | None = None
         self.hotkey_manager = HotkeyManager(self.project_root / "config" / "hotkeys.local.json")
         self.favorite_service = FavoriteService(self.project_root / "config" / "favorites.local.json")
         self.talkgroup_search_service = TalkgroupSearchService(self.project_root / "config" / "talkgroups.json")
@@ -470,14 +476,6 @@ class MainWindow(QMainWindow):
         self.favorites_widget.channel_requested.connect(self._apply_favorite_channel)
         self.favorites_widget.changed.connect(self._refresh_favorites)
         self.tabs.addTab(self.favorites_widget, "Talkgroups")
-        self.audio_benchmark_widget = AudioBenchmarkWidget(
-            self.audio_benchmark_service,
-            current_target=lambda: (self._selected_talkgroup_for_benchmark(), self._selected_timeslot),
-            reconnect_request=self._benchmark_reconnect,
-            start_modulation_test=self._start_audio_tuner_assistant,
-            parent=self.tabs,
-        )
-        self.tabs.addTab(self.audio_benchmark_widget, "Audio-Benchmark")
         self._refresh_favorites()
         self.tabs.currentChanged.connect(self._tab_changed)
         self.setCentralWidget(self.tabs)
@@ -570,6 +568,41 @@ class MainWindow(QMainWindow):
         settings_action.setShortcut(QKeySequence("Ctrl+,"))
         settings_action.triggered.connect(self._open_settings)
         program_menu.addAction(settings_action)
+        program_menu.addSeparator()
+        benchmark_action = QAction("Audio-Benchmark …", self)
+        benchmark_action.triggered.connect(self._open_audio_benchmark)
+        program_menu.addAction(benchmark_action)
+        coach_action = QAction("Audio Coach …", self)
+        coach_action.triggered.connect(self._open_audio_coach)
+        program_menu.addAction(coach_action)
+
+
+    def _open_audio_benchmark(self) -> None:
+        if self._audio_benchmark_window is None:
+            self._audio_benchmark_window = AudioBenchmarkWindow(
+                self.audio_benchmark_service,
+                current_target=lambda: (
+                    self._selected_talkgroup_for_benchmark(),
+                    self._selected_timeslot,
+                ),
+                reconnect_request=self._benchmark_reconnect,
+                parent=self,
+            )
+        self._audio_benchmark_window.show()
+        self._audio_benchmark_window.raise_()
+        self._audio_benchmark_window.activateWindow()
+
+    def _open_audio_coach(self) -> None:
+        if self._audio_coach_window is None:
+            self._audio_coach_window = AudioCoachWindow(
+                self.audio_benchmark_service,
+                start_modulation_test=self._start_audio_tuner_assistant,
+                cancel_modulation_test=self._cancel_audio_tuner_assistant,
+                parent=self,
+            )
+        self._audio_coach_window.show()
+        self._audio_coach_window.raise_()
+        self._audio_coach_window.activateWindow()
 
     def _open_settings(self) -> None:
         if self._settings_dialog is not None and self._settings_dialog.isVisible():
@@ -729,6 +762,16 @@ class MainWindow(QMainWindow):
         self._prepare_audio_tuner_parrot()
         self.audio_tuner_status.setText("Audio-Assistent bereit: Parrot verbinden und genau eine Sendung durchführen.")
         self.statusBar().showMessage("Audio-Assistent bereit. Nach dem Parrot-Test wird ein Messbericht erzeugt.")
+
+    def _cancel_audio_tuner_assistant(self) -> None:
+        """Beendet einen geführten Audiotest und räumt jeden Zwischenzustand auf."""
+        self.audio_send_service.cancel_audio_test()
+        if self._tx_pending:
+            self._cancel_pending_tx()
+        if self._tx_active:
+            self._stop_tx()
+        self.audio_tuner_status.setText("Audio-Assistent bereit.")
+        self.statusBar().showMessage("Modulationstest abgebrochen; Empfang wird wiederhergestellt.")
 
     def _bind_shortcuts(self) -> None:
         for shortcut in self._shortcuts:

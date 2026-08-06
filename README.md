@@ -1,6 +1,6 @@
 # CarenDMR
 
-## Version 0.2.0
+## Version 0.2.1.9
 
 Neu: Die eigene Modulation kann über einen geführten Parrot-Test gegen die aktive DMR-Audio-Referenz verglichen werden. Der Vergleich verwendet den lokalen AMBE-Codec-Loopback und zeigt konkrete, noch nicht automatisch angewendete Tuner-Empfehlungen.
 

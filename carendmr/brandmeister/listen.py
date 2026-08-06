@@ -162,6 +162,12 @@ def listen_receive_only(
     next_diagnostic_summary = started_at + DIAGNOSTIC_SUMMARY_INTERVAL_SECONDS
     rejected_tg = rejected_ts = rejected_call_type = rejected_frame = 0
     headers = terminators = audio_writes = audio_samples = non_dmrd = pongs = 0
+    first_datagram_marked = False
+    first_target_dmrd_marked = False
+    first_header_marked = False
+    first_voice_marked = False
+    first_decode_marked = False
+    first_pcm_handoff_marked = False
 
     try:
         output.start()
@@ -256,6 +262,9 @@ def listen_receive_only(
                 except NetworkReceiveTimeout:
                     continue
                 datagrams += 1
+                if not first_datagram_marked:
+                    timing_mark("RX_ERSTES_UDP_DATAGRAMM", f"{len(datagram)} Byte; Start={datagram[:4]!r}")
+                    first_datagram_marked = True
                 if is_master_pong(datagram, config.dmr_id):
                     pongs += 1
                     continue
@@ -310,8 +319,21 @@ def listen_receive_only(
                     diagnostic_print(f"[DIAG][FILTER] VERWORFEN: Rufart {packet.call_type.name} statt {expected_call_type}", flush=True)
                     continue
                 diagnostic_print("[DIAG][FILTER] AKZEPTIERT: TG, Timeslot und Rufart passen", flush=True)
+                if not first_target_dmrd_marked:
+                    timing_mark(
+                        "RX_ERSTER_PASSENDER_DMRD_FRAME",
+                        f"Seq={packet.sequence}; Src={packet.source_id}; Dst={packet.destination_id}; "
+                        f"TS={packet.timeslot}; Frame={frame_name}; Stream={packet.stream_id:08X}",
+                    )
+                    first_target_dmrd_marked = True
                 if packet.is_voice_lc_header:
                     headers += 1
+                    if not first_header_marked:
+                        timing_mark(
+                            "RX_ERSTER_VOICE_LC_HEADER",
+                            f"Seq={packet.sequence}; Src={packet.source_id}; Stream={packet.stream_id:08X}",
+                        )
+                        first_header_marked = True
                     diagnostic_print("[DIAG][FRAME] Voice-LC-Header erkannt; Decoder wird zurückgesetzt", flush=True)
                     if call_activity_callback is not None:
                         call_activity_callback(
@@ -338,6 +360,9 @@ def listen_receive_only(
                     for frame in batch.frames:
                         if output_muted is None or not output_muted():
                             output.write(frame)
+                            if not first_pcm_handoff_marked:
+                                timing_mark("RX_ERSTE_PCM_UEBERGABE", f"{len(frame)} Samples an Audiopuffer")
+                                first_pcm_handoff_marked = True
                             samples += len(frame)
                             audio_writes += 1
                             audio_samples += len(frame)
@@ -361,6 +386,13 @@ def listen_receive_only(
                         )
                     )
                 voice += 1
+                if not first_voice_marked:
+                    timing_mark(
+                        "RX_ERSTER_VOICE_FRAME",
+                        f"Seq={packet.sequence}; Voice={packet.voice_frame_number}; "
+                        f"Src={packet.source_id}; Stream={packet.stream_id:08X}",
+                    )
+                    first_voice_marked = True
                 decoded: list[int] = []
                 try:
                     packet_corrected = 0
@@ -384,6 +416,12 @@ def listen_receive_only(
                         flush=True,
                     )
                     continue
+                if decoded and not first_decode_marked:
+                    timing_mark(
+                        "RX_ERSTE_AMBE_DECODIERUNG",
+                        f"{codewords} Codewörter gesamt; {len(decoded)} PCM-Samples im Frame",
+                    )
+                    first_decode_marked = True
                 diagnostic_print(
                     f"[DIAG][DECODER] 3 AMBE-Codewörter -> {len(decoded)} PCM-Samples",
                     flush=True,
@@ -393,6 +431,9 @@ def listen_receive_only(
                 for frame in batch.frames:
                     if output_muted is None or not output_muted():
                         output.write(frame)
+                        if not first_pcm_handoff_marked:
+                            timing_mark("RX_ERSTE_PCM_UEBERGABE", f"{len(frame)} Samples an Audiopuffer")
+                            first_pcm_handoff_marked = True
                         samples += len(frame)
                         audio_writes += 1
                         audio_samples += len(frame)

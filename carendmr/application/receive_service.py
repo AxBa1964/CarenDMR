@@ -58,6 +58,7 @@ class ReceiveService:
         self._connection_restored_callback = None
         self._call_activity_observer = None
         self._audio_debug_dir_provider = None
+        self._output_factory = None
         self.contacts = ContactService(self.project_root)
         self.history = QsoHistoryService(self.project_root)
         self.current_calls = CurrentCallService(
@@ -78,6 +79,9 @@ class ReceiveService:
 
     def set_audio_debug_dir_provider(self, provider) -> None:
         self._audio_debug_dir_provider = provider
+
+    def set_output_factory(self, factory) -> None:
+        self._output_factory = factory
 
     def set_audio_debug_enabled(self, enabled: object) -> bool:
         self._audio_debug_enabled = bool(enabled)
@@ -360,6 +364,7 @@ class ReceiveService:
                 output_level_callback=self._on_output_level,
                 decoded_pcm_callback=self._decoded_pcm_callback,
                 audio_debug_dir=(self._audio_debug_dir_provider if self._audio_debug_dir_provider is not None else (self.project_root / "logs" / "audio_lab")) if self._audio_debug_enabled else None,
+                **({"output_factory": self._output_factory} if self._output_factory is not None else {}),
             )
             self.current_calls.finish()
             self._apply_result(result)

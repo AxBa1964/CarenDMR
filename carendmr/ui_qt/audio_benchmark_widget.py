@@ -1,8 +1,5 @@
 """Qt-Ansicht für den passiven DMR-Audio-Benchmark."""
 from __future__ import annotations
-from pathlib import Path
-import json
-
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtWidgets import (
     QFormLayout, QFrame, QHBoxLayout, QLabel, QMessageBox, QPushButton,
@@ -17,18 +14,11 @@ class AudioBenchmarkWidget(QWidget):
         "Anton, Berta, Cäsar, Dora, Emil, Friedrich, Gustav. Vielen Dank für diesen Test."
     )
 
-    def __init__(self, service, *, current_target, reconnect_request, start_modulation_test=None, parent=None) -> None:
+    def __init__(self, service, *, current_target, reconnect_request, parent=None) -> None:
         super().__init__(parent)
         self.service = service
         self.current_target = current_target
         self.reconnect_request = reconnect_request
-        self.start_modulation_test = start_modulation_test
-        self._comparison_waiting = False
-        self._comparison_test_dir: Path | None = None
-        self._comparison_rx_size: int | None = None
-        self._comparison_stable_polls = 0
-        self._known_audio_tests: set[str] = set()
-        self._last_comparison = None
         self.setAccessibleName("DMR-Audio-Benchmark")
 
         root = QVBoxLayout(self)
@@ -96,196 +86,17 @@ class AudioBenchmarkWidget(QWidget):
         self.reference_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         root.addWidget(self.reference_table, 1)
 
-        compare_heading = QLabel("Eigene Modulation")
-        compare_heading.setObjectName("sectionTitle")
-        root.addWidget(compare_heading)
-        compare_actions = QHBoxLayout()
-        self.modulation_test_button = QPushButton("Eigene Modulation testen")
-        self.modulation_test_button.setAccessibleName("Eigene Modulation gegen die aktive Referenz testen")
-        self.modulation_status = QLabel("Noch kein Vergleich durchgeführt.")
-        self.modulation_status.setWordWrap(True)
-        compare_actions.addWidget(self.modulation_test_button)
-        compare_actions.addWidget(self.modulation_status, 1)
-        root.addLayout(compare_actions)
-        self.comparison_table = QTableWidget(0, 5, self)
-        self.comparison_table.setHorizontalHeaderLabels(["Kennzahl", "Referenz", "DO1DPL", "Abweichung", "Bewertung"])
-        self.comparison_table.horizontalHeader().setStretchLastSection(True)
-        self.comparison_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        self.comparison_table.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.comparison_table.setMaximumHeight(260)
-        root.addWidget(self.comparison_table)
-
         self.start_button.clicked.connect(self._start)
         self.pause_button.clicked.connect(self.service.pause)
         self.resume_button.clicked.connect(self.service.resume)
         self.stop_button.clicked.connect(self.service.stop)
         self.reset_button.clicked.connect(self._reset)
-        self.modulation_test_button.clicked.connect(self._start_own_modulation_test)
 
         self.service.subscribe(lambda _snapshot: None)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.refresh)
         self.timer.start(1000)
         self.refresh()
-
-    def _audio_test_dirs(self) -> set[str]:
-        root = self.service.project_root / "logs" / "audio_lab"
-        if not root.exists():
-            return set()
-        return {str(path.resolve()) for path in root.glob("AudioTest_*") if path.is_dir()}
-
-    def _start_own_modulation_test(self) -> None:
-        if self.start_modulation_test is None:
-            QMessageBox.warning(self, "Modulationstest", "Der Modulationstest ist in dieser Oberfläche nicht verbunden.")
-            return
-        snap = self.service.snapshot()
-        if int(snap.get("unique_callsigns", 0)) < 5:
-            QMessageBox.warning(self, "Modulationstest", "Die aktive Referenz enthält noch zu wenige Stationen. Bitte zunächst weiter sammeln.")
-            return
-        self._known_audio_tests = self._audio_test_dirs()
-        try:
-            self.start_modulation_test()
-        except Exception as exc:
-            QMessageBox.warning(self, "Modulationstest", str(exc))
-            return
-        self._known_audio_tests = self._audio_test_dirs()
-        self._comparison_test_dir = None
-        self._comparison_rx_size = None
-        self._comparison_stable_polls = 0
-        self._comparison_waiting = True
-        self.modulation_test_button.setEnabled(False)
-        self.modulation_status.setText("Parrot ist vorbereitet. Verbinden, TX drücken und den eingeblendeten Referenztext sprechen.")
-        QMessageBox.information(
-            self, "CarenDMR Audio-Referenztest",
-            "Bitte nach dem TX-Beep gleichmäßig und in normaler Lautstärke sprechen:\n\n" + self.REFERENCE_TEXT +
-            "\n\nAnschließend die vollständige Parrot-Antwort abwarten. Der Vergleich erscheint automatisch."
-        )
-
-    def _poll_modulation_test(self) -> None:
-        if not self._comparison_waiting:
-            return
-
-        try:
-            # Den neu entstandenen AudioTest-Ordner genau einmal übernehmen.
-            if self._comparison_test_dir is None:
-                current_dirs = self._audio_test_dirs()
-                new_dirs = [
-                    Path(value)
-                    for value in current_dirs - self._known_audio_tests
-                ]
-                new_dirs = [path for path in new_dirs if path.is_dir()]
-
-                if not new_dirs:
-                    return
-
-                self._comparison_test_dir = max(
-                    new_dirs,
-                    key=lambda path: path.stat().st_mtime,
-                )
-
-            test_dir = self._comparison_test_dir
-            analysis_file = test_dir / "analysis.json"
-            loopback_file = test_dir / "04_codec_loopback_8k.wav"
-
-            if not analysis_file.is_file() or not loopback_file.is_file():
-                return
-
-            # Die vollständige Parrot-Rückantwort muss vorhanden sein.
-            parrot_files = list(
-                test_dir.glob("rx_*_parrot_nach_ambe_8k.wav")
-            )
-            if not parrot_files:
-                return
-
-            parrot_file = max(
-                parrot_files,
-                key=lambda path: path.stat().st_mtime,
-            )
-
-            # Prüfen, ob der Parrot laut Analyse wirklich vollständig empfangen wurde.
-            with analysis_file.open("r", encoding="utf-8") as handle:
-                analysis = json.load(handle)
-
-            extra = analysis.get("extra", {})
-            if extra.get("echo_received") is not True:
-                return
-
-            # RX-Datei muss über mehrere Timerdurchläufe unverändert sein.
-            current_size = parrot_file.stat().st_size
-
-            if current_size <= 44:
-                return
-
-            if current_size != self._comparison_rx_size:
-                self._comparison_rx_size = current_size
-                self._comparison_stable_polls = 0
-                return
-
-            self._comparison_stable_polls += 1
-
-            # Erst nach zwei unveränderten Prüfungen auswerten.
-            if self._comparison_stable_polls < 2:
-                return
-
-            result = self.service.compare_audio_test(test_dir)
-
-        except RuntimeError:
-            # Dateien oder Analyse sind noch nicht vollständig abgeschlossen.
-            return
-
-        except Exception as exc:
-            self._comparison_waiting = False
-            self._comparison_test_dir = None
-            self._comparison_rx_size = None
-            self._comparison_stable_polls = 0
-            self.modulation_test_button.setEnabled(True)
-            self.modulation_status.setText(
-                f"Vergleich fehlgeschlagen: {exc}"
-            )
-            return
-
-        self._comparison_waiting = False
-        self._known_audio_tests.add(str(test_dir))
-        self._comparison_test_dir = None
-        self._comparison_rx_size = None
-        self._comparison_stable_polls = 0
-
-        self.modulation_test_button.setEnabled(True)
-        self._last_comparison = result
-        self.modulation_status.setText(
-            "Modulationsvergleich abgeschlossen."
-        )
-        self._show_comparison(result)
-
-    def _show_comparison(self, result: dict) -> None:
-        rows = result.get("rows") or []
-        recommendations = {item.get("parameter"): item for item in result.get("recommendations") or []}
-        self.comparison_table.setRowCount(len(rows))
-        parameter_by_key = {
-            "active_rms_dbfs": "Mic-Gain", "bass_percent": "Tiefen",
-            "mid_percent": "Sprachmitten", "presence_percent": "Präsenz",
-            "treble_percent": "Höhen", "crest_factor_db": "Dynamik",
-        }
-        for row, item in enumerate(rows):
-            unit = item.get("unit", "")
-            delta = float(item.get("delta", 0.0))
-            parameter = parameter_by_key.get(item.get("key"), "")
-            recommendation = recommendations.get(parameter)
-            assessment = "im Referenzbereich"
-            if recommendation:
-                change = int(recommendation.get("change", 0))
-                assessment = f"{parameter} {change:+d}: {recommendation.get('reason', '')}"
-            self.comparison_table.setItem(row, 0, QTableWidgetItem(str(item.get("label", ""))))
-            self.comparison_table.setItem(row, 1, QTableWidgetItem(f"{float(item.get('reference',0)):g} {unit}"))
-            self.comparison_table.setItem(row, 2, QTableWidgetItem(f"{float(item.get('own',0)):g} {unit}"))
-            self.comparison_table.setItem(row, 3, QTableWidgetItem(f"{delta:+g} {unit}"))
-            self.comparison_table.setItem(row, 4, QTableWidgetItem(assessment))
-        count = int(result.get("reference_stations", 0))
-        if result.get("recommendations"):
-            summary = "; ".join(f"{r['parameter']} {int(r['change']):+d}" for r in result["recommendations"])
-            self.modulation_status.setText(f"Vergleich mit {result.get('reference_name','Referenz')} ({count} Stationen): {summary}. Noch nichts wurde automatisch verändert.")
-        else:
-            self.modulation_status.setText(f"Deine Modulation liegt nahe an {result.get('reference_name','der Referenz')} ({count} Stationen).")
 
     def _start(self) -> None:
         tg, ts = self.current_target()
@@ -337,7 +148,6 @@ class AudioBenchmarkWidget(QWidget):
         self.resume_button.setEnabled(paused)
         self.stop_button.setEnabled(running or paused)
         self._show_reference(snap.get("reference") or {})
-        self._poll_modulation_test()
 
     def _show_reference(self, ref: dict) -> None:
         rows = [

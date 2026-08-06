@@ -19,7 +19,7 @@ from carendmr.diagnostics.wav_io import write_pcm16_mono
 from carendmr.audio import (
     AudioDevice, AudioDirection, AudioManager, SoundDeviceBackend,
     OptimizerDiagnostics, StreamingTxSpeechProcessor, optimize_transmit_pcm,
-    TxAudioTunerSettings, StreamingTxAudioTuner, tuner_preset,
+    TxAudioTunerSettings, StreamingTxAudioTuner, tuner_preset, BufferedPcmOutput,
 )
 
 
@@ -135,8 +135,47 @@ class LivePcmCapture:
         self._speech_processor = StreamingTxSpeechProcessor(sample_rate=service.SAMPLE_RATE, enabled=service.tx_speech_processing_enabled)
         self._audio_tuner = StreamingTxAudioTuner(service.tx_audio_tuner_settings, sample_rate=service.SAMPLE_RATE)
         self._resampler = _SpeechBandDecimator16kTo8k()
+        if self._one_shot_audio_test:
+            self._write_test_metadata()
         self.thread=Thread(target=self._run, name="CarenDMR-Live-Audio", daemon=True)
     def start(self)->None: self.thread.start()
+
+    def _write_test_metadata(self) -> None:
+        if self.audio_lab_dir is None:
+            return
+        from carendmr.version import get_version
+        selected = self.service._selected_input
+        native_rate = int(self.service.SAMPLE_RATE)
+        if selected is not None and hasattr(self.service.backend, "resolve_input_sample_rate"):
+            try:
+                native_rate = int(self.service.backend.resolve_input_sample_rate(
+                    selected.index, self.service.SAMPLE_RATE, self.service.CHANNELS
+                ))
+            except Exception:
+                native_rate = int(self.service.SAMPLE_RATE)
+        payload = {
+            "version": 2,
+            "created_at": datetime.now().astimezone().isoformat(),
+            "carendmr_version": get_version(),
+            "microphone_gain_percent": int(self.service.gain_percent),
+            "agc_enabled": bool(self.service.agc_enabled),
+            "speech_processing_enabled": bool(self.service.tx_speech_processing_enabled),
+            "sample_rate_input_hz": int(self.service.SAMPLE_RATE),
+            "sample_rate_device_native_hz": native_rate,
+            "resampling_active": native_rate != int(self.service.SAMPLE_RATE),
+            "audio_engine": "Audio Engine V2",
+            "sample_rate_ambe_hz": 8000,
+            "channels": int(self.service.CHANNELS),
+            "microphone": {
+                "index": getattr(selected, "index", None),
+                "name": getattr(selected, "name", None),
+                "host_api": getattr(selected, "host_api", None),
+            },
+            "tx_audio_tuner": self.service.tx_audio_tuner_settings.to_dict(),
+        }
+        target = self.audio_lab_dir / "test_metadata.json"
+        target.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
     def _run(self)->None:
         import numpy as np
         service=self.service
@@ -146,9 +185,12 @@ class LivePcmCapture:
             factor=service._gain_percent/100.0
             def report(level: float)->None:
                 if self.level_callback is not None: self.level_callback(max(0.0,min(100.0,float(level)*factor)))
-            def on_block(block)->None:
-                mono=np.asarray(block,dtype=np.float32).reshape(-1)
-                if not mono.size: return
+            probe_blocks: list[np.ndarray] = []
+            probe_samples = 0
+            probe_limit = int(service.SAMPLE_RATE * 1.5)
+            signal_released = not self._one_shot_audio_test
+
+            def process_mono(mono: np.ndarray) -> None:
                 input_pcm=np.clip(np.rint(np.clip(mono,-1.0,1.0)*32767.0),-32768,32767).astype(np.int16)
                 if self._collect_debug:
                     self._input_pcm_16k.extend(int(v) for v in input_pcm)
@@ -168,11 +210,67 @@ class LivePcmCapture:
                     self._ambe_pcm_8k.extend(chunk)
                 self.sample_count += len(chunk); self.queue.put(chunk)
                 self.queue_puts += 1; self.queue_max_chunks=max(self.queue_max_chunks,self.queue.qsize())
+
+            def on_block(block)->None:
+                nonlocal probe_samples, signal_released
+                mono=np.asarray(block,dtype=np.float32)
+                if mono.ndim > 1:
+                    mono=mono[:, 0]
+                mono=mono.reshape(-1)
+                if not mono.size:
+                    return
+                if not signal_released:
+                    probe_blocks.append(mono.copy())
+                    probe_samples += int(mono.size)
+                    peak = max(float(np.max(np.abs(part))) for part in probe_blocks)
+                    if peak >= 1.0e-4:
+                        signal_released = True
+                        buffered=np.concatenate(probe_blocks)
+                        probe_blocks.clear()
+                        process_mono(buffered)
+                        return
+                    if probe_samples >= probe_limit:
+                        info = dict(getattr(service.backend, "last_input_stream_info", {}) or {})
+                        callbacks = int(info.get("callbacks", 0))
+                        native_samples = int(info.get("native_samples", 0))
+                        capture_channels = int(info.get("capture_channels", 0))
+                        channel_peaks = [float(value) for value in (info.get("channel_peak") or [])]
+                        peak_text = ", ".join(
+                            f"CH{index + 1}={value:.6f}" for index, value in enumerate(channel_peaks)
+                        ) or "keine Kanalwerte"
+                        self.error=RuntimeError(
+                            "Mikrofon geöffnet, aber kein Eingangssignal empfangen. Es wurde nichts gesendet. "
+                            f"Callbacks={callbacks}; Samples={native_samples}; Kanäle={capture_channels}; {peak_text}."
+                        )
+                        self.stop_event.set()
+                    return
+                process_mono(mono)
             service._mute_receive()
             if not hasattr(service.backend,"stream_input_blocks_until"): raise RuntimeError("Das Audio-Backend unterstützt kein Live-TX.")
+            native_rate = service.SAMPLE_RATE
+            if hasattr(service.backend, "resolve_input_sample_rate"):
+                native_rate = int(service.backend.resolve_input_sample_rate(
+                    service._selected_input.index, service.SAMPLE_RATE, service.CHANNELS
+                ))
+            timing_mark(
+                "TX_AUDIO_ENGINE_V2",
+                f"Gerät={service._selected_input.name};Host={service._selected_input.host_api};Native={native_rate};Ziel={service.SAMPLE_RATE};AMBE=8000",
+            )
             service.backend.stream_input_blocks_until(input_index=service._selected_input.index, stop_event=self.stop_event, max_duration_seconds=self.max_duration_seconds, sample_rate=service.SAMPLE_RATE, channels=service.CHANNELS, block_callback=on_block, level_callback=report)
         except Exception as error: self.error=error
         finally:
+            if self.audio_lab_dir is not None:
+                try:
+                    diagnostics = dict(getattr(service.backend, "last_input_stream_info", {}) or {})
+                    diagnostics["processed_samples_16k"] = int(self.sample_count * 2)
+                    diagnostics["ambe_samples_8k"] = int(self.sample_count)
+                    diagnostics["signal_detected"] = bool(self.sample_count > 0)
+                    (self.audio_lab_dir / "input_diagnostics.json").write_text(
+                        json.dumps(diagnostics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+                    )
+                    timing_mark("AUDIO_INPUT_DIAGNOSE", json.dumps(diagnostics, ensure_ascii=False))
+                except Exception as error:
+                    timing_mark("AUDIO_INPUT_DIAGNOSE_FEHLER", str(error))
             timing_mark("TX_LETZTER_AUDIOBLOCK_GELESEN", f"Samples={self.sample_count}")
             if service.audio_debug_wav_enabled or self._one_shot_audio_test:
                 try:
@@ -690,6 +788,18 @@ class AudioSendService:
             self._audio_test_armed = False
             timing_mark("AUDIO_TEST_TX_GESTARTET", f"VorlaufSamples={len(pre_roll)}")
         return capture
+
+    def create_pcm_output(self, **kwargs):
+        """Erzeugt RX/Parrot-Ausgabe immer auf dem ausdrücklich gewählten Gerät."""
+        if not self.manager.devices:
+            self.manager.scan()
+        output = self.manager.resolve(AudioDirection.OUTPUT).device
+        native_rate = int(round(output.default_sample_rate))
+        return BufferedPcmOutput(
+            output_device_index=output.index,
+            output_sample_rate=native_rate,
+            **kwargs,
+        )
 
     def finish_audio_test_session(self) -> None:
         """Schließt den flüchtigen Testzustand nach TX und Parrot-RX sauber ab."""

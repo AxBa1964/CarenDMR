@@ -266,6 +266,13 @@ class AudioBenchmarkService:
         try:
             payload = json.loads(analysis_path.read_text(encoding="utf-8"))
             extra = payload.get("extra") or {}
+            test_metadata = payload.get("test_metadata") or {}
+            metadata_path = session_dir / "test_metadata.json"
+            if metadata_path.exists():
+                try:
+                    test_metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                    pass
             if extra.get("echo_received") is False:
                 raise RuntimeError("Die Parrot-Rückantwort wurde nicht vollständig empfangen.")
         except json.JSONDecodeError as exc:
@@ -318,6 +325,8 @@ class AudioBenchmarkService:
             "timeslot":self._state.timeslot,"session_dir":str(session_dir),
             "reference_stations":int(reference.get("stations",0)),
             "reference_qsos":int(reference.get("qsos",0)),
+            "reference_statistics":reference,
+            "test_metadata":test_metadata,
             "rows":rows,"recommendations":recommendations,"own_metrics":own,
         }
         out_dir=self.reference_dir/"comparisons"; out_dir.mkdir(parents=True,exist_ok=True)
@@ -475,6 +484,14 @@ class AudioBenchmarkService:
         for name in fields_:
             values=sorted(float(s[name]) for s in stations)
             result[name]=round(statistics.median(values),3)
+            result[name+"_mean"]=round(statistics.fmean(values),3)
+            result[name+"_stddev"]=round(statistics.pstdev(values),3) if len(values)>1 else 0.0
+            result[name+"_min"]=round(values[0],3)
+            result[name+"_max"]=round(values[-1],3)
+            if len(values)>=2:
+                deciles=statistics.quantiles(values,n=10,method="inclusive")
+                result[name+"_p10"]=round(deciles[0],3)
+                result[name+"_p90"]=round(deciles[8],3)
             if len(values)>=4:
                 q=statistics.quantiles(values,n=4,method="inclusive")
                 result[name+"_q25"]=round(q[0],3); result[name+"_q75"]=round(q[2],3)

@@ -1,5 +1,68 @@
 # Changelog
 
+## 0.2.1.9 – WASAPI-Ausgabe und Gerätebindung
+
+- Parrot- und normaler RX-Audioausgang verwenden jetzt ausdrücklich das in den Einstellungen gewählte Wiedergabegerät.
+- Die Ausgabe öffnet das Gerät mit dessen nativer Abtastrate und resampelt 8-kHz-DMR-Audio programmintern.
+- Lokale Start-/Endtöne werden ebenfalls auf eine vom gewählten Gerät unterstützte Rate umgesetzt.
+- MME, WASAPI und andere PortAudio-Host-APIs nutzen damit denselben gespeicherten Ausgabepfad.
+- DSP, AMBE, BrandMeister-Protokoll und TX-Paketierung blieben unverändert.
+
+## 0.2.1.8 – Mikrofoneingang-Diagnose
+
+- WASAPI/MME-Eingänge protokollieren Geräteindex, Host-API, native Rate, Kanalzahl, Blockgröße, Callback-Anzahl und empfangene Samples.
+- RMS und Peak werden je Eingangskanal erfasst; der signalführende Kanal wird im Diagnosebericht ausgewiesen.
+- Jeder geführte Audiotest speichert `input_diagnostics.json`.
+- Bei stummem Eingang nennt die Fehlermeldung Callback-, Sample- und Kanalwerte.
+- Ein Benutzerabbruch schreibt `state = aborted` und `AUDIO_TEST_ABORTED`.
+- Keine Änderungen an AMBE, DSP, BrandMeister oder Funkprotokoll.
+
+## 0.2.1.7 – Audio Coach Stabilisierung
+
+- Laufender Modulationstest kann über denselben Button jederzeit abgebrochen werden.
+- Der Button wechselt während des Tests sichtbar auf **Abbrechen**.
+- Erfolg, Fehler und Benutzerabbruch laufen über eine zentrale Abschlussroutine.
+- Bei Fehlern werden Audio-Testzustand, Vorlauf, PTT und laufender TX sauber beendet.
+- Status und Button kehren zuverlässig in den Grundzustand zurück.
+- Paketweise Konsolendiagnose bleibt ausschließlich an den vorhandenen Diagnosemodus gebunden.
+
+## 0.2.1.6 – Audio Engine V2
+
+- Gemeinsamer Eingabepfad für Live-TX, Audio Coach und lokale Audiotests.
+- Audiogeräte werden bevorzugt mit 16 kHz geöffnet; bei Treiberablehnung wird automatisch die native Geräte-Abtastrate verwendet.
+- Hochwertiges Polyphasen-Resampling auf den einheitlichen 16-kHz-Verarbeitungspfad und anschließend auf 8 kHz für AMBE.
+- WASAPI-Geräte mit abweichender nativer Rate verursachen keinen Fehler `PaErrorCode -9997` mehr.
+- `test_metadata.json` dokumentiert native Rate, Zielrate, Resampling und Audio-Engine-Version.
+- Neue Zeitmarke `TX_AUDIO_ENGINE_V2` protokolliert Gerät, Host-API und Raten.
+- Funkprotokoll, BrandMeister-Logik und Benutzeroberfläche unverändert.
+
+## 0.2.1.4 – Audioqualität messbar machen
+
+- Audio-Test speichert die tatsächlich aktiven Mic-Gain-, DSP-, Profil-, Geräte- und Versionsdaten in `test_metadata.json`.
+- Der Audio Coach kennzeichnet klar, mit welchem Profil und Mic-Gain der Vergleich gemessen wurde.
+- Empfehlungen werden ausdrücklich als vorgeschlagene Änderungen und nicht als aktive Einstellungen angezeigt.
+- TG-Referenzen enthalten zusätzlich Mittelwert, Standardabweichung, Min/Max sowie 10-/90-Perzentile je Kennzahl.
+- Funkkern, BrandMeister-Protokoll, QSO-Historie und GUI außerhalb der Audio-Werkzeuge bleiben unverändert.
+
+## 0.2.1.3 – Parrot-Echozeit an Sprachdauer angepasst
+
+- Fehler behoben, durch den das feste 15-Sekunden-Echo-Fenster längere Parrot-Antworten abschnitt.
+- Das Echo-Fenster berücksichtigt jetzt die tatsächliche TX-Dauer plus 10 Sekunden für BrandMeister-Anlauf und Nachlauf.
+- Die gewählte Fensterdauer und TX-Dauer werden in `logs/tx_rx_timing.log` protokolliert.
+- Keine Änderungen an GUI, Audio Coach oder allgemeiner Funkarchitektur.
+
+# Changelog
+
+## 0.2.1 – Audio-Werkzeuge aus der Hauptoberfläche ausgelagert
+
+- Der Hauptreiter **Audio-Benchmark** wurde aus der CarenDMR-Hauptoberfläche entfernt.
+- Die Hauptoberfläche enthält wieder nur **Betrieb**, **QSO-Historie** und **Talkgroups**.
+- **Audio-Benchmark** und **Audio Coach** öffnen als eigenständige Fenster über das Menü **Programm**.
+- Benchmark-Sammlung und Modulationsvergleich verwenden weiterhin denselben langlebigen `AudioBenchmarkService`; es wird keine zweite Funk- oder Benchmark-Instanz erzeugt.
+- Die Benchmark-Oberfläche enthält nur Sammlung, Status und Referenzdetails.
+- Der Modulationstest und die Vergleichstabelle befinden sich ausschließlich im separaten Audio-Coach-Fenster.
+- Funkkern, Benchmark-Service und Qt-Oberflächen bleiben voneinander getrennt.
+
 ## 0.2.0 – Eigene Modulation vergleichen
 
 - Neuer Button **Eigene Modulation testen** im Reiter Audio-Benchmark.
@@ -1190,3 +1253,16 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Robuste Referenz aus dem besten technisch gültigen Durchgang je Rufzeichen mit Median und Quartilbereich.
 - Bei BrandMeister-Verlust bis zu fünf automatische Wiederverbindungsversuche; danach kontrollierter Abbruch ohne Datenverlust.
 - Zwischenstand wird nach jedem abgeschlossenen Sprecher atomar unter `data/audio_benchmarks/current.json` gesichert.
+
+## 0.2.1.1 – Modulationstest stabilisiert
+
+- Fachlicher, Qt-unabhängiger `ModulationTestTracker` ergänzt.
+- Geführter Test erhält im AudioTest-Ordner ein atomar geschriebenes `manifest.json`.
+- Statusschritte zeigen TX-Erkennung, Parrot-Empfang, Abschluss und Fehler eindeutig an.
+- Vergleich startet erst nach vollständiger, größenstabiler Parrot-WAV und `echo_received: true`.
+- Audio Coach steuert weder Funkkern noch RX/TX-Zustände; er beobachtet nur abgeschlossene Artefakte.
+
+## 0.2.1.6 – WASAPI-Aufnahmepfad
+- WASAPI-USB-Eingänge werden bei mehrkanaligen Endpunkten nativ geöffnet; CarenDMR wählt anschließend den tatsächlich signalführenden Kanal für den gemeinsamen Mono-Pfad.
+- Der geführte Modulationstest erkennt einen geöffneten, aber stummen Eingang innerhalb der ersten 1,5 Sekunden und sendet dann keine Sprachframes.
+- Manifest-Dateien werden bei kurzfristigen Windows-/OneDrive-Sperren mehrfach atomar geschrieben; Messdaten bleiben bei einer Sperre erhalten.

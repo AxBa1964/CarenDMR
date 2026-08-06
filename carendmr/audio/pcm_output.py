@@ -26,11 +26,15 @@ class BufferedPcmOutput:
         agc_enabled: Callable[[], bool] | None = None,
         level_callback: Callable[[float], None] | None = None,
         processed_tap: Callable[[tuple[int, ...]], None] | None = None,
+        output_device_index: int | None = None,
+        output_sample_rate: int | None = None,
     ) -> None:
         if sample_rate <= 0 or maximum_buffer_seconds <= 0:
             raise ValueError("Audio rate and buffer duration must be positive.")
         self.sample_rate = sample_rate
-        self._maximum_bytes = int(sample_rate * maximum_buffer_seconds * 2)
+        self._output_device_index = output_device_index
+        self._output_sample_rate = int(output_sample_rate or sample_rate)
+        self._maximum_bytes = int(self._output_sample_rate * maximum_buffer_seconds * 2)
         self._sd = sounddevice_module
         self._muted = muted or (lambda: False)
         self._volume = volume or (lambda: 1.0)
@@ -66,17 +70,22 @@ class BufferedPcmOutput:
             return
         sd = self._module()
         try:
-            default = sd.query_devices(kind="output")
-            if int(default["max_output_channels"]) < 1:
+            device = (
+                sd.query_devices(self._output_device_index)
+                if self._output_device_index is not None
+                else sd.query_devices(kind="output")
+            )
+            if int(device["max_output_channels"]) < 1:
                 raise PcmOutputError(
-                    "Das Standard-Wiedergabegerät besitzt keinen Ausgabekanal."
+                    "Das gewählte Wiedergabegerät besitzt keinen Ausgabekanal."
                 )
             self._stream = sd.RawOutputStream(
-                samplerate=self.sample_rate,
+                samplerate=self._output_sample_rate,
                 channels=1,
                 dtype="int16",
                 callback=self._callback,
-                blocksize=160,
+                blocksize=max(1, int(round(self._output_sample_rate * 0.02))),
+                device=self._output_device_index,
             )
             self._stream.start()
         except PcmOutputError:
@@ -94,6 +103,17 @@ class BufferedPcmOutput:
             return
         if any(not -32768 <= value <= 32767 for value in values):
             raise ValueError("PCM-Samples müssen signed 16 bit sein.")
+        if self._output_sample_rate != self.sample_rate:
+            import numpy as np
+            from math import gcd
+            from scipy.signal import resample_poly
+            data = np.asarray(values, dtype=np.float32)
+            divisor = gcd(self.sample_rate, self._output_sample_rate)
+            data = resample_poly(
+                data, self._output_sample_rate // divisor, self.sample_rate // divisor
+            )
+            data = np.clip(np.rint(data), -32768, 32767).astype(np.int16)
+            values = tuple(int(value) for value in data)
         encoded = struct.pack(f"<{len(values)}h", *values)
         with self._lock:
             excess = len(self._buffer) + len(encoded) - self._maximum_bytes
