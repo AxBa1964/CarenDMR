@@ -66,6 +66,61 @@ def _plot_wav(path: Path, output_dir: Path):
     fig,ax=plt.subplots(figsize=(10,4.2)); ax.pcolormesh(time_axis,freq_axis,power_db,shading='auto'); ax.set_title(path.name+' – Spektrogramm'); ax.set_xlabel('Zeit [s]'); ax.set_ylabel('Frequenz [Hz]'); target=output_dir/(path.stem+'_spectrogram.png'); fig.tight_layout(); fig.savefig(target,dpi=130); plt.close(fig); created.append(target.name)
     return created
 
+
+def build_level_path_report(
+    session_dir: Path,
+    *,
+    gain_percent: int,
+    stage_files: tuple[str, ...] = (
+        "01_mikrofon_roh_16k.wav",
+        "02_nach_mic_gain_16k.wav",
+        "02a_nach_sprachaufbereitung_16k.wav",
+        "03_vor_ambe_8k.wav",
+    ),
+) -> Path:
+    """Schreibt eine kompakte Pegelbilanz entlang des TX-Audiopfads.
+
+    Der Bericht verändert keine Audiodaten. Er macht insbesondere sichtbar,
+    welche lineare Dämpfung der als Prozentwert gespeicherte Mic-Gain bewirkt.
+    """
+    session_dir = Path(session_dir)
+    gain_factor = max(0.0, float(gain_percent) / 100.0)
+    gain_db = -120.0 if gain_factor <= 1e-12 else 20.0 * math.log10(gain_factor)
+    stages: list[dict[str, object]] = []
+    previous_rms: float | None = None
+    previous_peak: float | None = None
+    for name in stage_files:
+        path = session_dir / name
+        if not path.exists():
+            continue
+        rate, samples = read_wav(path)
+        metrics = analyze_pcm16(samples, rate)
+        stage = {
+            "file": name,
+            "sample_rate_hz": rate,
+            "rms_dbfs": round(metrics.rms_dbfs, 3),
+            "peak_dbfs": round(metrics.peak_dbfs, 3),
+            "crest_factor_db": round(metrics.crest_factor_db, 3),
+            "delta_rms_from_previous_db": None if previous_rms is None else round(metrics.rms_dbfs - previous_rms, 3),
+            "delta_peak_from_previous_db": None if previous_peak is None else round(metrics.peak_dbfs - previous_peak, 3),
+        }
+        stages.append(stage)
+        previous_rms = metrics.rms_dbfs
+        previous_peak = metrics.peak_dbfs
+    payload = {
+        "microphone_gain_percent": int(gain_percent),
+        "microphone_gain_factor": round(gain_factor, 6),
+        "microphone_gain_db": round(gain_db, 3),
+        "interpretation": (
+            f"Mic-Gain {int(gain_percent)} % entspricht einem linearen Faktor {gain_factor:.3f} "
+            f"bzw. {gain_db:.2f} dB relativ zu 100 % (0 dB)."
+        ),
+        "stages": stages,
+    }
+    target = session_dir / "level_path.json"
+    target.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return target
+
 def build_session_report(session_dir: Path, *, extra: dict|None=None) -> Path:
     session_dir=Path(session_dir); reports={}; images={}
     for wav_path in sorted(session_dir.glob('*.wav')):

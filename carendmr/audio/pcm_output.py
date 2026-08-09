@@ -125,11 +125,10 @@ class BufferedPcmOutput:
             self.samples_written += len(values)
 
     @staticmethod
-    def _soft_limit(value: float) -> int:
-        # Smoothly limits large values while preserving speech detail below clipping.
-        normalized = value / 32767.0
-        limited = math.tanh(normalized) * 32767.0
-        return max(-32768, min(32767, int(round(limited))))
+    def _limit_pcm16(value: float) -> int:
+        # Valid PCM16 samples pass unchanged. Only real overflow caused by
+        # AGC or amplification is clipped to the representable PCM16 range.
+        return max(-32768, min(32767, int(round(value))))
 
     def _apply_agc(self, values: tuple[int, ...]) -> tuple[int, ...]:
         if not values or not self._agc_enabled():
@@ -170,7 +169,7 @@ class BufferedPcmOutput:
             values = struct.unpack(f"<{len(chunk) // 2}h", chunk)
             values = self._apply_agc(values)
             factor = max(0.0, min(4.0, float(self._volume())))
-            processed = tuple(self._soft_limit(v * factor) for v in values)
+            processed = tuple(self._limit_pcm16(v * factor) for v in values)
             peak = max(abs(v) for v in processed) / 32767.0 * 100.0 if processed else 0.0
             if self._level_callback is not None:
                 self._level_callback(max(0.0, min(100.0, peak)))

@@ -18,9 +18,9 @@ from .receive_service import ReceiveService
 class ConnectionManager:
     """Koordiniert alle Zustandswechsel zwischen RX und dem Parrot-Sendepfad.
 
-    Der Empfangsdienst bleibt Eigentümer der BrandMeister-Empfangsverbindung.
-    Der Parrot-Test verwendet weiterhin seine eigene, kurzlebige Verbindung. Nach
-    jedem TX-Versuch wird ein zuvor aktiver Empfang automatisch wiederhergestellt.
+    Der Empfangsdienst bleibt Eigentümer einer persistenten BrandMeister-Session.
+    RX und TX verwenden denselben angemeldeten UDP-Socket. Nur bei echtem
+    Funkzielwechsel oder Disconnect wird die Session geschlossen und neu aufgebaut.
     """
 
     def __init__(
@@ -57,6 +57,10 @@ class ConnectionManager:
                 )
                 if same_target:
                     return False
+                timing_mark(
+                    "RX_STOP_QUELLE",
+                    f"ConnectionManager.connect Zielwechsel auf TG={talkgroup} TS={timeslot} Rufart={call_type}",
+                )
                 self.receive_service.stop()
                 if not self.receive_service.wait(self.receive_stop_timeout):
                     raise RuntimeError("Der laufende Empfang konnte nicht rechtzeitig beendet werden.")
@@ -65,6 +69,7 @@ class ConnectionManager:
 
     def disconnect(self) -> None:
         with self._operation_lock:
+            timing_mark("RX_STOP_QUELLE", "ConnectionManager.disconnect")
             self.receive_service.stop()
 
     def switch_receive_target(self, talkgroup: int, timeslot: int, call_type: str = "group") -> bool:
@@ -76,7 +81,7 @@ class ConnectionManager:
             # Rückwärtskompatibilität für Test-/Mock-Dienste ohne Rufart-Parameter.
             return self.receive_service.switch_receive_target(talkgroup, timeslot)
 
-    def run_parrot_hold_to_talk(self, stop_event: Event, *, level_callback: Callable[[float], None] | None = None, optimize: bool = True, rx_playback_gate: Event | None = None):
+    def run_parrot_hold_to_talk(self, stop_event: Event, *, level_callback: Callable[[float], None] | None = None, optimize: bool = True, rx_playback_gate: Event | None = None, tx_complete_callback: Callable[[], None] | None = None):
         with self._operation_lock:
             resume_receive=self.receive_service.is_running
             talkgroup=self.receive_service.target_talkgroup; timeslot=self.receive_service.target_timeslot
@@ -87,6 +92,7 @@ class ConnectionManager:
             supports_live=hasattr(self.parrot_service,"start_live_hold_to_talk") and hasattr(self.parrot_service,"transmit_live_capture")
             if not supports_live:
                 if resume_receive:
+                    timing_mark("RX_STOP_QUELLE", "ConnectionManager legacy TX")
                     self.receive_service.stop()
                     if not self.receive_service.wait(self.receive_stop_timeout):
                         raise RuntimeError("Der Empfang konnte für den Sendebetrieb nicht rechtzeitig beendet werden.")
@@ -106,19 +112,25 @@ class ConnectionManager:
                             )
             capture=self.parrot_service.start_live_hold_to_talk(stop_event,level_callback=level_callback)
             timing_mark("MIKROFON_START_ANGEFORDERT")
+            session_client = None
             if resume_receive:
-                self.receive_service.stop(); timing_mark("RX_STOP_ANGEFORDERT")
+                self.receive_service.pause_for_tx(); timing_mark("RX_PAUSE_FUER_TX_ANGEFORDERT")
                 if not self.receive_service.wait(self.receive_stop_timeout):
-                    stop_event.set(); raise RuntimeError("Der Empfang konnte für den Sendebetrieb nicht rechtzeitig beendet werden.")
-                timing_mark("RX_BEENDET")
+                    stop_event.set(); raise RuntimeError("Der Empfang konnte für den Sendebetrieb nicht rechtzeitig pausiert werden.")
+                timing_mark("RX_FUER_TX_PAUSIERT")
+                session_client = self.receive_service.session_client
+                if session_client is None:
+                    stop_event.set()
+                    raise RuntimeError("Die bestehende BrandMeister-Verbindung ging beim RX→TX-Wechsel verloren.")
             try:
                 timing_mark("TX_LIVE_VERARBEITUNG_START")
-                return self.parrot_service.transmit_live_capture(capture,optimize=optimize,started_at=started_at,destination_id=talkgroup,timeslot=timeslot,call_type=call_type,rx_playback_gate=rx_playback_gate)
+                return self.parrot_service.transmit_live_capture(capture,optimize=optimize,started_at=started_at,destination_id=talkgroup,timeslot=timeslot,call_type=call_type,rx_playback_gate=rx_playback_gate,tx_complete_callback=tx_complete_callback,existing_client=session_client)
             finally:
                 if resume_receive:
                     try:
-                        self.receive_service.set_receive_target(talkgroup,timeslot,call_type); timing_mark("RX_NEUSTART_ANGEFORDERT")
-                        if not self.receive_service.start(): raise RuntimeError("Empfangsdienst wurde nicht gestartet.")
-                        timing_mark("RX_THREAD_GESTARTET")
+                        timing_mark("RX_FORTSETZEN_ANGEFORDERT")
+                        if not self.receive_service.resume_after_tx():
+                            raise RuntimeError("Empfangsdienst wurde nicht gestartet.")
+                        timing_mark("RX_THREAD_GLEICHE_SESSION_GESTARTET")
                     except Exception as error:
                         self.events.publish(f"Automatische Rückkehr zum Empfang fehlgeschlagen: {error}",EventLevel.ERROR)

@@ -1,8 +1,7 @@
-# CarenDMR 0.2.1.9 – WASAPI-Ausgabe und Gerätebindung
+# CarenDMR 0.2.1.55 – Satellitenumschaltung
 
-Dieser Stabilisierungssprint vereinheitlicht die lokale Audioausgabe.
+Die MapTiler-Satellitenansicht verwendet nun die für Leaflet dokumentierte 512-px-HiDPI-Variante `@2x.jpg`.
 
-- Start- und Endton verwenden das gewählte Wiedergabegerät.
-- Parrot-Echo und normaler RX verwenden dasselbe gewählte Gerät.
-- 8-kHz-DMR-Audio wird auf die native Ausgaberate des Geräts resampelt.
-- Keine Änderungen an DSP, AMBE oder BrandMeister.
+Beim Umschalten wird die jeweils andere Basiskarte explizit entfernt. Eine kleine Anzeige oben links nennt die tatsächlich aktive Basiskarte: **Karte** oder **Satellit**.
+
+Falls MapTiler eine Kachel nicht liefert, erscheint in der Shell eine Diagnose mit der konkreten Tile-URL. Ein HTTP-403 deutet auf einen fehlenden, ungültigen oder eingeschränkten MapTiler-Key hin.

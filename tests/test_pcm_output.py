@@ -49,7 +49,16 @@ class BufferedPcmOutputTests(unittest.TestCase):
         import struct
         self.assertEqual((500, -500), struct.unpack("<2h", data))
 
-    def test_callback_supports_amplification_with_soft_limiter(self):
+    def test_callback_at_100_percent_preserves_valid_pcm16_samples(self):
+        import struct
+        output = BufferedPcmOutput(sample_rate=8000, maximum_buffer_seconds=1.0, volume=lambda: 1.0)
+        source = (1000, -1000, 12000, -12000, 30000, -30000, 32767, -32768)
+        output.write(source)
+        data = bytearray(len(source) * 2)
+        output._callback(memoryview(data), len(source), None, None)
+        self.assertEqual(source, struct.unpack("<8h", data))
+
+    def test_callback_supports_amplification_with_pcm16_clipping(self):
         import struct
         levels = []
         output = BufferedPcmOutput(

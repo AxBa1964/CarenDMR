@@ -10,6 +10,8 @@ from collections import deque
 from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
+
+from carendmr.diagnostics.audio_lab import build_level_path_report
 from threading import Event, Thread
 from typing import Callable, Iterator
 
@@ -158,6 +160,11 @@ class LivePcmCapture:
             "created_at": datetime.now().astimezone().isoformat(),
             "carendmr_version": get_version(),
             "microphone_gain_percent": int(self.service.gain_percent),
+            "microphone_gain_factor": round(float(self.service.gain_percent) / 100.0, 6),
+            "microphone_gain_db": (
+                -120.0 if self.service.gain_percent <= 0
+                else round(20.0 * __import__("math").log10(float(self.service.gain_percent) / 100.0), 3)
+            ),
             "agc_enabled": bool(self.service.agc_enabled),
             "speech_processing_enabled": bool(self.service.tx_speech_processing_enabled),
             "sample_rate_input_hz": int(self.service.SAMPLE_RATE),
@@ -188,7 +195,9 @@ class LivePcmCapture:
             probe_blocks: list[np.ndarray] = []
             probe_samples = 0
             probe_limit = int(service.SAMPLE_RATE * 1.5)
-            signal_released = not self._one_shot_audio_test
+            # Der Audio Coach ist nur Beobachter. Auch beim geführten Test
+            # beginnt die TX-Kette exakt wie bei einem normalen PTT.
+            signal_released = True
 
             def process_mono(mono: np.ndarray) -> None:
                 input_pcm=np.clip(np.rint(np.clip(mono,-1.0,1.0)*32767.0),-32768,32767).astype(np.int16)
@@ -318,6 +327,16 @@ class LivePcmCapture:
         if self._ambe_pcm_8k:
             self._write_mono_pcm16_wav(self.debug_ambe_path, 8000, self._ambe_pcm_8k)
         timing_mark("TX_AUDIO_LAB_DATEN_GESICHERT", f"Ordner={self.audio_lab_dir}")
+        level_path = build_level_path_report(
+            self.audio_lab_dir, gain_percent=self.service.gain_percent
+        )
+        gain_factor = self.service.gain_percent / 100.0
+        import math
+        gain_db = -120.0 if gain_factor <= 1e-12 else 20.0 * math.log10(gain_factor)
+        timing_mark(
+            "TX_PEGELPFAD",
+            f"MicGain={self.service.gain_percent}%;Faktor={gain_factor:.3f};GainDb={gain_db:.2f};Bericht={level_path}",
+        )
 
     def chunks(self)->Iterator[tuple[int,...]]:
         while True:
@@ -357,7 +376,7 @@ class AudioSendService:
     MAX_GAIN_PERCENT = 100
     MAX_OUTPUT_VOLUME_PERCENT = 400
     MIN_TX_SAFETY_LIMIT_SECONDS = 5
-    MAX_TX_SAFETY_LIMIT_SECONDS = 180
+    MAX_TX_SAFETY_LIMIT_SECONDS = 300
 
     def __init__(
         self, project_root: Path, *, backend=None,
@@ -380,14 +399,21 @@ class AudioSendService:
         self._agc_enabled = bool(settings.get("agc_enabled", True))
         self._tx_speech_processing_enabled = bool(settings.get("tx_speech_processing_enabled", True))
         self._tx_audio_tuner_settings = TxAudioTunerSettings.from_dict(settings.get("tx_audio_tuner", {}))
-        self._tx_safety_limit_seconds = self._validate_tx_safety_limit(
-            settings.get("tx_safety_limit_seconds", 60)
-        )
+        stored_tx_limit = settings.get("tx_safety_limit_seconds", 300)
+        # Der historische 60-Sekunden-Wert war eine frühe Schutzstufe gegen
+        # versehentliches Dauersenden. Ab 0.2.1.43 wird genau dieser alte
+        # Standard auf fünf Minuten migriert; abweichend konfigurierte Werte
+        # bleiben erhalten.
+        if int(round(float(stored_tx_limit))) == 60:
+            stored_tx_limit = 300
+        self._tx_safety_limit_seconds = self._validate_tx_safety_limit(stored_tx_limit)
         self._audio_debug_wav_enabled = bool(settings.get("audio_debug_wav_enabled", False))
         self._audio_test_armed = False
         self._audio_test_pre_roll: _AudioTestPreRoll | None = None
         self._audio_test_session_dir: Path | None = None
         self._audio_test_waiting_for_rx = False
+        self._audio_test_rx_samples: list[int] = []
+        self._audio_test_expected_rx_samples = 0
 
     def _load_settings(self) -> dict[str, object]:
         try:
@@ -494,18 +520,22 @@ class AudioSendService:
     def audio_test_session_dir(self) -> Path | None:
         return self._audio_test_session_dir
 
-    def arm_audio_test(self, *, pre_roll_seconds: float = 2.0) -> None:
+    def arm_audio_test(self, *, pre_roll_seconds: float = 0.0) -> None:
+        """Armiert den Coach ohne das Mikrofon vorab zu öffnen.
+
+        Der Coach muss exakt denselben Live-TX-Audiopfad wie ein normaler PTT
+        beobachten. Ein separater Vorlauf-Stream kann WASAPI-/Headset-Zustände
+        verändern und wird daher bewusst nicht mehr gestartet.
+        """
         if self._audio_test_pre_roll is not None:
-            return
+            self._audio_test_pre_roll.stop()
+            self._audio_test_pre_roll = None
         self._audio_test_armed = True
-        # Der geführte Test ist ein passiver Beobachter. Er aktiviert niemals
-        # die allgemeine RX-/TX-Dauerdiagnose und greift damit nicht in die
-        # bestehende Funk-Zustandsmaschine ein.
         self._audio_test_session_dir = None
         self._audio_test_waiting_for_rx = False
-        self._audio_test_pre_roll = _AudioTestPreRoll(self, pre_roll_seconds)
-        self._audio_test_pre_roll.start()
-        timing_mark("AUDIO_TEST_BEREIT", f"Vorlauf={pre_roll_seconds:.1f}s")
+        self._audio_test_rx_samples.clear()
+        self._audio_test_expected_rx_samples = 0
+        timing_mark("AUDIO_TEST_BEREIT", "Passiv; kein separater Mikrofon-Vorlauf")
 
     def cancel_audio_test(self) -> None:
         pre_roll = self._audio_test_pre_roll
@@ -801,12 +831,85 @@ class AudioSendService:
             **kwargs,
         )
 
+    def mark_audio_test_waiting_for_rx(self, *, expected_samples: int = 0) -> None:
+        """Hält die Coach-Sitzung bis zur vollständigen Parrot-Antwort offen.
+
+        Die Soll-Länge stammt aus der gerade tatsächlich gesendeten TX-Aufnahme.
+        Damit können kurze/stale DMR-Terminatoren verworfen werden, ohne einen
+        künstlichen festen Warte-Timer zu verwenden.
+        """
+        if self._audio_test_session_dir is not None:
+            self._audio_test_waiting_for_rx = True
+            self._audio_test_rx_samples.clear()
+            self._audio_test_expected_rx_samples = max(0, int(expected_samples))
+            timing_mark(
+                "AUDIO_TEST_WARTET_AUF_PARROT",
+                f"Ordner={self._audio_test_session_dir};SollSamples={self._audio_test_expected_rx_samples}",
+            )
+
+    def observe_audio_test_pcm(
+        self, source_id: int, destination_id: int, timeslot: int,
+        stream_id: int | None, samples: tuple[int, ...], corrected_errors: int = 0,
+    ) -> None:
+        if not self._audio_test_waiting_for_rx or self._audio_test_session_dir is None:
+            return
+        if int(source_id) != 9990 or int(timeslot) != 2:
+            return
+        self._audio_test_rx_samples.extend(int(value) for value in samples)
+
+    def observe_audio_test_call_activity(self, activity) -> None:
+        """Schließt den Coach erst am Terminator der real empfangenen Parrot-Antwort ab."""
+        if not self._audio_test_waiting_for_rx or self._audio_test_session_dir is None:
+            return
+        if bool(getattr(activity, "active", True)):
+            return
+        if int(getattr(activity, "source_id", 0)) != 9990:
+            return
+        samples = tuple(self._audio_test_rx_samples)
+        if not samples:
+            return
+        # Parrot gibt dieselbe Aussendung zurück. Ein Terminator nach nur einem
+        # kurzen Fragment (z. B. 2880 Samples bei ~158000 erwarteten Samples)
+        # ist daher nicht das Ende unseres Coach-Echos. Erst ein Streamende mit
+        # mindestens 85 % der real gesendeten Sprachlänge darf den Test beenden.
+        expected = int(self._audio_test_expected_rx_samples)
+        minimum_complete = int(expected * 0.85) if expected > 0 else 0
+        if minimum_complete and len(samples) < minimum_complete:
+            timing_mark(
+                "AUDIO_TEST_PARROT_TERMINATOR_IGNORIERT",
+                f"Samples={len(samples)};Mindestens={minimum_complete};Soll={expected}",
+            )
+            return
+        session_dir = Path(self._audio_test_session_dir)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+        path = session_dir / f"rx_{stamp}_parrot_nach_ambe_8k.wav"
+        self._write_pcm16_wav(path, 8000, samples)
+        timing_mark("AUDIO_TEST_PARROT_GESPEICHERT", f"Pfad={path};Samples={len(samples)}")
+        from carendmr.diagnostics.audio_report_worker import schedule_session_report
+        schedule_session_report(session_dir, extra={
+            "echo_received": True,
+            "parrot_source_id": 9990,
+            "parrot_samples": len(samples),
+        })
+        self.finish_audio_test_session()
+
+    @staticmethod
+    def _write_pcm16_wav(path: Path, sample_rate: int, samples: tuple[int, ...]) -> None:
+        import array
+        import sys
+        pcm = array.array("h", samples)
+        if sys.byteorder != "little":
+            pcm.byteswap()
+        write_pcm16_mono(path, sample_rate, pcm.tobytes())
+
     def finish_audio_test_session(self) -> None:
         """Schließt den flüchtigen Testzustand nach TX und Parrot-RX sauber ab."""
         if self._audio_test_session_dir is not None:
             timing_mark("AUDIO_TEST_SITZUNG_ABGESCHLOSSEN", f"Ordner={self._audio_test_session_dir}")
         self._audio_test_armed = False
         self._audio_test_waiting_for_rx = False
+        self._audio_test_rx_samples.clear()
+        self._audio_test_expected_rx_samples = 0
         self._audio_test_session_dir = None
 
     def play_test(self) -> None:

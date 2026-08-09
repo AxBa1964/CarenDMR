@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from carendmr.encoder import EncoderDiagnostics, EncoderSettingsStore, verify_plugin
+from carendmr.encoder.md380_dynarmic import Md380DynarmicEncoder
 
 
 class EncoderService:
@@ -15,6 +16,32 @@ class EncoderService:
         self.settings = EncoderSettingsStore(
             self.project_root / "config" / "encoder.local.json"
         )
+
+
+    @property
+    def md380_bridge_path(self) -> Path:
+        return self.project_root / "native" / "carendmr_md380_bridge.dll"
+
+    @property
+    def md380_available(self) -> bool:
+        return self.md380_bridge_path.is_file()
+
+    def create_transmit_encoder(self):
+        """Erzeugt den bevorzugten Live-TX-Encoder.
+
+        MD380/DroidStar ist nach dem kontrollierten A/B-Hörtest der Standard.
+        Das bisherige Plugin bleibt ausschließlich als Fallback erhalten, falls
+        die native MD380-Bridge auf einer Installation noch nicht gebaut ist.
+        """
+        if self.md380_available:
+            return Md380DynarmicEncoder(self.project_root)
+        plugin_path = self.detect_plugin()
+        if plugin_path is None:
+            raise RuntimeError(
+                "Weder MD380-Dynarmic-Bridge noch ein bisheriges Vocoder-Plugin ist verfügbar."
+            )
+        from carendmr.encoder import DroidStarPluginEncoder
+        return DroidStarPluginEncoder(self.project_root, plugin_path)
 
     @property
     def configured_plugin_path(self) -> Path | None:

@@ -102,6 +102,9 @@ def listen_receive_only(
     decoded_pcm_callback: Callable[[int, int, int, int | None, tuple[int, ...], int], None] | None = None,
     audio_debug_dir: Path | Callable[[], Path | None] | None = None,
     client_factory=BrandMeisterClient,
+    existing_client: BrandMeisterClient | None = None,
+    skip_target_activation: bool = False,
+    preserve_client_on_exit: Callable[[], bool] | None = None,
     output_factory=BufferedPcmOutput,
     decoder_factory=NativeMbeReceiveVocoder,
     monotonic=time.monotonic,
@@ -122,7 +125,7 @@ def listen_receive_only(
     if heartbeat_interval <= 0:
         raise ValueError("Das Heartbeat-Intervall muss größer als null sein.")
 
-    client = client_factory(config)
+    client = existing_client or client_factory(config)
     rx_decoded_samples: list[int] = []
     rx_output_samples: list[int] = []
     session_dir: Path | None = None
@@ -186,10 +189,14 @@ def listen_receive_only(
         decoder = decoder_factory()
         diagnostic_print("[DIAG][DECODER] Nativer MBE-Decoder geöffnet", flush=True)
         diagnostic_print(f"[DIAG][NETZ] Verbinde mit {config.host}:{config.port}", flush=True)
-        timing_mark("RX_LOGIN_START")
-        client.login()
-        timing_mark("RX_LOGIN_FERTIG")
-        authenticated = client.state is LoginState.CONNECTED
+        if client.state is LoginState.CONNECTED and client.transport is not None:
+            authenticated = True
+            timing_mark("RX_SESSION_WIEDERVERWENDET", "Bestehende BrandMeister-Verbindung")
+        else:
+            timing_mark("RX_LOGIN_START")
+            client.login()
+            timing_mark("RX_LOGIN_FERTIG")
+            authenticated = client.state is LoginState.CONNECTED
         if not authenticated or client.transport is None:
             raise RuntimeError("Die Empfangsverbindung ist nicht eindeutig aktiv.")
         diagnostic_print("[DIAG][NETZ] BrandMeister-Anmeldung erfolgreich", flush=True)
@@ -198,16 +205,19 @@ def listen_receive_only(
             flush=True,
         )
 
-        timing_mark("RX_ZIELAKTIVIERUNG_START")
-        activate_dynamic_talkgroup(
-            client.transport,
-            dmr_id=config.dmr_id,
-            talkgroup=target_talkgroup,
-            timeslot=target_timeslot,
-            call_type=target_call_type,
-        )
-        diagnostic_print("[DIAG][ZIEL] Aktivierungsruf vollständig gesendet", flush=True)
-        timing_mark("RX_ZIELAKTIVIERUNG_FERTIG")
+        if skip_target_activation:
+            timing_mark("RX_ZIELAKTIVIERUNG_UEBERSPRUNGEN", "Funkziel der bestehenden Session unverändert")
+        else:
+            timing_mark("RX_ZIELAKTIVIERUNG_START")
+            activate_dynamic_talkgroup(
+                client.transport,
+                dmr_id=config.dmr_id,
+                talkgroup=target_talkgroup,
+                timeslot=target_timeslot,
+                call_type=target_call_type,
+            )
+            diagnostic_print("[DIAG][ZIEL] Aktivierungsruf vollständig gesendet", flush=True)
+            timing_mark("RX_ZIELAKTIVIERUNG_FERTIG")
         # Nach erfolgreichem Login und Zielaktivierung ist RX technisch bereit.
         # Der bisherige Fortschritts-Callback kam erst deutlich später und ließ
         # die Oberfläche unnötig lange auf „Verbindung wird aufgebaut“ stehen.
@@ -297,11 +307,20 @@ def listen_receive_only(
                     f"Stream={packet.stream_id:08X}",
                     flush=True,
                 )
-                if packet.destination_id != target_talkgroup:
+                # Gruppenruf: Ziel muss die eingestellte Talkgroup sein.
+                # Privatruf: Die Gegenstation antwortet an unsere eigene DMR-ID.
+                # Beispiel Parrot: TX 2632198 -> 9990, RX 9990 -> 2632198.
+                if target_call_type == "private":
+                    target_matches = packet.destination_id == config.dmr_id
+                    target_description = f"eigene DMR-ID {config.dmr_id}"
+                else:
+                    target_matches = packet.destination_id == target_talkgroup
+                    target_description = f"TG {target_talkgroup}"
+                if not target_matches:
                     rejected_tg += 1
                     diagnostic_print(
-                        f"[DIAG][FILTER] VERWORFEN: TG {packet.destination_id} "
-                        f"statt TG {target_talkgroup}",
+                        f"[DIAG][FILTER] VERWORFEN: Ziel {packet.destination_id} "
+                        f"statt {target_description}",
                         flush=True,
                     )
                     continue
@@ -318,7 +337,7 @@ def listen_receive_only(
                     rejected_call_type += 1
                     diagnostic_print(f"[DIAG][FILTER] VERWORFEN: Rufart {packet.call_type.name} statt {expected_call_type}", flush=True)
                     continue
-                diagnostic_print("[DIAG][FILTER] AKZEPTIERT: TG, Timeslot und Rufart passen", flush=True)
+                diagnostic_print("[DIAG][FILTER] AKZEPTIERT: Ziel, Timeslot und Rufart passen", flush=True)
                 if not first_target_dmrd_marked:
                     timing_mark(
                         "RX_ERSTER_PASSENDER_DMRD_FRAME",
@@ -484,14 +503,14 @@ def listen_receive_only(
             schedule_session_report(session_dir, extra={"talkgroup": target_talkgroup, "timeslot": target_timeslot, "call_type": target_call_type})
             timing_mark("RX_AUDIO_LAB", f"Ordner={session_dir}")
         timing_mark("RX_CLOSE_START")
-        client.close()
+        preserve_client = bool(preserve_client_on_exit and preserve_client_on_exit())
+        if not preserve_client:
+            client.close()
+        else:
+            timing_mark("RX_SESSION_OFFEN_GEHALTEN", "TX übernimmt denselben BrandMeister-Socket")
         output.close()
         timing_mark("RX_CLOSE_FERTIG")
-        closed = (
-            client.transport is None
-            and client.state is LoginState.DISCONNECTED
-            and not output.is_open
-        )
+        closed = not output.is_open
 
     return LiveListenResult(
         authenticated=authenticated,

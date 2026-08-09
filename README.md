@@ -1,6 +1,6 @@
 # CarenDMR
 
-## Version 0.2.1.9
+## Version 0.2.1.38
 
 Neu: Die eigene Modulation kann über einen geführten Parrot-Test gegen die aktive DMR-Audio-Referenz verglichen werden. Der Vergleich verwendet den lokalen AMBE-Codec-Loopback und zeigt konkrete, noch nicht automatisch angewendete Tuner-Empfehlungen.
 
@@ -51,3 +51,27 @@ Auf der Betriebsseite lässt sich der Tuner ausklappen. Neutral ist die Referenz
 Der Reiter **Audio-Benchmark** sammelt passiv Referenzdaten aus normalen DMR-Empfangsdurchgängen. Durchgänge ab fünf Sekunden werden getrennt nach Rufzeichen und Stream ausgewertet. Analyse und Speicherung laufen außerhalb des RX-Echtzeitpfads. Messreihen können pausiert, später fortgesetzt und nach einem Programmneustart wieder aufgenommen werden. Vollständige Sprachaufnahmen werden nicht dauerhaft gespeichert; gespeichert werden ausschließlich Kennzahlen und Metadaten.
 
 Aktuelle Version: **0.1.9.2**
+
+
+### Eigenständiger TG-Monitor
+
+Der optionale TG-Monitor wird parallel zu CarenDMR gestartet:
+
+```powershell
+python tg_monitor.py
+```
+
+Er beobachtet frei wählbare BrandMeister-Talkgroups über den Last-Heard-Feed, ohne den laufenden DMR-/AMBE-/Audiobetrieb zu beeinflussen. Eine markierte TG kann über eine ausschließlich lokale Qt-IPC an eine laufende CarenDMR-Instanz übergeben werden.
+
+
+### QRZ.com Stationsinformation
+
+Optional kann CarenDMR Daten aus dem QRZ.com XML Callbook Data Service anzeigen. Dazu:
+
+```powershell
+Copy-Item config\qrz.example.json config\qrz.local.json
+```
+
+Anschließend `config/qrz.local.json` mit eigenem QRZ-Benutzernamen, Passwort und Rufzeichen ausfüllen. Diese lokale Datei wird durch `.gitignore` und den Release-Builder ausgeschlossen.
+
+Bei einer aktuell empfangenen Station erscheint **QRZ.com** nur dann, wenn der XML-Dienst einen Datensatz für das Rufzeichen liefert. Das separate Fenster zeigt Profilbild und Stationsdaten sowie eine lokale Kartenansicht mit eigener Station und Gegenstation. Für vollständige Callbook-Daten kann ein passendes QRZ.com-Abo erforderlich sein.

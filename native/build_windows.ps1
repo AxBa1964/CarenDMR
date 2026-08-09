@@ -5,7 +5,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $NativeDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Output = Join-Path $NativeDir 'carendmr_mbe.dll'
+$DecoderOutput = Join-Path $NativeDir 'carendmr_mbe.dll'
+$BridgeOutput = Join-Path $NativeDir 'carendmr_vocoder_bridge.dll'
 
 $gccFromPath = Get-Command gcc.exe -ErrorAction SilentlyContinue
 $gccCandidates = @(
@@ -28,6 +29,7 @@ Danach dieses Skript erneut starten.
 $compilerDir = Split-Path -Parent $gcc
 $env:Path = "$compilerDir;C:\msys64\usr\bin;$env:Path"
 $objdump = Join-Path $compilerDir 'objdump.exe'
+$gpp = Join-Path $compilerDir 'g++.exe'
 
 if (-not $CheckOnly) {
     $sources = @(
@@ -42,38 +44,67 @@ if (-not $CheckOnly) {
         '-shared', '-D_GNU_SOURCE', '-D_DEFAULT_SOURCE', '-static-libgcc',
         ('-I' + $NativeDir),
         ('-I' + (Join-Path $NativeDir 'mbelib'))
-    ) + $sources + @('-lm', '-o', $Output)
+    ) + $sources + @('-lm', '-o', $DecoderOutput)
 
     Write-Host "Baue nativen Empfangsdecoder mit $gcc"
     & $gcc @arguments
     if ($LASTEXITCODE -ne 0) {
         throw 'Der native Windows-Decoder konnte nicht gebaut werden.'
     }
+
+    if (-not (Test-Path -LiteralPath $gpp)) {
+        throw "g++.exe wurde neben gcc.exe nicht gefunden: $gpp"
+    }
+    $bridgeSource = Join-Path $NativeDir 'vocoder_plugin_bridge.cpp'
+    $bridgeArgs = @(
+        '-shared', '-O2', '-std=c++17', '-static', '-static-libgcc', '-static-libstdc++',
+        $bridgeSource, '-o', $BridgeOutput
+    )
+    Write-Host "Baue DroidStar-Vocoder-Bridge mit $gpp"
+    & $gpp @bridgeArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Die Windows-Vocoder-Bridge konnte nicht gebaut werden.'
+    }
 }
 
-if (-not (Test-Path -LiteralPath $Output)) {
-    throw "Die erwartete DLL fehlt: $Output"
+if (-not (Test-Path -LiteralPath $DecoderOutput)) {
+    throw "Die erwartete Decoder-DLL fehlt: $DecoderOutput"
+}
+if (-not (Test-Path -LiteralPath $BridgeOutput)) {
+    throw "Die erwartete Vocoder-Bridge fehlt: $BridgeOutput"
 }
 if (-not (Test-Path -LiteralPath $objdump)) {
     throw "objdump.exe wurde neben dem Compiler nicht gefunden: $objdump"
 }
 
-$exports = & $objdump -p $Output | Select-String 'carendmr_mbe_' | ForEach-Object {
+$decoderExports = & $objdump -p $DecoderOutput | Select-String 'carendmr_mbe_' | ForEach-Object {
     if ($_.Line -match '(carendmr_mbe_[A-Za-z0-9_]+)') { $Matches[1] }
 } | Sort-Object -Unique
+$expectedDecoder = @('carendmr_mbe_decode','carendmr_mbe_decoder_create','carendmr_mbe_decoder_destroy')
+if (@($decoderExports).Count -ne 3 -or (Compare-Object $expectedDecoder $decoderExports)) {
+    throw "Unerwartete Decoder-DLL-Exporte: $($decoderExports -join ', ')"
+}
 
-$expected = @(
-    'carendmr_mbe_decode'
-    'carendmr_mbe_decoder_create'
-    'carendmr_mbe_decoder_destroy'
+$bridgeExports = & $objdump -p $BridgeOutput | Select-String 'carendmr_vocoder_' | ForEach-Object {
+    if ($_.Line -match '(carendmr_vocoder_[A-Za-z0-9_]+)') { $Matches[1] }
+} | Sort-Object -Unique
+$expectedBridge = @(
+    'carendmr_vocoder_close',
+    'carendmr_vocoder_decode_2450x1150',
+    'carendmr_vocoder_encode_2450x1150',
+    'carendmr_vocoder_last_error',
+    'carendmr_vocoder_open'
 )
-
-if (@($exports).Count -ne 3 -or (Compare-Object $expected $exports)) {
-    throw "Unerwartete DLL-Exporte: $($exports -join ', ')"
-}
-if ($exports | Where-Object { $_ -match 'encode' }) {
-    throw 'Die reine Empfangsbibliothek darf keine Encoderfunktion exportieren.'
+$missing = Compare-Object $expectedBridge $bridgeExports | Where-Object SideIndicator -eq '<='
+if ($missing) {
+    throw "Vocoder-Bridge enthält nicht alle erwarteten Exporte: $($bridgeExports -join ', ')"
 }
 
-Write-Host 'Windows-Decoder erfolgreich gebaut und geprüft.'
-Write-Host "DLL: $Output"
+$dependencies = & $objdump -p $BridgeOutput | Select-String 'DLL Name'
+if ($dependencies -match 'libwinpthread-1.dll|libgcc_s|libstdc\+\+') {
+    throw "Die Bridge besitzt noch unerwünschte MSYS2-Laufzeitabhängigkeiten: $dependencies"
+}
+
+Write-Host 'Windows-Decoder und Vocoder-Bridge erfolgreich gebaut und geprüft.'
+Write-Host "Decoder: $DecoderOutput"
+Write-Host "Bridge : $BridgeOutput"

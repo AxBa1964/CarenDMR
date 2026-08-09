@@ -5,8 +5,12 @@ keine eigene TTS- oder Screenreader-Sonderlogik.
 """
 from __future__ import annotations
 
+import base64
+import json
 import queue
+import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from threading import Event, Thread
 
@@ -16,7 +20,8 @@ from PySide6.QtWidgets import (
     QApplication, QAbstractButton, QFormLayout, QGroupBox, QHBoxLayout,
     QLabel, QLineEdit, QMainWindow, QMessageBox, QPushButton, QComboBox,
     QStatusBar, QTabWidget, QVBoxLayout, QWidget, QSlider, QCheckBox, QGridLayout,
-    QFrame, QSizePolicy,
+    QFrame, QSizePolicy, QDialog, QTableWidget, QTableWidgetItem, QHeaderView,
+    QAbstractItemView,
 )
 
 from carendmr.application import (
@@ -40,6 +45,11 @@ from carendmr.ui_qt.favorites_widget import FavoritesWidget
 from carendmr.ui_qt.audio_tool_windows import AudioBenchmarkWindow, AudioCoachWindow
 from carendmr.benchmark import AudioBenchmarkService
 from carendmr.audio import AudioDirection, TxAudioTunerSettings, TUNER_PRESETS
+from carendmr.ipc.channel_control import CarenDMRChannelServer
+from carendmr.qrz import QrzLookupService, QrzNotFound, QrzServiceError
+from carendmr.ui_qt.qrz_window import QrzStationWindow
+from carendmr.ui_qt.window_geometry import WindowGeometryManager
+from carendmr.tg_monitor.instance_control import is_tg_monitor_running, send_tg_monitor_command
 
 
 class MainWindow(QMainWindow):
@@ -49,7 +59,7 @@ class MainWindow(QMainWindow):
         timing_log = initialize_tx_rx_timing(self.project_root)
         timing_mark("PROGRAMMSTART_QT", f"Version {__version__}; Log={timing_log}")
         self.setWindowTitle(f"CarenDMR {__version__} – Funkgerät auf dem Desktop")
-        self.resize(920, 650)
+        self.resize(980, 720)
 
         self.events = EventService()
         self.preferences_store = OperatingPreferencesStore(self.project_root / "config" / "operating.local.json")
@@ -64,6 +74,16 @@ class MainWindow(QMainWindow):
             unmute_receive=self.receive_service.unmute_audio_output,
         )
         self.receive_service.set_output_factory(self.audio_send_service.create_pcm_output)
+        # Gespeicherte Audioeinstellungen müssen nicht nur im UI stehen, sondern
+        # beim Start auch tatsächlich im RX-Dienst gelten.
+        self.receive_service.set_output_volume_percent(self.audio_send_service.output_volume_percent)
+        self.receive_service.set_user_muted(self.audio_send_service.user_muted)
+        # 0.2.1.45 Diagnose: RX-AGC startet bewusst AUS, um den beobachteten
+        # leisen/hochregelnden Gesprächsanfang eindeutig gegenprüfen zu können.
+        # Der Benutzer kann AGC während der Sitzung weiterhin manuell einschalten.
+        self.audio_send_service.set_agc_enabled(False)
+        self.receive_service.set_agc_enabled(False)
+        timing_mark("RX_AGC_DIAGNOSE", "Beim Programmstart ausgeschaltet")
         self.receive_service.set_audio_debug_enabled(self.audio_send_service.audio_debug_wav_enabled)
         self.receive_service.set_audio_debug_dir_provider(lambda: self.audio_send_service.audio_test_session_dir)
         self.parrot_service = ParrotTestService(
@@ -87,6 +107,14 @@ class MainWindow(QMainWindow):
         self._settings_dialog: SettingsDialog | None = None
         self._audio_benchmark_window: AudioBenchmarkWindow | None = None
         self._audio_coach_window: AudioCoachWindow | None = None
+        self._audio_tuner_dialog: QDialog | None = None
+        self._qrz_window: QrzStationWindow | None = None
+        self._qrz_profile = None
+        self._qrz_own_profile = None
+        self._qrz_lookup_callsign = ""
+        self._qrz_lookup_pending = False
+        self.qrz_service = QrzLookupService(self.project_root / "config" / "qrz.local.json")
+        self._recent_station_signature: tuple[int, ...] = ()
         self.hotkey_manager = HotkeyManager(self.project_root / "config" / "hotkeys.local.json")
         self.favorite_service = FavoriteService(self.project_root / "config" / "favorites.local.json")
         self.talkgroup_search_service = TalkgroupSearchService(self.project_root / "config" / "talkgroups.json")
@@ -110,15 +138,20 @@ class MainWindow(QMainWindow):
         self._startup_announcement_timer.setSingleShot(True)
         self._startup_announcement_timer.timeout.connect(self.announce_operation_context)
         self._connected_announcement_pending = False
+        self._pending_hot_favorite = None
+        self._pending_external_channel = None
         self._tx_elapsed_timer = QTimer(self)
         self._tx_elapsed_timer.setInterval(1000)
         self._tx_elapsed_timer.timeout.connect(self._increment_tx_elapsed)
+        self.window_geometry = WindowGeometryManager(self.project_root, self)
 
         self._build_ui()
+        self._restore_window_geometry()
         self._restore_saved_dmr_channel()
         QApplication.instance().installEventFilter(self)
         self._bind_shortcuts()
         self.receive_service.state_store.subscribe(lambda state: self._updates.put(("state", state)))
+        self.receive_service.history.subscribe_added(lambda entry: self._updates.put(("history_added", entry)))
         self.receive_service.set_output_level_callback(lambda level: self._updates.put(("rx_level", level)))
         self.events.subscribe(lambda event: self._updates.put(("event", event)))
 
@@ -127,6 +160,9 @@ class MainWindow(QMainWindow):
         self._timer.start(100)
         QTimer.singleShot(0, self._verify_encoder)
         self._apply_state(self.receive_service.state_store.get())
+        self._channel_control_server = CarenDMRChannelServer(self._handle_external_channel_request)
+        if not self._channel_control_server.start():
+            self.statusBar().showMessage("Lokale TG-Monitor-Übergabe konnte nicht gestartet werden.", 5000)
 
     def _build_ui(self) -> None:
         """Baut das Layout V1, ohne die vorhandene Bedienlogik zu verändern."""
@@ -135,56 +171,39 @@ class MainWindow(QMainWindow):
         operation_page = QWidget(self.tabs)
         operation_page.setObjectName("operationPage")
         root = QVBoxLayout(operation_page)
-        root.setContentsMargins(18, 14, 18, 14)
-        root.setSpacing(12)
+        root.setContentsMargins(12, 8, 12, 8)
+        root.setSpacing(8)
 
-        # Kopfzeile: keine neue Funktion, nur eine klare visuelle Hierarchie.
-        header = QFrame(operation_page)
-        header.setObjectName("headerCard")
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(18, 12, 18, 12)
-        title = QLabel("CarenDMR")
-        title.setObjectName("appTitle")
-        subtitle = QLabel("Funkgerät auf dem Desktop")
-        subtitle.setObjectName("appSubtitle")
-        title_column = QVBoxLayout()
-        title_column.setSpacing(0)
-        title_column.addWidget(title)
-        title_column.addWidget(subtitle)
-        header_layout.addLayout(title_column)
-        header_layout.addStretch(1)
-        self.connection_indicator = StatusIndicator(header)
-        # Kompatibilitätsalias: bestehende Accessibility- und Testlogik kann das
-        # zentrale Statusobjekt weiterhin unter dem bisherigen Namen verwenden.
+        # Kompakter Verbindungsstatus. App-Name/Untertitel stehen bereits in
+        # der Fenstertitelleiste und verbrauchen im Funkbetrieb keine Extra-Höhe.
+        status_row = QHBoxLayout()
+        status_row.addStretch(1)
+        self.connection_indicator = StatusIndicator(operation_page)
         self.connection_label = self.connection_indicator
         self.server_label = QLabel("Message Server: nicht verbunden")
         self.server_label.setObjectName("secondaryText")
-        self.server_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        status_column = QVBoxLayout()
-        status_column.setSpacing(3)
-        status_column.addWidget(self.connection_indicator)
-        status_column.addWidget(self.server_label)
-        header_layout.addLayout(status_column)
-        root.addWidget(header)
+        status_row.addWidget(self.connection_indicator)
+        status_row.addWidget(self.server_label)
+        root.addLayout(status_row)
 
         content = QGridLayout()
         content.setHorizontalSpacing(12)
-        content.setVerticalSpacing(12)
+        content.setVerticalSpacing(8)
         content.setColumnStretch(0, 3)
         content.setColumnStretch(1, 2)
-        root.addLayout(content, 1)
+        root.addLayout(content)
 
         # DMR-Kanal und Verbindung.
         target_card = QFrame(operation_page)
         target_card.setObjectName("card")
         target_layout = QGridLayout(target_card)
-        target_layout.setContentsMargins(18, 14, 18, 14)
+        target_layout.setContentsMargins(14, 9, 14, 9)
         target_layout.setHorizontalSpacing(12)
-        target_layout.setVerticalSpacing(8)
+        target_layout.setVerticalSpacing(5)
         target_heading = QLabel("DMR-KANAL")
         target_heading.setObjectName("sectionTitle")
         target_layout.addWidget(target_heading, 0, 0, 1, 6)
-        current_caption = QLabel("Aktuelle TG")
+        current_caption = QLabel("AKTUELLER KANAL")
         current_caption.setObjectName("fieldCaption")
         self.current_tg_label = QLabel(str(self.preferences.talkgroup))
         self.current_tg_label.setObjectName("currentTalkgroup")
@@ -192,20 +211,47 @@ class MainWindow(QMainWindow):
         self.current_tg_name_label.setObjectName("secondaryText")
         self.current_tg_name_label.setAccessibleName("Name der aktuellen Talkgroup")
         self.current_tg_name_label.setAccessibleDescription("Name des aktuell gewählten DMR-Kanals")
+        self.current_channel_meta_label = QLabel("")
+        self.current_channel_meta_label.setObjectName("channelMeta")
         current_column = QVBoxLayout()
-        current_column.setSpacing(1)
+        current_column.setSpacing(0)
         current_column.addWidget(current_caption)
         current_column.addWidget(self.current_tg_label)
         current_column.addWidget(self.current_tg_name_label)
-        target_layout.addLayout(current_column, 1, 0, 4, 1)
+        current_column.addWidget(self.current_channel_meta_label)
+        target_layout.addLayout(current_column, 1, 0, 3, 1)
 
-        target_layout.addWidget(QLabel("Talkgroup"), 2, 1, 1, 2)
+        # Schnellwahl: drei feste Favoriten plus Zugriff auf die komplette Favoritenliste.
+        self.favorite_hot_buttons = []
+        hot_row = QHBoxLayout()
+        hot_row.setSpacing(6)
+        for index in range(3):
+            button = QPushButton("–")
+            button.setObjectName("favoriteHotButton")
+            button.setMinimumHeight(34)
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            button.clicked.connect(lambda _checked=False, slot=index: self._activate_hot_favorite(slot))
+            hot_row.addWidget(button, 1)
+            self.favorite_hot_buttons.append(button)
+
+        self.favorite_combo = QComboBox(target_card)
+        self.favorite_combo.setObjectName("favoriteCombo")
+        self.favorite_combo.setAccessibleName("Alle Favoriten")
+        self.favorite_combo.setToolTip("Einen gespeicherten Favoriten auswählen und vollständig übernehmen")
+        self.favorite_combo.setMinimumHeight(34)
+        self.favorite_combo.setMinimumWidth(170)
+        self.favorite_combo.currentIndexChanged.connect(self._favorite_combo_selected)
+        hot_row.addWidget(self.favorite_combo, 1)
+        target_layout.addLayout(hot_row, 1, 1, 1, 5)
+
+        # Manuelle Kanalwahl als geschlossene Bedienzeile.
         self.favorite_button = QPushButton("☆")
         self.favorite_button.setObjectName("favoriteButton")
         self.favorite_button.setAccessibleName("Aktuellen DMR-Kanal als Favorit speichern")
         self.favorite_button.setToolTip("Aktuellen DMR-Kanal als Favorit speichern oder bearbeiten")
-        self.favorite_button.setFixedSize(32, 28)
+        self.favorite_button.setFixedSize(34, 32)
         self.favorite_button.clicked.connect(self._edit_current_favorite)
+
         self.tg_edit = TalkgroupSearchWidget(self.talkgroup_search_service, target_card)
         self.tg_edit.setObjectName("talkgroupInput")
         self.tg_edit.setPlaceholderText("Talkgroup nach Nummer oder Name suchen")
@@ -213,77 +259,95 @@ class MainWindow(QMainWindow):
         self.tg_edit.setAccessibleName("Talkgroup")
         self.tg_edit.setAccessibleDescription("Nach Nummer oder Name suchen")
         self.tg_edit.channel_selected.connect(self._apply_selected_channel)
-        talkgroup_row = QHBoxLayout()
-        talkgroup_row.setSpacing(6)
-        talkgroup_row.addWidget(self.favorite_button)
-        talkgroup_row.addWidget(self.tg_edit, 1)
-        target_layout.addLayout(talkgroup_row, 3, 1, 1, 2)
 
         self.ts1_radio = QPushButton("TS1")
         self.ts2_radio = QPushButton("TS2")
         self.ts1_radio.setObjectName("segmentButton")
         self.ts2_radio.setObjectName("segmentButton")
         for button in (self.ts1_radio, self.ts2_radio):
-            button.setFixedSize(48, 28)
+            button.setFixedSize(48, 32)
             button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.ts1_radio.clicked.connect(lambda: self._select_timeslot(1))
         self.ts2_radio.clicked.connect(lambda: self._select_timeslot(2))
-        ts_column = QVBoxLayout()
-        ts_column.setSpacing(3)
-        self.timeslot_caption = QLabel("Timeslot")
-        ts_column.addWidget(self.timeslot_caption)
-        ts_row = QHBoxLayout()
-        ts_row.setSpacing(10)
-        ts_row.addWidget(self.ts1_radio)
-        ts_row.addWidget(self.ts2_radio)
-        ts_column.addLayout(ts_row)
-        target_layout.addLayout(ts_column, 2, 3, 2, 1)
 
         self.group_radio = QPushButton("Gruppe")
         self.private_radio = QPushButton("Privat")
         self.group_radio.setObjectName("segmentButton")
         self.private_radio.setObjectName("segmentButton")
         for button in (self.group_radio, self.private_radio):
-            button.setFixedSize(68, 28)
+            button.setFixedHeight(32)
+            button.setMinimumWidth(66)
             button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.group_radio.clicked.connect(lambda: self._select_call_type("group"))
         self.private_radio.clicked.connect(lambda: self._select_call_type("private"))
-        call_column = QVBoxLayout()
-        call_column.setSpacing(3)
-        self.calltype_caption = QLabel("Rufart")
-        call_column.addWidget(self.calltype_caption)
-        call_row = QHBoxLayout()
-        call_row.setSpacing(10)
-        call_row.addWidget(self.group_radio)
-        call_row.addWidget(self.private_radio)
-        call_column.addLayout(call_row)
-        target_layout.addLayout(call_column, 2, 4, 2, 1)
+
+        manual_row = QHBoxLayout()
+        manual_row.setSpacing(6)
+        manual_row.addWidget(self.favorite_button)
+        manual_row.addWidget(self.tg_edit, 1)
+        manual_row.addWidget(self.ts1_radio)
+        manual_row.addWidget(self.ts2_radio)
+        manual_row.addWidget(self.group_radio)
+        manual_row.addWidget(self.private_radio)
+        target_layout.addLayout(manual_row, 2, 1, 1, 4)
+
+        hint_row = QHBoxLayout()
+        hint_row.setSpacing(12)
+        self.timeslot_caption = QLabel("Timeslot  [Ctrl+T]")
+        self.timeslot_caption.setObjectName("compactHint")
+        self.calltype_caption = QLabel("Rufart  [Ctrl+R]")
+        self.calltype_caption.setObjectName("compactHint")
+        hint_row.addStretch(1)
+        hint_row.addWidget(self.timeslot_caption)
+        hint_row.addWidget(self.calltype_caption)
+        target_layout.addLayout(hint_row, 3, 1, 1, 4)
 
         self.connect_button = QPushButton("Verbinden")
         self.connect_button.setObjectName("connectButton")
-        self.connect_button.setFixedSize(METRICS.connection_control_width, METRICS.action_control_height)
+        self.connect_button.setFixedSize(METRICS.connection_control_width, 66)
         self.connect_button.clicked.connect(self._toggle_connection)
         target_layout.addWidget(self.connect_button, 2, 5, 2, 1)
         self._sync_radio_controls()
         self._update_radio_hotkey_hints()
         content.addWidget(target_card, 0, 0, 1, 2)
 
-        # Aktuelle Station: wichtigste Empfangsinformationen prominent, Details kompakt.
+        # Aktuelle Station: klare Wertefelder + echte Tabelle für die letzten Stationen.
         station_card = QFrame(operation_page)
         station_card.setObjectName("card")
         station_layout = QGridLayout(station_card)
-        station_layout.setContentsMargins(18, 14, 18, 14)
-        station_layout.setHorizontalSpacing(14)
-        station_layout.setVerticalSpacing(5)
+        station_layout.setContentsMargins(14, 10, 14, 10)
+        station_layout.setHorizontalSpacing(12)
+        station_layout.setVerticalSpacing(7)
+
         station_heading = QLabel("AKTUELLE STATION")
         station_heading.setObjectName("sectionTitle")
-        station_layout.addWidget(station_heading, 0, 0, 1, 4)
+        station_layout.addWidget(station_heading, 0, 0, 1, 2)
+
+        # Der Button selbst behält seinen Platz auch unsichtbar. So gibt es
+        # weder Layout-Sprung noch einen sichtbaren Platzhalter-Hintergrund.
+        self.qrz_button = QPushButton("QRZ.com", station_card)
+        self.qrz_button.setObjectName("qrzCompactButton")
+        self.qrz_button.setAccessibleName("QRZ.com Stationsinformationen")
+        self.qrz_button.setToolTip("Zusätzliche Stationsinformationen von QRZ.com anzeigen")
+        self.qrz_button.setFixedSize(108, 30)
+        qrz_size_policy = self.qrz_button.sizePolicy()
+        qrz_size_policy.setRetainSizeWhenHidden(True)
+        self.qrz_button.setSizePolicy(qrz_size_policy)
+        self.qrz_button.clicked.connect(self._open_qrz_station)
+        self.qrz_button.setVisible(False)
+        station_layout.addWidget(
+            self.qrz_button, 0, 2, 1, 1,
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+        )
+        station_layout.setColumnStretch(3, 1)
+
         self.callsign_label = QLabel("Nicht bekannt")
         self.callsign_label.setObjectName("callsignDisplay")
         self.name_label = QLabel("Nicht bekannt")
         self.name_label.setObjectName("stationName")
-        station_layout.addWidget(self.callsign_label, 1, 0, 1, 4)
-        station_layout.addWidget(self.name_label, 2, 0, 1, 4)
+        station_layout.addWidget(self.callsign_label, 1, 0, 1, 2)
+        station_layout.addWidget(self.name_label, 1, 2, 1, 2)
+
         self.location_label = QLabel("Nicht bekannt")
         self.country_label = QLabel("Nicht bekannt")
         self.dmr_id_label = QLabel("Kein aktiver Sprecher")
@@ -291,26 +355,66 @@ class MainWindow(QMainWindow):
         self.duration_label = QLabel("0 Sekunden")
         self.qso_status_label = QLabel("Keine Station aktiv")
         self.qso_status_label.setObjectName("qsoStatus")
+
         detail_labels = (
-            ("Ort/Region", self.location_label), ("Land", self.country_label),
-            ("DMR-ID", self.dmr_id_label), ("Ziel", self.target_label),
-            ("Sprechdauer", self.duration_label), ("QSO-Status", self.qso_status_label),
+            ("Ort / Region", self.location_label),
+            ("Land", self.country_label),
+            ("DMR-ID", self.dmr_id_label),
+            ("Sprechdauer", self.duration_label),
+            ("QSO-Status", self.qso_status_label),
         )
-        for index, (caption, value) in enumerate(detail_labels):
-            row = 3 + index // 2
-            column = (index % 2) * 2
+        detail_positions = (
+            ("Ort / Region", self.location_label, 2, 0),
+            ("Land", self.country_label, 2, 2),
+            ("DMR-ID", self.dmr_id_label, 3, 0),
+            ("Sprechdauer", self.duration_label, 3, 2),
+            ("QSO-Status", self.qso_status_label, 4, 0),
+        )
+        for caption, value, row, column in detail_positions:
             cap = QLabel(caption)
             cap.setObjectName("fieldCaption")
+            value.setObjectName("fieldValue" if value is not self.qso_status_label else "qsoStatusValue")
+            value.setMinimumHeight(30)
+            value.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             station_layout.addWidget(cap, row, column)
-            station_layout.addWidget(value, row, column + 1)
-        content.addWidget(station_card, 1, 0)
+            if value is self.qso_status_label:
+                station_layout.addWidget(value, row, column + 1, 1, 3)
+            else:
+                station_layout.addWidget(value, row, column + 1)
 
+        recent_heading = QLabel("ZULETZT GEHÖRT")
+        recent_heading.setObjectName("sectionTitle")
+        station_layout.addWidget(recent_heading, 5, 0, 1, 4)
+
+        self.recent_station_table = QTableWidget(0, 4, station_card)
+        self.recent_station_table.setObjectName("recentStations")
+        self.recent_station_table.setHorizontalHeaderLabels(
+            ["Zeit", "Rufzeichen", "Name", "Land"]
+        )
+        self.recent_station_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.recent_station_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.recent_station_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.recent_station_table.setAlternatingRowColors(True)
+        self.recent_station_table.verticalHeader().setVisible(False)
+        self.recent_station_table.setShowGrid(True)
+        self.recent_station_table.setMinimumHeight(130)
+        self.recent_station_table.setMaximumHeight(130)
+        recent_header = self.recent_station_table.horizontalHeader()
+        recent_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        recent_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        recent_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        recent_header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        station_layout.addWidget(self.recent_station_table, 6, 0, 1, 4)
+
+        self._refresh_recent_stations(force=True)
+        station_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        content.addWidget(station_card, 1, 0)
         # Rechte Bedienkarte: tägliche Audiofunktionen und PTT, ohne neue Controls.
         control_card = QFrame(operation_page)
         control_card.setObjectName("card")
         control_layout = QVBoxLayout(control_card)
-        control_layout.setContentsMargins(18, 14, 18, 14)
-        control_layout.setSpacing(9)
+        control_layout.setContentsMargins(2, 10, 2, 10)
+        control_layout.setSpacing(6)
         control_heading = QLabel("FUNK- UND AUDIOBEDIENUNG")
         control_heading.setObjectName("sectionTitle")
         control_layout.addWidget(control_heading)
@@ -322,11 +426,15 @@ class MainWindow(QMainWindow):
         self.operation_gain_value = QLabel("100 %")
         self.operation_gain_value.setObjectName("valueLabel")
         gain_row = QGridLayout()
-        gain_row.addWidget(QLabel("Mic-Gain"), 0, 0)
+        gain_caption = QLabel("Mic-Gain")
+        gain_caption.setObjectName("fieldCaption")
+        gain_row.addWidget(gain_caption, 0, 0)
         gain_row.addWidget(self.operation_gain_value, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
         gain_row.addWidget(self.operation_gain_slider, 1, 0, 1, 2)
         self.mic_level_meter = LevelMeter(control_card)
-        gain_row.addWidget(QLabel("MIC-PEGEL"), 2, 0, 1, 2)
+        mic_level_caption = QLabel("MIC-PEGEL")
+        mic_level_caption.setObjectName("fieldCaption")
+        gain_row.addWidget(mic_level_caption, 2, 0, 1, 2)
         gain_row.addWidget(self.mic_level_meter, 3, 0, 1, 2)
         control_layout.addLayout(gain_row)
 
@@ -337,11 +445,15 @@ class MainWindow(QMainWindow):
         self.operation_volume_value = QLabel("100 %")
         self.operation_volume_value.setObjectName("valueLabel")
         volume_row = QGridLayout()
-        volume_row.addWidget(QLabel("RX-Lautstärke"), 0, 0)
+        volume_caption = QLabel("RX-Lautstärke")
+        volume_caption.setObjectName("fieldCaption")
+        volume_row.addWidget(volume_caption, 0, 0)
         volume_row.addWidget(self.operation_volume_value, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
         volume_row.addWidget(self.operation_volume_slider, 1, 0, 1, 2)
         self.rx_level_meter = LevelMeter(control_card)
-        volume_row.addWidget(QLabel("RX-PEGEL"), 2, 0, 1, 2)
+        rx_level_caption = QLabel("RX-PEGEL")
+        rx_level_caption.setObjectName("fieldCaption")
+        volume_row.addWidget(rx_level_caption, 2, 0, 1, 2)
         volume_row.addWidget(self.rx_level_meter, 3, 0, 1, 2)
         control_layout.addLayout(volume_row)
 
@@ -353,84 +465,32 @@ class MainWindow(QMainWindow):
         checks.addStretch(1)
         control_layout.addLayout(checks)
 
-        # Live-DMR-Audio-Tuner: im Normalbetrieb eingeklappt, im Parrot-Test
-        # direkt bedienbar. Alle Regler wirken auf den nächsten TX-Start; ein
-        # laufender TX wird bewusst nicht mitten im Sprachframe umkonfiguriert.
-        self.audio_tuner_toggle = QPushButton("DMR Audio-Tuner  ▶")
-        self.audio_tuner_toggle.setAccessibleName("DMR Audio-Tuner ein- oder ausklappen")
-        self.audio_tuner_panel = QWidget(control_card)
-        tuner_layout = QGridLayout(self.audio_tuner_panel)
-        tuner_layout.setContentsMargins(0, 4, 0, 4)
-        tuner_layout.setHorizontalSpacing(8)
-        tuner_layout.setVerticalSpacing(4)
-        self.audio_tuner_profile = QComboBox(self.audio_tuner_panel)
-        self.audio_tuner_profile.addItems(["Neutral", "Klar", "DX", "Warm", "Eigene"])
-        self.audio_tuner_profile.setAccessibleName("Audio-Profil")
-        tuner_layout.addWidget(QLabel("Profil"), 0, 0)
-        tuner_layout.addWidget(self.audio_tuner_profile, 0, 1, 1, 2)
-        self.audio_tuner_sliders = {}
-        tuner_specs = (
-            ("low_db", "Tiefen", -12, 12, " dB"),
-            ("mids_db", "Sprachmitten", -12, 12, " dB"),
-            ("presence_db", "Präsenz", -12, 12, " dB"),
-            ("high_db", "Höhen", -12, 12, " dB"),
-            ("dynamics_percent", "Dynamik", 0, 100, " %"),
-            ("limiter_percent", "Limiter", 0, 100, " %"),
-            ("ptt_lead", "PTT-Vorlauf", 0, 50, " s"),
-        )
-        for row, (key, label, minimum, maximum, suffix) in enumerate(tuner_specs, start=1):
-            slider = QSlider(Qt.Orientation.Horizontal, self.audio_tuner_panel)
-            slider.setRange(minimum, maximum)
-            slider.setAccessibleName(label)
-            value_label = QLabel("0" + suffix, self.audio_tuner_panel)
-            value_label.setObjectName("valueLabel")
-            tuner_layout.addWidget(QLabel(label), row, 0)
-            tuner_layout.addWidget(slider, row, 1)
-            tuner_layout.addWidget(value_label, row, 2)
-            self.audio_tuner_sliders[key] = (slider, value_label, suffix)
-        action_row = QHBoxLayout()
-        self.audio_tuner_parrot_button = QPushButton("Parrot vorbereiten")
-        self.audio_tuner_assistant_button = QPushButton("Audio-Assistent")
-        self.audio_tuner_reset_button = QPushButton("Zurücksetzen")
-        action_row.addWidget(self.audio_tuner_parrot_button)
-        action_row.addWidget(self.audio_tuner_assistant_button)
-        action_row.addWidget(self.audio_tuner_reset_button)
-        tuner_layout.addLayout(action_row, 8, 0, 1, 3)
-        self.audio_tuner_status = QLabel("Neutral – unveränderte Referenz", self.audio_tuner_panel)
-        self.audio_tuner_status.setWordWrap(True)
-        tuner_layout.addWidget(self.audio_tuner_status, 9, 0, 1, 3)
-        self.audio_tuner_panel.setVisible(False)
-        control_layout.addWidget(self.audio_tuner_toggle)
-        control_layout.addWidget(self.audio_tuner_panel)
+        # Audio-Tuner in eigenem Fenster: Die Betriebsmaske bleibt beim
+        # Öffnen/Schließen vollständig stabil und verschiebt keine Bedienelemente.
+        self.audio_tuner_button = QPushButton("Audio-Tuner…")
+        self.audio_tuner_button.setAccessibleName("DMR Audio-Tuner öffnen")
+        control_layout.addWidget(self.audio_tuner_button)
+        self._build_audio_tuner_dialog()
 
         self.ptt_button = QPushButton("TX")
         self.ptt_button.setObjectName("pttButton")
-        self.ptt_button.setMinimumHeight(74)
+        self.ptt_button.setMinimumHeight(150)
+        self.ptt_button.setMaximumHeight(150)
         self.ptt_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.ptt_button.clicked.connect(self._toggle_tx)
         self.tx_status = QLabel("RX")
         self.tx_status.setObjectName("txStatus")
         self.tx_status.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tx_seconds_label = QLabel("")
-        self.tx_seconds_label.setObjectName("txSeconds")
-        self.tx_seconds_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.tx_seconds_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.tx_seconds_label.setAccessibleName("")
-        self.tx_seconds_label.setAccessibleDescription("")
-        self.tx_seconds_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self.tx_seconds_label.setFixedHeight(34)
-        self.tx_seconds_label.setVisible(True)
         self.tx_status.hide()
         control_layout.addWidget(self.ptt_button)
-        control_layout.addWidget(self.tx_seconds_label)
-        control_layout.addStretch(1)
-        content.addWidget(control_card, 1, 1)
+        control_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        content.addWidget(control_card, 1, 1, alignment=Qt.AlignmentFlag.AlignTop)
 
         # Betriebsinformationen nur einmal und bewusst kompakt.
         info_card = QFrame(operation_page)
         info_card.setObjectName("card")
         info_layout = QGridLayout(info_card)
-        info_layout.setContentsMargins(18, 11, 18, 11)
+        info_layout.setContentsMargins(14, 7, 14, 7)
         info_layout.setHorizontalSpacing(14)
         info_heading = QLabel("BETRIEBSINFORMATIONEN")
         info_heading.setObjectName("sectionTitle")
@@ -445,19 +505,19 @@ class MainWindow(QMainWindow):
         info_layout.addWidget(self.statistics_label, 1, 3)
         info_layout.addWidget(QLabel("Letztes Ereignis"), 2, 0)
         info_layout.addWidget(self.last_event_label, 2, 1, 1, 3)
+        info_card.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         content.addWidget(info_card, 2, 0, 1, 2)
+        root.addStretch(1)
 
         self.operation_gain_slider.valueChanged.connect(self._operation_gain_changed)
         self.operation_volume_slider.valueChanged.connect(self._operation_volume_changed)
         self.operation_muted_check.toggled.connect(self._operation_muted_changed)
         self.operation_agc_check.toggled.connect(self._operation_agc_changed)
-        self.audio_tuner_toggle.clicked.connect(self._audio_tuner_toggled)
+        self.audio_tuner_button.clicked.connect(self._show_audio_tuner_dialog)
         self.audio_tuner_profile.currentTextChanged.connect(self._audio_tuner_profile_changed)
         for key, (slider, _label, _suffix) in self.audio_tuner_sliders.items():
             slider.valueChanged.connect(lambda _value, tuner_key=key: self._audio_tuner_slider_changed(tuner_key))
         self.audio_tuner_reset_button.clicked.connect(lambda: self._apply_audio_tuner_preset("Neutral"))
-        self.audio_tuner_parrot_button.clicked.connect(self._prepare_audio_tuner_parrot)
-        self.audio_tuner_assistant_button.clicked.connect(self._start_audio_tuner_assistant)
         self._sync_operation_audio_controls()
 
         operation_page.setAccessibleName("")
@@ -547,6 +607,7 @@ class MainWindow(QMainWindow):
     def _history_worked_changed(self, source_id: int, worked: bool) -> None:
         """Synchronisiert eine Historienänderung sofort mit der Betriebsseite."""
         state = self.receive_service.state_store.get()
+        self._refresh_recent_stations()
         call = state.current_call
         if call is not None and call.source_id == source_id:
             self.qso_status_label.setText(
@@ -575,7 +636,131 @@ class MainWindow(QMainWindow):
         coach_action = QAction("Audio Coach …", self)
         coach_action.triggered.connect(self._open_audio_coach)
         program_menu.addAction(coach_action)
+        program_menu.addSeparator()
+        tg_monitor_action = QAction("TG-Monitor starten", self)
+        tg_monitor_action.triggered.connect(self._start_tg_monitor)
+        program_menu.addAction(tg_monitor_action)
 
+        self.window_menu = self.menuBar().addMenu("Fenster")
+        self.window_menu.aboutToShow.connect(self._rebuild_window_menu)
+
+
+    def _rebuild_window_menu(self) -> None:
+        self.window_menu.clear()
+
+        main_action = QAction("CarenDMR – Hauptfenster", self)
+        main_action.triggered.connect(lambda: self._bring_window_to_front(self))
+        self.window_menu.addAction(main_action)
+
+        labels = {
+            "settings": "Einstellungen",
+            "audio_benchmark": "Audio-Benchmark",
+            "audio_coach": "Audio Coach",
+            "audio_tuner": "Audio-Tuner",
+            "qrz_station": (
+                self._qrz_window.windowTitle()
+                if self._qrz_window is not None
+                else "QRZ.com – Station"
+            ),
+        }
+        for key, widget in self.window_geometry.visible_windows():
+            label = labels.get(key, widget.windowTitle() or key)
+            action = QAction(label, self)
+            action.triggered.connect(
+                lambda _checked=False, target=widget: self._bring_window_to_front(target)
+            )
+            self.window_menu.addAction(action)
+
+        if is_tg_monitor_running():
+            monitor_action = QAction("TG-Monitor", self)
+            monitor_action.triggered.connect(
+                lambda: send_tg_monitor_command("activate")
+            )
+            self.window_menu.addAction(monitor_action)
+
+        self.window_menu.addSeparator()
+
+        front_action = QAction("Alle Fenster nach vorne", self)
+        front_action.triggered.connect(self._bring_all_windows_to_front)
+        self.window_menu.addAction(front_action)
+
+        close_action = QAction("Alle Zusatzfenster schließen", self)
+        close_action.triggered.connect(self._close_all_auxiliary_windows)
+        self.window_menu.addAction(close_action)
+
+        self.window_menu.addSeparator()
+        reset_action = QAction("Fensterpositionen zurücksetzen", self)
+        reset_action.triggered.connect(self._reset_window_positions)
+        self.window_menu.addAction(reset_action)
+
+    def _bring_window_to_front(self, widget) -> None:
+        if widget is None:
+            return
+        if widget.isMinimized():
+            widget.showNormal()
+        else:
+            widget.show()
+        widget.raise_()
+        widget.activateWindow()
+
+    def _bring_all_windows_to_front(self) -> None:
+        self._bring_window_to_front(self)
+        self.window_geometry.bring_all_to_front()
+        if is_tg_monitor_running():
+            send_tg_monitor_command("activate")
+
+    def _close_all_auxiliary_windows(self) -> None:
+        self.window_geometry.close_all()
+        if is_tg_monitor_running():
+            send_tg_monitor_command("close")
+        self.statusBar().showMessage("Alle Zusatzfenster wurden geschlossen.", 5000)
+
+    def _reset_window_positions(self) -> None:
+        self._close_all_auxiliary_windows()
+        self.window_geometry.reset_saved()
+        path = self._window_state_path()
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError:
+            pass
+
+        self.showNormal()
+        self.resize(980, 720)
+        app = QApplication.instance()
+        screens = list(app.screens()) if app is not None else []
+        if screens:
+            area = screens[0].availableGeometry()
+            self.move(area.center() - self.rect().center())
+        self.statusBar().showMessage(
+            "Fensterpositionen wurden zurückgesetzt. Zusatzfenster öffnen wieder an Standardpositionen.",
+            7000,
+        )
+
+
+    def _start_tg_monitor(self) -> None:
+        """Startet den eigenständigen TG-Monitor höchstens einmal."""
+        if is_tg_monitor_running():
+            self.statusBar().showMessage("Der TG-Monitor läuft bereits.", 5000)
+            QMessageBox.information(self, "CarenDMR", "Der TG-Monitor läuft bereits.")
+            return
+
+        script = self.project_root / "tg_monitor.py"
+        if not script.is_file():
+            QMessageBox.warning(self, "CarenDMR", f"TG-Monitor wurde nicht gefunden:\n{script}")
+            return
+
+        try:
+            subprocess.Popen(
+                [sys.executable, str(script)],
+                cwd=str(self.project_root),
+            )
+        except OSError as error:
+            QMessageBox.critical(self, "CarenDMR", f"TG-Monitor konnte nicht gestartet werden:\n\n{error}")
+            return
+
+        self.statusBar().showMessage("TG-Monitor wurde als eigenes Programm gestartet.", 5000)
 
     def _open_audio_benchmark(self) -> None:
         if self._audio_benchmark_window is None:
@@ -588,6 +773,7 @@ class MainWindow(QMainWindow):
                 reconnect_request=self._benchmark_reconnect,
                 parent=self,
             )
+            self.window_geometry.register("audio_benchmark", self._audio_benchmark_window)
         self._audio_benchmark_window.show()
         self._audio_benchmark_window.raise_()
         self._audio_benchmark_window.activateWindow()
@@ -600,6 +786,7 @@ class MainWindow(QMainWindow):
                 cancel_modulation_test=self._cancel_audio_tuner_assistant,
                 parent=self,
             )
+            self.window_geometry.register("audio_coach", self._audio_coach_window)
         self._audio_coach_window.show()
         self._audio_coach_window.raise_()
         self._audio_coach_window.activateWindow()
@@ -615,6 +802,7 @@ class MainWindow(QMainWindow):
         dialog.settings_applied.connect(self._settings_applied)
         dialog.finished.connect(lambda _result: setattr(self, "_settings_dialog", None))
         self._settings_dialog = dialog
+        self.window_geometry.register("settings", dialog)
         dialog.show()
 
 
@@ -676,10 +864,128 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(message)
         self.accessibility.announce_toggle(self.operation_agc_check, "AGC", checked)
 
-    def _audio_tuner_toggled(self) -> None:
-        visible = not self.audio_tuner_panel.isVisible()
-        self.audio_tuner_panel.setVisible(visible)
-        self.audio_tuner_toggle.setText("DMR Audio-Tuner  ▼" if visible else "DMR Audio-Tuner  ▶")
+    def _build_audio_tuner_dialog(self) -> None:
+        dialog = QDialog(self)
+        dialog.setWindowTitle("DMR Audio-Tuner")
+        dialog.setModal(False)
+        dialog.setMinimumWidth(560)
+
+        outer = QVBoxLayout(dialog)
+        outer.setContentsMargins(16, 16, 16, 16)
+        outer.setSpacing(12)
+
+        heading = QLabel("DMR AUDIO-TUNER")
+        heading.setObjectName("sectionTitle")
+        outer.addWidget(heading)
+
+        intro = QLabel("Klangprofil für den nächsten TX")
+        intro.setObjectName("secondaryText")
+        outer.addWidget(intro)
+
+        card = QFrame(dialog)
+        card.setObjectName("card")
+        layout = QGridLayout(card)
+        layout.setContentsMargins(14, 14, 14, 14)
+        layout.setHorizontalSpacing(12)
+        layout.setVerticalSpacing(9)
+        layout.setColumnStretch(1, 1)
+
+        self.audio_tuner_profile = QComboBox(card)
+        self.audio_tuner_profile.addItems(["Neutral", "Klar", "DX", "Warm", "Eigene"])
+        self.audio_tuner_profile.setAccessibleName("Audio-Profil")
+        profile_caption = QLabel("Profil")
+        profile_caption.setObjectName("fieldCaption")
+        layout.addWidget(profile_caption, 0, 0)
+        layout.addWidget(self.audio_tuner_profile, 0, 1)
+        self.audio_tuner_reset_button = QPushButton("Zurücksetzen", card)
+        layout.addWidget(self.audio_tuner_reset_button, 0, 2)
+
+        self.audio_tuner_sliders = {}
+        tuner_specs = (
+            ("low_db", "Tiefen", -12, 12, " dB"),
+            ("mids_db", "Sprachmitten", -12, 12, " dB"),
+            ("presence_db", "Präsenz", -12, 12, " dB"),
+            ("high_db", "Höhen", -12, 12, " dB"),
+            ("dynamics_percent", "Dynamik", 0, 100, " %"),
+            ("limiter_percent", "Limiter", 0, 100, " %"),
+            ("ptt_lead", "PTT-Vorlauf", 0, 50, " s"),
+        )
+        for row, (key, label, minimum, maximum, suffix) in enumerate(tuner_specs, start=1):
+            caption = QLabel(label)
+            caption.setObjectName("fieldCaption")
+            slider = QSlider(Qt.Orientation.Horizontal, card)
+            slider.setRange(minimum, maximum)
+            slider.setAccessibleName(label)
+            value_label = QLabel("0" + suffix, card)
+            value_label.setObjectName("tunerValue")
+            value_label.setMinimumWidth(72)
+            value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            layout.addWidget(caption, row, 0)
+            layout.addWidget(slider, row, 1)
+            layout.addWidget(value_label, row, 2)
+            self.audio_tuner_sliders[key] = (slider, value_label, suffix)
+
+        outer.addWidget(card)
+        hint = QLabel("Änderungen werden gespeichert und wirken ab dem nächsten Senden.")
+        hint.setObjectName("secondaryText")
+        hint.setWordWrap(True)
+        outer.addWidget(hint)
+
+        dialog.setLayout(outer)
+        dialog.adjustSize()
+        dialog.setFixedHeight(dialog.sizeHint().height())
+        self._audio_tuner_dialog = dialog
+        self.window_geometry.register("audio_tuner", dialog)
+
+    def _show_audio_tuner_dialog(self) -> None:
+        if self._audio_tuner_dialog is None:
+            return
+        self._sync_audio_tuner_controls()
+        self._audio_tuner_dialog.show()
+        self._audio_tuner_dialog.raise_()
+        self._audio_tuner_dialog.activateWindow()
+
+    def _refresh_recent_stations(self, *, force: bool = False) -> None:
+        if not hasattr(self, "recent_station_table"):
+            return
+        # Für den praktischen Funkbetrieb sind die letzten drei unterschiedlichen
+        # Stationen nützlicher als drei einzelne Durchgänge derselben Station.
+        entries = self.receive_service.history.list_recent(limit=20)
+        unique = []
+        seen_ids = set()
+        for entry in entries:
+            source_id = int(entry.source_id)
+            if source_id in seen_ids:
+                continue
+            seen_ids.add(source_id)
+            unique.append(entry)
+            if len(unique) == 3:
+                break
+
+        signature = tuple(int(entry.id) for entry in unique)
+        if not force and signature == self._recent_station_signature:
+            return
+        self._recent_station_signature = signature
+
+        table = self.recent_station_table
+        table.setRowCount(len(unique))
+        for row, entry in enumerate(unique):
+            try:
+                stamp = datetime.fromisoformat(entry.ended_at).astimezone().strftime("%H:%M")
+            except (TypeError, ValueError):
+                stamp = "--:--"
+            values = (
+                stamp,
+                entry.callsign or f"DMR-ID {entry.source_id}",
+                entry.name or "–",
+                entry.country or "–",
+            )
+            for column, value in enumerate(values):
+                item = QTableWidgetItem(str(value))
+                if column == 0:
+                    item.setTextAlignment(int(Qt.AlignmentFlag.AlignCenter))
+                table.setItem(row, column, item)
+            table.setRowHeight(row, 30)
 
     def _sync_audio_tuner_controls(self) -> None:
         if not hasattr(self, "audio_tuner_profile"):
@@ -714,7 +1020,7 @@ class MainWindow(QMainWindow):
         settings = self.audio_send_service.set_tx_audio_tuner_preset(name)
         self.audio_send_service.save_settings()
         self._sync_audio_tuner_controls()
-        self.audio_tuner_status.setText(f"Profil {settings.profile} aktiv – wirkt ab dem nächsten TX")
+        self.statusBar().showMessage(f"Audio-Profil {settings.profile} aktiv – wirkt ab dem nächsten TX.", 4000)
 
     def _audio_tuner_slider_changed(self, changed_key: str) -> None:
         for key, (slider, label, suffix) in self.audio_tuner_sliders.items():
@@ -741,7 +1047,7 @@ class MainWindow(QMainWindow):
                 self.audio_tuner_profile.blockSignals(True)
                 self.audio_tuner_profile.setCurrentText("Eigene")
                 self.audio_tuner_profile.blockSignals(False)
-        self.audio_tuner_status.setText("Eigene Einstellung gespeichert – wirkt ab dem nächsten TX")
+        self.statusBar().showMessage("Eigene Audio-Einstellung gespeichert – wirkt ab dem nächsten TX.", 3000)
 
     def _prepare_audio_tuner_parrot(self) -> None:
         if self._tx_active or self._tx_pending:
@@ -755,13 +1061,12 @@ class MainWindow(QMainWindow):
 
     def _start_audio_tuner_assistant(self) -> None:
         try:
-            self.audio_send_service.arm_audio_test(pre_roll_seconds=2.0)
+            self.audio_send_service.arm_audio_test(pre_roll_seconds=0.0)
         except Exception as exc:
             QMessageBox.warning(self, "Audio-Assistent", str(exc))
             return
         self._prepare_audio_tuner_parrot()
-        self.audio_tuner_status.setText("Audio-Assistent bereit: Parrot verbinden und genau eine Sendung durchführen.")
-        self.statusBar().showMessage("Audio-Assistent bereit. Nach dem Parrot-Test wird ein Messbericht erzeugt.")
+        self.statusBar().showMessage("Audio Coach bereit. Parrot verbinden und genau eine Sendung durchführen.")
 
     def _cancel_audio_tuner_assistant(self) -> None:
         """Beendet einen geführten Audiotest und räumt jeden Zwischenzustand auf."""
@@ -770,7 +1075,6 @@ class MainWindow(QMainWindow):
             self._cancel_pending_tx()
         if self._tx_active:
             self._stop_tx()
-        self.audio_tuner_status.setText("Audio-Assistent bereit.")
         self.statusBar().showMessage("Modulationstest abgebrochen; Empfang wird wiederhergestellt.")
 
     def _bind_shortcuts(self) -> None:
@@ -877,6 +1181,11 @@ class MainWindow(QMainWindow):
             button.setFocusPolicy(Qt.FocusPolicy.NoFocus)
             button.setAccessibleName("")
             button.setAccessibleDescription("")
+        if hasattr(self, "current_channel_meta_label"):
+            call_text = "Gruppe" if self._selected_call_type == "group" else "Privat"
+            self.current_channel_meta_label.setText(
+                f"TS{self._selected_timeslot} · {call_text}"
+            )
         if hasattr(self, "operation_gain_slider") and hasattr(self, "connect_button"):
             self._restore_tab_order()
 
@@ -1004,6 +1313,159 @@ class MainWindow(QMainWindow):
         if hasattr(self, "favorites_widget"):
             self.favorites_widget.refresh()
         self._update_favorite_button()
+        self._refresh_favorite_hot_buttons()
+        self._refresh_favorite_combo()
+
+    def _refresh_favorite_combo(self) -> None:
+        if not hasattr(self, "favorite_combo"):
+            return
+        combo = self.favorite_combo
+        combo.blockSignals(True)
+        try:
+            combo.clear()
+            combo.addItem("Alle Favoriten …", None)
+            for favorite in self.favorite_service.favorites:
+                kind = "G" if favorite.call_type == "group" else "P"
+                text = f"{favorite.display_name}  ·  TG {favorite.target} / TS{favorite.timeslot} / {kind}"
+                combo.addItem(text, favorite)
+            combo.setCurrentIndex(0)
+            combo.setEnabled(len(self.favorite_service.favorites) > 0)
+        finally:
+            combo.blockSignals(False)
+
+    def _favorite_combo_selected(self, index: int) -> None:
+        if index <= 0:
+            return
+        favorite = self.favorite_combo.itemData(index)
+        self.favorite_combo.blockSignals(True)
+        self.favorite_combo.setCurrentIndex(0)
+        self.favorite_combo.blockSignals(False)
+        if favorite is None:
+            return
+        self._activate_favorite(favorite, source_label="Favorit")
+
+    def _activate_favorite(self, favorite, *, source_label: str) -> None:
+        if self._tx_active or self._tx_pending or self._tx_stopping:
+            self.statusBar().showMessage(f"{source_label} ist während TX nicht möglich.")
+            return
+        channel = favorite.to_dmr_channel()
+        state = self.radio_state.state
+        if state in {RadioState.CONNECTING, RadioState.DISCONNECTING}:
+            self.statusBar().showMessage(
+                f"{source_label} wartet, bis der aktuelle Verbindungswechsel beendet ist."
+            )
+            return
+        if state is RadioState.CONNECTED:
+            self._pending_hot_favorite = channel
+            self.statusBar().showMessage(
+                f"{source_label} {favorite.display_name}: trenne aktuelle Verbindung …"
+            )
+            self._disconnect()
+            return
+        self._connect_hot_favorite(channel)
+
+    def _refresh_favorite_hot_buttons(self) -> None:
+        if not hasattr(self, "favorite_hot_buttons"):
+            return
+        favorites = self.favorite_service.favorites[:3]
+        for index, button in enumerate(self.favorite_hot_buttons):
+            if index >= len(favorites):
+                button.setText("–")
+                button.setEnabled(False)
+                button.setToolTip("Kein Favorit an dieser Position")
+                continue
+            favorite = favorites[index]
+            kind = "G" if favorite.call_type == "group" else "P"
+            name = favorite.display_name
+            # Kurzer sichtbarer Name; alle technischen Werte bleiben im Tooltip/AccessibleName.
+            button.setText(name)
+            detail = f"TG {favorite.target} · TS{favorite.timeslot} · {kind}"
+            button.setToolTip(detail)
+            button.setAccessibleName(f"Schnellwahl {index + 1}: {name}, {detail}")
+            button.setEnabled(True)
+
+    def _activate_hot_favorite(self, index: int) -> None:
+        favorites = self.favorite_service.favorites
+        if not 0 <= index < min(3, len(favorites)):
+            return
+        self._activate_favorite(favorites[index], source_label="Schnellwahl")
+
+    def _connect_hot_favorite(self, channel) -> None:
+        try:
+            normalized = channel.normalized()
+        except (AttributeError, TypeError, ValueError):
+            self._pending_hot_favorite = None
+            return
+        self._set_current_dmr_channel(normalized)
+        try:
+            self._save_preferences()
+        except Exception as error:
+            self._pending_hot_favorite = None
+            QMessageBox.warning(self, "CarenDMR", str(error))
+            return
+        self._pending_hot_favorite = None
+        self.tabs.setCurrentIndex(0)
+        self.statusBar().showMessage(
+            f"Schnellwahl {normalized.name or normalized.target}: verbinde TG {normalized.target}, "
+            f"TS{normalized.timeslot}, {'Gruppe' if normalized.is_group_call else 'Privat'} …"
+        )
+        self._connect()
+
+    def _handle_external_channel_request(self, channel: DmrChannel) -> tuple[bool, str]:
+        """Übernimmt einen Kanal aus dem eigenständigen TG-Monitor."""
+        try:
+            normalized = channel.normalized()
+        except (AttributeError, TypeError, ValueError) as error:
+            return False, f"Ungültiger DMR-Kanal: {error}"
+
+        if self._tx_active or self._tx_pending or self._tx_stopping:
+            return False, "CarenDMR sendet gerade. Kanalwechsel wurde nicht ausgeführt."
+
+        state = self.radio_state.state
+        if state in {RadioState.CONNECTING, RadioState.DISCONNECTING}:
+            return False, "CarenDMR wechselt gerade die Verbindung. Bitte gleich erneut versuchen."
+
+        if state is RadioState.CONNECTED:
+            self._pending_external_channel = normalized
+            self.statusBar().showMessage(f"TG-Monitor: trenne für TG {normalized.target} …")
+            self._disconnect()
+            return True, f"TG {normalized.target} wird in CarenDMR übernommen."
+
+        if state in {RadioState.DISCONNECTED, RadioState.ERROR}:
+            QTimer.singleShot(0, lambda selected=normalized: self._connect_external_channel(selected))
+            return True, f"TG {normalized.target} wird in CarenDMR übernommen."
+
+        return False, "CarenDMR ist momentan nicht bereit für einen Kanalwechsel."
+
+    def _connect_external_channel(self, channel: DmrChannel) -> None:
+        try:
+            normalized = channel.normalized()
+        except (AttributeError, TypeError, ValueError):
+            self._pending_external_channel = None
+            return
+
+        if self._tx_active or self._tx_pending or self._tx_stopping:
+            self._pending_external_channel = None
+            self.statusBar().showMessage("TG-Monitor-Kanalwechsel wegen TX verworfen.")
+            return
+        if self.radio_state.state not in {RadioState.DISCONNECTED, RadioState.ERROR}:
+            return
+
+        self._set_current_dmr_channel(normalized)
+        try:
+            self._save_preferences()
+        except Exception as error:
+            self._pending_external_channel = None
+            QMessageBox.warning(self, "CarenDMR", str(error))
+            return
+
+        self._pending_external_channel = None
+        self.tabs.setCurrentIndex(0)
+        self.statusBar().showMessage(
+            f"TG-Monitor: verbinde TG {normalized.target}, TS{normalized.timeslot}, "
+            f"{'Gruppe' if normalized.is_group_call else 'Privat'} …"
+        )
+        self._connect()
 
     def _update_favorite_button(self) -> None:
         if not hasattr(self, "favorite_button") or self._current_dmr_channel is None:
@@ -1272,8 +1734,6 @@ class MainWindow(QMainWindow):
         self._tx_active = True
         self._tx_stopping = False
         self._tx_elapsed_seconds = 0
-        self.tx_seconds_label.setText("0")
-        self.tx_seconds_label.setVisible(True)
         self._tx_elapsed_timer.start()
         self.ptt_button.setText("TX")
         self.ptt_button.setProperty("visualState", "tx")
@@ -1288,7 +1748,10 @@ class MainWindow(QMainWindow):
         def worker() -> None:
             try:
                 result = self.connection_manager.run_parrot_hold_to_talk(
-                    stop_event, level_callback=lambda level: self._updates.put(("mic_level", level)), optimize=True
+                    stop_event,
+                    level_callback=lambda level: self._updates.put(("mic_level", level)),
+                    optimize=True,
+                    tx_complete_callback=lambda: self._updates.put(("tx_wire_complete", None)),
                 )
                 self._updates.put(("tx_result", result))
             except Exception as error:
@@ -1302,7 +1765,6 @@ class MainWindow(QMainWindow):
         self.ptt_button.style().unpolish(self.ptt_button)
         self.ptt_button.style().polish(self.ptt_button)
         self.tx_status.setText("RX")
-        self.tx_seconds_label.clear()
         self.statusBar().showMessage("RX")
 
     def _increment_tx_elapsed(self) -> None:
@@ -1310,8 +1772,9 @@ class MainWindow(QMainWindow):
             self._tx_elapsed_timer.stop()
             return
         self._tx_elapsed_seconds += 1
-        # Rein visuelle Anzeige: nicht fokussierbar und ohne zugänglichen Namen.
-        self.tx_seconds_label.setText(str(self._tx_elapsed_seconds))
+        # Die Laufzeit steht direkt im großen TX-Knopf; dadurch kann dessen
+        # komplette Fläche bis nach unten genutzt werden.
+        self.ptt_button.setText(f"TX   {self._tx_elapsed_seconds} s")
 
     def _stop_tx(self) -> None:
         if not self._tx_active:
@@ -1323,14 +1786,13 @@ class MainWindow(QMainWindow):
         # Hintergrund noch sauber auslaufen, aber Zähler und TX-Anzeige stoppen.
         self._tx_elapsed_timer.stop()
         self._tx_elapsed_seconds = 0
-        self.tx_seconds_label.clear()
-        self.ptt_button.setEnabled(True)
+        self.ptt_button.setEnabled(False)
         self.ptt_button.setText("TX")
-        self.ptt_button.setProperty("visualState", "ready")
+        self.ptt_button.setProperty("visualState", "pending")
         self.ptt_button.style().unpolish(self.ptt_button)
         self.ptt_button.style().polish(self.ptt_button)
-        self.tx_status.setText("RX")
-        self.statusBar().showMessage("Sendung wird beendet; Empfang wird wieder aktiv")
+        self.tx_status.setText("TX wird beendet")
+        self.statusBar().showMessage("Sendung wird beendet")
 
     def _finish_tx(self, message: str) -> None:
         self._tx_active = False
@@ -1339,7 +1801,6 @@ class MainWindow(QMainWindow):
         self._tx_stop_event = None
         self._tx_elapsed_timer.stop()
         self._tx_elapsed_seconds = 0
-        self.tx_seconds_label.clear()
         state = RadioState.CONNECTED if self.receive_service.is_running else RadioState.DISCONNECTED
         self.radio_state.synchronize(state)
         self.ptt_button.setText("TX")
@@ -1370,6 +1831,7 @@ class MainWindow(QMainWindow):
         return int(self.receive_service.target_talkgroup or self.preferences.talkgroup)
 
     def _benchmark_call_activity(self, activity) -> None:
+        self.audio_send_service.observe_audio_test_call_activity(activity)
         if activity.active:
             self.audio_benchmark_service.stream_started(
                 activity.source_id, activity.talkgroup, activity.timeslot, activity.stream_id,
@@ -1380,10 +1842,73 @@ class MainWindow(QMainWindow):
             )
 
     def _benchmark_pcm(self, source_id, talkgroup, timeslot, stream_id, samples, corrected_errors=0) -> None:
+        self.audio_send_service.observe_audio_test_pcm(
+            source_id, talkgroup, timeslot, stream_id, samples, corrected_errors
+        )
         self.audio_benchmark_service.add_pcm(
             source_id, talkgroup, timeslot, stream_id, samples,
             corrected_errors=corrected_errors,
         )
+
+    def _request_qrz_lookup(self, callsign: str | None) -> None:
+        normalized = str(callsign or "").strip().upper()
+        if not normalized:
+            self._qrz_lookup_callsign = ""
+            self._qrz_lookup_pending = False
+            self._qrz_profile = None
+            self._qrz_own_profile = None
+            self.qrz_button.setVisible(False)
+            return
+        if normalized == self._qrz_lookup_callsign and (
+            self._qrz_lookup_pending or self._qrz_profile is not None
+        ):
+            return
+
+        self._qrz_lookup_callsign = normalized
+        self._qrz_lookup_pending = True
+        self._qrz_profile = None
+        self._qrz_own_profile = None
+        self.qrz_button.setVisible(False)
+
+        if not self.qrz_service.configured:
+            self._qrz_lookup_pending = False
+            return
+
+        def worker() -> None:
+            try:
+                profile = self.qrz_service.lookup(normalized)
+                try:
+                    own_profile = self.qrz_service.lookup_own_station()
+                except QrzServiceError:
+                    own_profile = None
+                self._updates.put(("qrz_result", (normalized, profile, own_profile)))
+            except QrzNotFound:
+                self._updates.put(("qrz_not_found", normalized))
+            except QrzServiceError as error:
+                self._updates.put(("qrz_error", (normalized, str(error))))
+
+        Thread(
+            target=worker,
+            name=f"CarenDMR-QRZ-{normalized}",
+            daemon=True,
+        ).start()
+
+    def _open_qrz_station(self) -> None:
+        profile = self._qrz_profile
+        if profile is None:
+            return
+        if self._qrz_window is not None:
+            self._qrz_window.close()
+        self._qrz_window = QrzStationWindow(
+            profile,
+            own_profile=self._qrz_own_profile,
+            maptiler_api_key=self.qrz_service.maptiler_api_key,
+            parent=self,
+        )
+        self.window_geometry.register("qrz_station", self._qrz_window)
+        self._qrz_window.show()
+        self._qrz_window.raise_()
+        self._qrz_window.activateWindow()
 
     def _benchmark_reconnect(self) -> None:
         if not self.audio_benchmark_service.is_running:
@@ -1406,6 +1931,8 @@ class MainWindow(QMainWindow):
                 kind, value = self._updates.get_nowait()
                 if kind == "state":
                     self._apply_state(value)
+                elif kind == "history_added":
+                    self._refresh_recent_stations(force=True)
                 elif kind == "event":
                     self.last_event_label.setText(str(getattr(value, "message", value)))
                 elif kind == "connect_result":
@@ -1421,9 +1948,18 @@ class MainWindow(QMainWindow):
                     self._set_controls_for_state(self.radio_state.state)
                 elif kind == "disconnect_result":
                     self.radio_state.synchronize(RadioState.DISCONNECTED)
-                    self.statusBar().showMessage("Empfang und Verbindung beendet. Neue Talkgroup kann eingegeben werden.")
                     self._set_controls_for_state(self.radio_state.state)
-                    QTimer.singleShot(0, self._focus_talkgroup)
+                    if self._pending_external_channel is not None:
+                        channel = self._pending_external_channel
+                        self.statusBar().showMessage("Verbindung getrennt; TG-Monitor-Kanal wird übernommen …")
+                        QTimer.singleShot(0, lambda selected=channel: self._connect_external_channel(selected))
+                    elif self._pending_hot_favorite is not None:
+                        channel = self._pending_hot_favorite
+                        self.statusBar().showMessage("Verbindung getrennt; Schnellwahl wird übernommen …")
+                        QTimer.singleShot(0, lambda selected=channel: self._connect_hot_favorite(selected))
+                    else:
+                        self.statusBar().showMessage("Empfang und Verbindung beendet. Neue Talkgroup kann eingegeben werden.")
+                        QTimer.singleShot(0, self._focus_talkgroup)
                 elif kind == "disconnect_error":
                     self.radio_state.synchronize(RadioState.ERROR)
                     self.statusBar().showMessage(f"Trennen fehlgeschlagen: {value}")
@@ -1439,6 +1975,28 @@ class MainWindow(QMainWindow):
                 elif kind == "mic_level":
                     self._mic_level = float(value)
                     self.mic_level_meter.set_level(self._mic_level)
+                elif kind == "qrz_result":
+                    callsign, profile, own_profile = value
+                    if callsign == self._qrz_lookup_callsign:
+                        self._qrz_lookup_pending = False
+                        self._qrz_profile = profile
+                        self._qrz_own_profile = own_profile
+                        self.qrz_button.setVisible(profile is not None)
+                        self.qrz_button.setEnabled(profile is not None)
+                elif kind == "qrz_not_found":
+                    callsign = str(value)
+                    if callsign == self._qrz_lookup_callsign:
+                        self._qrz_lookup_pending = False
+                        self._qrz_profile = None
+                        self._qrz_own_profile = None
+                        self.qrz_button.setVisible(False)
+                elif kind == "qrz_error":
+                    callsign, _message = value
+                    if callsign == self._qrz_lookup_callsign:
+                        self._qrz_lookup_pending = False
+                        self._qrz_profile = None
+                        self._qrz_own_profile = None
+                        self.qrz_button.setVisible(False)
                 elif kind == "benchmark_connection_lost":
                     if self.audio_benchmark_service.connection_lost():
                         attempts = self.audio_benchmark_service.state.reconnect_attempts
@@ -1451,24 +2009,26 @@ class MainWindow(QMainWindow):
                 elif kind == "tx_beep_error":
                     self.statusBar().showMessage(f"TX-Startton nicht verfügbar: {value}")
                     QTimer.singleShot(0, self._begin_tx)
+                elif kind == "tx_wire_complete":
+                    # Der Terminator ist tatsächlich auf dem Netz. Erst jetzt
+                    # quittieren wir das Ende der Aussendung akustisch. Der
+                    # Parrot-Empfang und der normale RX-Neustart laufen danach
+                    # noch im Worker weiter.
+                    self.tx_status.setText("Warte auf Antwort")
+                    self.statusBar().showMessage("Sendung beendet; warte auf Antwort")
+                    self._play_tx_stop_beeps("Sendung beendet")
                 elif kind == "tx_result":
-                    self._tx_elapsed_timer.stop()
-                    self._tx_elapsed_seconds = 0
-                    self.tx_seconds_label.clear()
-                    self.ptt_button.setText("TX")
-                    self.ptt_button.setProperty("visualState", "ready")
-                    self.ptt_button.style().unpolish(self.ptt_button)
-                    self.ptt_button.style().polish(self.ptt_button)
-                    self._play_tx_stop_beeps("Sendung beendet; Empfang wieder aktiv.")
+                    self._finish_tx("Sendung beendet; Empfang wieder aktiv.")
                 elif kind == "tx_error":
                     self._finish_tx(f"Sendefehler: {value}")
                     QMessageBox.critical(self, "CarenDMR", f"Senden fehlgeschlagen:\n\n{value}")
                 elif kind == "tx_stop_beeps_done":
-                    self._finish_tx(str(value))
+                    # Nur akustische Quittung des echten TX-Endes. Der gesamte
+                    # Parrot-/RX-Vorgang wird ausschließlich durch tx_result beendet.
+                    pass
                 elif kind == "tx_stop_beeps_error":
-                    message, error = value
+                    _message, error = value
                     self.statusBar().showMessage(f"TX-Endton nicht verfügbar: {error}")
-                    self._finish_tx(str(message))
         except queue.Empty:
             pass
 
@@ -1511,6 +2071,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage("Empfang aktiv")
         call = state.current_call
         if call is None:
+            self._request_qrz_lookup(None)
             self.callsign_label.setText("Nicht bekannt")
             self.name_label.setText("Nicht bekannt")
             self.dmr_id_label.setText("Kein aktiver Sprecher")
@@ -1521,7 +2082,9 @@ class MainWindow(QMainWindow):
             self.qso_status_label.setText("Keine Station aktiv")
         else:
             contact = call.contact
-            self.callsign_label.setText(contact.callsign if contact else "Nicht gefunden")
+            callsign = contact.callsign if contact else ""
+            self._request_qrz_lookup(callsign)
+            self.callsign_label.setText(callsign or "Nicht gefunden")
             self.name_label.setText(contact.display_name if contact and contact.display_name else "Nicht angegeben")
             self.dmr_id_label.setText(str(call.source_id))
             location = ", ".join(part for part in (contact.city, contact.state) if contact and part) if contact else ""
@@ -1563,11 +2126,58 @@ class MainWindow(QMainWindow):
             ):
                 self._announce_radio_state(current_radio_state)
 
+    def _window_state_path(self) -> Path:
+        return self.project_root / "config" / "window.local.json"
+
+    def _restore_window_geometry(self) -> None:
+        """Stellt Position/Größe wieder her, aber niemals unsichtbar off-screen."""
+        path = self._window_state_path()
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            encoded = str(payload.get("geometry", "")).strip()
+            if not encoded:
+                return
+            raw = base64.b64decode(encoded.encode("ascii"))
+            layout_version = int(payload.get("layout_version", 1) or 1)
+            if not self.restoreGeometry(raw):
+                return
+            # 0.2.1.34 hat eine deutlich kompaktere Maske. Alte, für das vorherige
+            # gestreckte Layout gespeicherte Größen werden einmalig normalisiert;
+            # Position und alle künftig gespeicherten Größen bleiben erhalten.
+            if layout_version < 2 and not self.isMaximized():
+                self.resize(980, 720)
+            app = QApplication.instance()
+            screens = list(app.screens()) if app is not None else []
+            frame = self.frameGeometry()
+            visible = any(screen.availableGeometry().intersects(frame) for screen in screens)
+            if not visible and screens:
+                area = screens[0].availableGeometry()
+                self.resize(min(self.width(), area.width()), min(self.height(), area.height()))
+                self.move(area.center() - self.rect().center())
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            return
+
+    def _save_window_geometry(self) -> None:
+        path = self._window_state_path()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {
+                "geometry": base64.b64encode(bytes(self.saveGeometry())).decode("ascii"),
+                "maximized": bool(self.isMaximized()),
+                "layout_version": 2,
+            }
+            path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        except OSError:
+            pass
+
     def closeEvent(self, event: QCloseEvent) -> None:
+        self._save_window_geometry()
         self._tx_pending = False
         self._tx_elapsed_timer.stop()
         if self._tx_active and self._tx_stop_event is not None:
             self._tx_stop_event.set()
+        if hasattr(self, "_channel_control_server"):
+            self._channel_control_server.close()
         self.connection_manager.disconnect()
         self.receive_service.wait(3.0)
         self.audio_benchmark_service.close()

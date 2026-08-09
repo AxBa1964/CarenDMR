@@ -4,7 +4,7 @@ from carendmr.version import __version__
 
 
 def test_release_version_is_0171() -> None:
-    assert __version__ == "0.2.1.9"
+    assert __version__ == "0.2.1.32"
 
 
 def test_visual_indicators_are_integrated_without_ambe_text() -> None:

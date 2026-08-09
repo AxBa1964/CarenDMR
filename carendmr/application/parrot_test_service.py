@@ -13,7 +13,6 @@ from carendmr.brandmeister.voice_transmit import execute_voice_once
 from carendmr.brandmeister.live_voice_transmit import execute_live_voice_once
 from carendmr.brandmeister.dmrd import DmrdCallType
 from carendmr.domain import TransmitHistoryEntry
-from carendmr.encoder import DroidStarPluginEncoder
 
 from .transmit_history_service import TransmitHistoryService
 
@@ -32,19 +31,23 @@ class ParrotTestService:
     def start_live_hold_to_talk(self, stop_event: Event, *, level_callback: Callable[[float], None] | None = None):
         return self.audio_service.start_live_capture(stop_event, max_duration_seconds=float(self.audio_service.tx_safety_limit_seconds), level_callback=level_callback)
 
-    def transmit_live_capture(self, capture, *, started_at: str, destination_id: int, timeslot: int, call_type: str, optimize: bool = True, rx_playback_gate: Event | None = None):
-        plugin_path=self.encoder_service.configured_plugin_path
-        if plugin_path is None: raise RuntimeError("Kein geprüftes DroidStar-Vocoder-Plugin konfiguriert.")
-        self.encoder_service.verify_configured()
+    def transmit_live_capture(self, capture, *, started_at: str, destination_id: int, timeslot: int, call_type: str, optimize: bool = True, rx_playback_gate: Event | None = None, tx_complete_callback: Callable[[], None] | None = None, existing_client=None):
         config=BrandMeisterConfigStore(self.project_root / "config" / "brandmeister.local.json").load()
-        is_parrot=destination_id==9990 and timeslot==2 and call_type=="private"
-        # Der Analyzer beobachtet nur. Der normale TX-/Parrot-Ablauf bleibt
-        # vollständig Eigentümer von Socket, RX-Wiederaufnahme und Audioausgabe.
-        with DroidStarPluginEncoder(self.project_root, plugin_path) as encoder:
-            result=execute_live_voice_once(config,destination_id=destination_id,timeslot=timeslot,call_type=DmrdCallType.PRIVATE if call_type=="private" else DmrdCallType.GROUP,pcm_chunks=capture.chunks(),encoder=encoder,wait_for_parrot_echo=is_parrot,lead_in_seconds=TX_LEAD_IN_SECONDS,rx_debug_dir=capture.audio_lab_dir if capture.audio_lab_dir is not None else None,rx_playback_gate=rx_playback_gate,ambe_debug_path=capture.ambe_frames_path if capture.ambe_frames_path is not None else None,output_factory=self.audio_service.create_pcm_output)
-        if getattr(capture, "_one_shot_audio_test", False):
-            self.audio_service.finish_audio_test_session()
+        # Live-TX endet fachlich mit dem DMR-Terminator. Auf eine Parrot-Antwort
+        # wird hier niemals gewartet: Der normale Empfangsdienst muss sofort
+        # wieder übernehmen, unabhängig davon, welche Station anschließend sendet.
+        encoder = self.encoder_service.create_transmit_encoder()
+        try:
+            result=execute_live_voice_once(config,destination_id=destination_id,timeslot=timeslot,call_type=DmrdCallType.PRIVATE if call_type=="private" else DmrdCallType.GROUP,pcm_chunks=capture.chunks(),encoder=encoder,wait_for_parrot_echo=False,lead_in_seconds=TX_LEAD_IN_SECONDS,rx_debug_dir=capture.audio_lab_dir if capture.audio_lab_dir is not None else None,rx_playback_gate=rx_playback_gate,ambe_debug_path=capture.ambe_frames_path if capture.ambe_frames_path is not None else None,output_factory=self.audio_service.create_pcm_output,tx_complete_callback=tx_complete_callback,existing_client=existing_client,preserve_client=existing_client is not None,defer_debug_report=bool(getattr(capture, "_one_shot_audio_test", False)))
+        finally:
+            close = getattr(encoder, "close", None)
+            if callable(close):
+                close()
         duration=capture.duration_seconds
+        if getattr(capture, "_one_shot_audio_test", False):
+            self.audio_service.mark_audio_test_waiting_for_rx(
+                expected_samples=int(round(duration * 8000.0))
+            )
         if duration < 0.20: raise RuntimeError("Die TX-Taste wurde zu kurz gedrückt; es wurde nichts gesendet.")
         self.history.add(TransmitHistoryEntry(started_at=started_at,duration_seconds=duration,destination_id=destination_id,timeslot=timeslot,call_type="Privatruf" if call_type=="private" else "Gruppenruf",echo_received=result.echo_received,safety_limit_reached=capture.safety_limit_reached,optimizer_enabled=optimize))
         return result,duration,capture.safety_limit_reached
@@ -74,10 +77,6 @@ class ParrotTestService:
         timeslot: int = 2,
         call_type: str = "private",
     ):
-        plugin_path = self.encoder_service.configured_plugin_path
-        if plugin_path is None:
-            raise RuntimeError("Kein geprüftes DroidStar-Vocoder-Plugin konfiguriert.")
-        self.encoder_service.verify_configured()
         pcm, duration, safety_limit_reached, _diagnostics = capture_result
         if duration < 0.20:
             raise RuntimeError("Die TX-Taste wurde zu kurz gedrückt; es wurde nichts gesendet.")
@@ -90,7 +89,8 @@ class ParrotTestService:
         config = BrandMeisterConfigStore(
             self.project_root / "config" / "brandmeister.local.json"
         ).load()
-        with DroidStarPluginEncoder(self.project_root, plugin_path) as encoder:
+        encoder = self.encoder_service.create_transmit_encoder()
+        try:
             if destination_id == 9990 and timeslot == 2 and call_type == "private":
                 result = execute_locked_parrot_voice_once(
                     config, pcm_samples=pcm_with_lead_in, encoder=encoder
@@ -101,6 +101,10 @@ class ParrotTestService:
                     call_type=DmrdCallType.PRIVATE if call_type == "private" else DmrdCallType.GROUP,
                     pcm_samples=pcm_with_lead_in, encoder=encoder
                 )
+        finally:
+            close = getattr(encoder, "close", None)
+            if callable(close):
+                close()
         self.history.add(TransmitHistoryEntry(
             started_at=started_at or datetime.now(timezone.utc).isoformat(),
             duration_seconds=duration,

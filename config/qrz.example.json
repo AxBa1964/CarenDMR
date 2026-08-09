@@ -1,0 +1,6 @@
+{
+  "username": "DEIN_QRZ_BENUTZERNAME",
+  "password": "DEIN_QRZ_PASSWORT",
+  "own_callsign": "DEIN_RUFZEICHEN",
+  "maptiler_api_key": "OPTIONALER_MAPTILER_API_KEY"
+}

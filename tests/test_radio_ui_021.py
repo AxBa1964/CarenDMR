@@ -16,7 +16,7 @@ class RadioUi021Tests(unittest.TestCase):
     def test_toggle_ptt_and_sixty_second_limit(self):
         self.assertIn('text="TX AUS\\nZum Senden drücken"', self.source)
         self.assertIn('command=self._toggle_transmit', self.source)
-        self.assertIn('set_tx_safety_limit_seconds(60)', self.source)
+        self.assertIn('set_tx_safety_limit_seconds(300)', self.source)
 
     def test_encoder_is_verified_automatically(self):
         self.assertIn('self.root.after(0, self._initialize_once)', self.source)

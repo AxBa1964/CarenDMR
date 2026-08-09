@@ -8,8 +8,14 @@ from .base import (
     VocoderDecodeError,
     VocoderUnavailableError,
 )
-from .dmr import extract_ambe_codewords
 from .native import NativeMbeReceiveVocoder
+
+
+def extract_ambe_codewords(*args, **kwargs):
+    """Lazy import avoids brandmeister <-> vocoder package initialization cycle."""
+    from .dmr import extract_ambe_codewords as _extract_ambe_codewords
+    return _extract_ambe_codewords(*args, **kwargs)
+
 
 __all__ = [
     "AMBE_CODEWORD_SIZE",

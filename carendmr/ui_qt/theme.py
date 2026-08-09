@@ -82,7 +82,28 @@ def build_stylesheet(tokens: ThemeTokens = TOKENS, metrics: DesignMetrics = METR
         QLabel#currentTalkgroup {{ color: {t.text}; font-size: 32px; font-weight: 700; }}
         QLabel#callsignDisplay {{ color: {t.text}; font-size: 30px; font-weight: 700; }}
         QLabel#stationName {{ color: {t.text_secondary}; font-size: 17px; }}
+        QLabel#channelMeta {{ color: {t.primary}; font-size: 12px; font-weight: 700; }}
+        QLabel#compactHint {{ color: {t.text_muted}; font-size: 11px; }}
         QLabel#qsoStatus {{ color: {t.success}; font-weight: 700; }}
+        QLabel#fieldValue, QLabel#qsoStatusValue {{
+            background-color: {t.surface_input};
+            border: 1px solid {t.border};
+            border-radius: 5px;
+            padding: 5px 8px;
+            color: {t.text};
+        }}
+        QLabel#qsoStatusValue {{
+            color: {t.success};
+            font-weight: 700;
+        }}
+        QLabel#tunerValue {{
+            background-color: {t.surface_input};
+            border: 1px solid {t.border};
+            border-radius: 5px;
+            padding: 4px 8px;
+            color: {t.text};
+            font-weight: 700;
+        }}
         QLabel#valueLabel {{ color: {t.text}; font-weight: 700; }}
         QLabel#txStatus {{ color: {t.text_secondary}; font-weight: 700; }}
         QLabel#txSeconds {{ color: {t.text}; font-size: 24px; font-weight: 800; min-height: 30px; }}
@@ -105,6 +126,19 @@ def build_stylesheet(tokens: ThemeTokens = TOKENS, metrics: DesignMetrics = METR
             padding: 0 5px;
             background-color: {t.surface};
             color: {t.text};
+        }}
+
+        QPushButton#qrzCompactButton {{
+            min-height: 28px;
+            max-height: 28px;
+            padding: 0 12px;
+            font-size: 12px;
+            font-weight: 700;
+        }}
+        QComboBox#favoriteCombo {{
+            min-height: 32px;
+            padding: 0 10px;
+            font-size: 12px;
         }}
 
         QMenuBar, QMenu {{ background-color: {t.surface}; color: {t.text}; }}
@@ -262,6 +296,14 @@ def build_stylesheet(tokens: ThemeTokens = TOKENS, metrics: DesignMetrics = METR
             selection-color: {t.text};
         }}
         QTableWidget::item, QTableView::item {{ min-height: {m.table_row_height}px; }}
+        QTableWidget#recentStations {{
+            background-color: {t.surface_input};
+            border: 1px solid {t.border_strong};
+            border-radius: 6px;
+        }}
+        QTableWidget#recentStations::item {{
+            padding: 4px 7px;
+        }}
         QTableWidget::item:selected, QTableView::item:selected,
         QListWidget::item:selected, QListView::item:selected,
         QTreeWidget::item:selected, QTreeView::item:selected {{

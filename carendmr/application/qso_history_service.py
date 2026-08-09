@@ -16,6 +16,7 @@ class QsoHistoryService:
         self.database_path = Path(project_root) / "data" / "qso_history.db"
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         self._lock = Lock()
+        self._added_callbacks = []
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
@@ -58,6 +59,10 @@ class QsoHistoryService:
             )
             connection.commit()
 
+    def subscribe_added(self, callback) -> None:
+        """Benachrichtigt UIs unmittelbar nachdem ein Empfang in SQLite gespeichert ist."""
+        self._added_callbacks.append(callback)
+
     def add_completed_call(self, call: CurrentCall) -> QsoHistoryEntry:
         ended = datetime.now(timezone.utc)
         started = ended.timestamp() - max(0.0, call.elapsed_seconds)
@@ -87,7 +92,7 @@ class QsoHistoryService:
             )
             connection.commit()
             entry_id = int(cursor.lastrowid)
-        return QsoHistoryEntry(
+        entry = QsoHistoryEntry(
             id=entry_id,
             started_at=started_text,
             ended_at=ended.isoformat(),
@@ -103,6 +108,12 @@ class QsoHistoryService:
             worked=worked,
             worked_at=worked_at,
         )
+        for callback in tuple(self._added_callbacks):
+            try:
+                callback(entry)
+            except Exception:
+                pass
+        return entry
 
     def list_recent(self, limit: int = 500) -> tuple[QsoHistoryEntry, ...]:
         if limit <= 0:

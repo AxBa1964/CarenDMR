@@ -135,9 +135,9 @@ class MainWindow:
             value="Bereit für einen privaten Test, sobald Encoder und Mikrofon geprüft sind."
         )
         self.transmit_optimizer_var = tk.BooleanVar(value=True)
-        # Für den Funkbetrieb gilt ein festes Sicherheitslimit von 60 Sekunden.
-        self.audio_send_service.set_tx_safety_limit_seconds(60)
-        self.tx_safety_limit_var = tk.IntVar(value=60)
+        # Für den Funkbetrieb gilt ein festes Sicherheitslimit von 300 Sekunden.
+        self.audio_send_service.set_tx_safety_limit_seconds(300)
+        self.tx_safety_limit_var = tk.IntVar(value=300)
         self._microphone_by_label: dict[str, object] = {}
         # Sämtliche Farben und Grundzustände kommen aus dem zentralen
         # Designsystem. Bestehende Ansichten nutzen vorerst die kompatible
@@ -1276,6 +1276,10 @@ class MainWindow:
     def _initialize_once(self) -> None:
         """Lädt Mikrofon und Encoder automatisch; im Erfolgsfall bleibt es still."""
         self._scan_microphones()
+        if self.encoder_service.md380_available:
+            self.encoder_status_var.set("MD380/DroidStar TX-Encoder bereit.")
+            self.encoder_plugin_var.set(str(self.encoder_service.md380_bridge_path))
+            return
         plugin_path = self.encoder_service.configured_plugin_path
         if plugin_path is None:
             self.encoder_status_var.set("Noch kein Encoder zugeordnet. Empfang ist möglich; Senden bleibt gesperrt.")

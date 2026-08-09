@@ -24,7 +24,7 @@ class _FakeSoundDevice:
 
 
 def test_release_version_0215() -> None:
-    assert __version__ == "0.2.1.9"
+    assert __version__ == "0.2.1.32"
 
 
 def test_audio_engine_uses_native_rate_when_target_is_rejected() -> None:

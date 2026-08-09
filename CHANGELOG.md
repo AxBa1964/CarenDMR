@@ -1,5 +1,437 @@
 # Changelog
 
+## 0.2.1.55
+
+- MapTiler-Satellitenlayer auf die von MapTiler für Leaflet dokumentierte HiDPI-URL `@2x.jpg` bei `tileSize: 512` und `zoomOffset: -1` umgestellt.
+- Umschaltung **Karte/Satellit** expliziter gemacht: jeweils andere Basiskarte wird entfernt, gewünschte Basiskarte hinzugefügt und hinter Overlays gelegt.
+- Verbindungslinie und HAM Grid werden nach Basiskartenwechsel erneut nach vorne bzw. aktualisiert.
+- Kleine Kartenquellenanzeige zeigt sichtbar **Karte** oder **Satellit**, damit ein erfolgreicher Layerwechsel unmittelbar erkennbar ist.
+- MapTiler-Tilefehler werden mit der betroffenen Tile-URL in der Shell protokolliert.
+- Keine Änderung an QRZ-Daten, DMR-, AMBE-, RX/TX-, Audio- oder TG-Monitor-Kern.
+
+## 0.2.1.54
+
+- QRZ-Karte unterstützt jetzt eine echte Satelliten-Basiskarte über MapTiler Satellite v4.
+- Optionaler `maptiler_api_key` wird ausschließlich aus `config/qrz.local.json` gelesen und an das QRZ-Fenster übergeben.
+- Der Button **Satellit** schaltet zwischen OpenStreetMap und Satellitenansicht um; bei aktiver Satellitenansicht wird er zu **Karte**. Ohne MapTiler-Key bleibt der Button deaktiviert und erklärt im Tooltip die fehlende Konfiguration.
+- Leaflet-Layer-Control enthält bei vorhandenem Key ebenfalls **Karte** und **Satellit**.
+- HAM Grid deutlich sichtbarer gemacht: bereits in der Weltansicht werden Maidenhead-Felder mit kräftigeren gelben Linien und Feldbezeichnungen angezeigt.
+- Bei höherem Zoom werden 4-stellige Maidenhead-Squares gezeichnet und ab Zoom 7 beschriftet.
+- HAM Grid bleibt als unabhängiges Overlay sowohl über Karte als auch Satellit nutzbar.
+- Flaggen-Pins, Verbindungslinie, Welt/Details, Entfernung/Richtung und QRZ-Datenanzeige bleiben unverändert.
+- Keine Änderung am DMR-, AMBE-, RX/TX-, Audio- oder TG-Monitor-Kern.
+
+## 0.2.1.53
+
+- QRZ-Karte zeigt den eigenen Standort und die Gegenstation jetzt als deutlich erkennbare Flaggen-Pins statt einfacher Punktmarker.
+- Eigener Standort und Gegenstation verwenden unterschiedliche Pin-/Flaggenfarben und bleiben mit permanentem Rufzeichen beschriftet.
+- Klick auf einen Flaggen-Pin zeigt Rolle, Rufzeichen, Name, Locator, Land und Koordinaten.
+- Weltansicht berücksichtigt weiterhin beide Standorte; Detailansicht zoomt weiterhin auf die Gegenstation und öffnet deren Stations-Popup.
+- Verbindungslinie, Entfernung/Richtung, HAM Grid und der Leaflet-Bounds-Fix aus 0.2.1.52 bleiben erhalten.
+- Keine Änderung am Funk-, Audio-, QRZ-Daten- oder TG-Monitor-Kern.
+
+## 0.2.1.52
+
+- Leaflet-Karte erhält unmittelbar beim Erzeugen eine gültige Startansicht (`setView([20, 0], 2)`), bevor Tile-, Marker-, Linien- oder HAM-Grid-Layer hinzugefügt werden.
+- HAM-Grid liest Karten-Bounds nur noch, wenn Leaflet den Kartenstatus bereits vollständig geladen hat.
+- Größen-Synchronisation verwendet `invalidateSize({pan:false, debounceMoveend:true})` statt animiertem `invalidateSize(true)`, um unnötige Move-/Bounds-Zwischenzustände während Qt-Resize-Ereignissen zu vermeiden.
+- Ziel ist die Beseitigung von `Uncaught TypeError: Cannot read properties of undefined (reading 'min')` beim Öffnen des QRZ-Fensters.
+- Keine Änderung an QRZ-Daten, Profilansicht, DMR-, AMBE-, RX/TX-, Audio- oder TG-Monitor-Kern.
+
+## 0.2.1.51
+
+- Leaflet-1.9.4-CSS-SRI auf den offiziellen SHA-256-Wert korrigiert. Der zuvor eingetragene falsche Digest führte dazu, dass Qt WebEngine das Leaflet-CSS blockierte.
+- QRZ-Karte hält jetzt explizit einen `_map_ready`-Status. Qt führt Karten-JavaScript erst nach erfolgreichem `loadFinished` aus.
+- Alle Qt→JavaScript-Aufrufe für `syncMapSize`, `worldView`, `detailView` und `toggleGrid` prüfen zusätzlich per `typeof`, ob die jeweilige Funktion bereits definiert ist.
+- Frühe Resize-Events können dadurch kein `ReferenceError: syncMapSize is not defined` mehr auslösen.
+- Größenfix aus 0.2.1.50 bleibt erhalten.
+- Keine Änderung an QRZ-Daten, DMR-, AMBE-, RX/TX-, Audio- oder TG-Monitor-Kern.
+
+## 0.2.1.50
+
+- QRZ-Leaflet-Karte nach Qt-WebEngine-Größenänderungen synchronisiert.
+- `map.invalidateSize(true)` wird jetzt nach dem Kartenladen, beim Wechsel auf **Welt**, beim Wechsel auf **Details** und nach Größenänderungen des QRZ-Fensters ausgeführt.
+- Weltansicht wird nach vollständigem Laden des WebViews erneut berechnet.
+- HTML-/Body-Overflow deaktiviert; die eingebettete Karte erzeugt keine eigenen horizontalen oder vertikalen Browser-Scrollbalken mehr.
+- Kartencontainer füllt den WebView absolut über `inset: 0`.
+- Keine Änderung an QRZ-Daten, Markern, Entfernung, HAM Grid, DMR-, AMBE-, RX/TX- oder Audiokern.
+
+## 0.2.1.49
+
+- QRZ.com-Button ohne separaten Platzhalter umgesetzt: Qt `retainSizeWhenHidden` hält den benötigten Platz unsichtbar frei, ohne schwarzen Restbereich und ohne Layout-Sprung.
+- QRZ.com-Button im Bereich **Aktuelle Station** weiter nach links gerückt.
+- QRZ-Stationsfenster vollständig kompakter gestaltet: Profilbild auf 300×300 px vergrößert, Beschriftungen und Werte enger zusammengeführt, Stationskopf und Infokarte neu gegliedert.
+- LoTW/eQSL-Werte `0/1` werden als **Nein/Ja** dargestellt.
+- Entfernung und Peilrichtung zwischen eigener QRZ-Station und Gegenstation werden berechnet und angezeigt, sofern beide Koordinaten vorliegen.
+- Die bisher statisch gezeichnete Karte wurde durch eine interaktive Leaflet-/OpenStreetMap-Karte in Qt WebEngine ersetzt.
+- Karte unterstützt Mausrad-Zoom, Verschieben, Weltansicht, Detailzoom auf die Gegenstation, Marker für eigene Station/Gegenstation und eine Verbindungslinie.
+- **HAM Grid** als zuschaltbare Maidenhead-Ebene ergänzt: bei kleinerem Zoom Locator-Felder, bei höherem Zoom feinere 4-stellige Rasterquadrate.
+- OSM-Attribution bleibt sichtbar; keine Karten-Vorlade-/Offlinefunktion.
+- Satellitenschalter ist architektonisch vorgesehen, aber bewusst deaktiviert, solange kein lizenzierter Kartenanbieter/API-Key konfiguriert ist. Keine Nutzung veralteter oder nicht belastbarer Gratis-Satellitenendpunkte.
+- Keine Änderung am DMR-, AMBE-, RX/TX-, Audio-, QRZ-XML- oder TG-Monitor-Kern.
+
+## 0.2.1.48
+
+- DMR-Kanalbereich der Betriebsmaske visuell neu gegliedert: aktueller Kanal links als kompakte Instrumentanzeige, Schnellwahl oben und manuelle Kanalwahl darunter.
+- Aktueller Kanal zeigt zusätzlich kompakt `TSx · Gruppe/Privat`.
+- Die drei Favoriten-Schnellwahlbuttons bleiben erhalten; daneben gibt es jetzt eine Combobox **Alle Favoriten …** mit sämtlichen gespeicherten Favoriten.
+- Auswahl über die Favoriten-Combobox übernimmt wie die Schnellwahl immer vollständig TG, Timeslot und Rufart und verwendet denselben sicheren Ablauf für getrennten bzw. verbundenen Betrieb.
+- Timeslot-/Rufart-Hinweise wurden optisch zurückgenommen; Hotkey-Hinweise bleiben dynamisch erhalten.
+- QRZ.com-Button im Bereich **Aktuelle Station** ist kompakter. Sein Platz wird dauerhaft reserviert, sodass das Ein-/Ausblenden des Buttons die Maske nicht mehr verschiebt.
+- Keine Änderung am DMR-, AMBE-, RX/TX-, Audio-, QRZ-Daten- oder TG-Monitor-Kern.
+
+## 0.2.1.47
+
+- Zentrales Fenstermanagement für CarenDMR-Zusatzfenster ergänzt.
+- Position und Größe werden pro Fenstertyp in `config/windows.local.json` gespeichert und beim nächsten Öffnen wiederhergestellt.
+- Gespeicherte Fenster, die nach Monitor-/Auflösungswechsel vollständig außerhalb aller sichtbaren Bildschirme liegen, werden automatisch auf einen vorhandenen Bildschirm zurückgeholt.
+- QRZ.com-Stationsfenster verwendet einen gemeinsamen Positionsschlüssel unabhängig vom Rufzeichen und öffnet deshalb künftig am zuletzt verwendeten Ort.
+- Einstellungen, Audio-Benchmark, Audio Coach und Audio-Tuner nutzen ebenfalls die zentrale Geometriespeicherung.
+- Eigenständiger TG-Monitor merkt sich Position/Größe und kann über lokale IPC nach vorne geholt oder geschlossen werden.
+- Neues Menü **Fenster** listet Hauptfenster, sichtbare Zusatzfenster und den laufenden TG-Monitor auf.
+- Menübefehle **Alle Fenster nach vorne**, **Alle Zusatzfenster schließen** und **Fensterpositionen zurücksetzen** ergänzt.
+- Mehrmonitorbetrieb bleibt erhalten: Fenster werden beim Nach-vorne-Holen nicht auf einen anderen Monitor verschoben.
+- Keine Änderung am DMR-, AMBE-, QRZ-Daten-, RX-, TX- oder Audiokern.
+
+## 0.2.1.46
+
+- QRZ.com XML Callbook Data Service als vom Funkkern getrenntes Modul ergänzt.
+- Lokale Zugangsdaten über `config/qrz.local.json`; Beispiel unter `config/qrz.example.json`. Lokale Zugangsdaten bleiben durch `*.local.json` von Git und Release-ZIP ausgeschlossen.
+- Für die aktuelle Station wird asynchron geprüft, ob ein QRZ.com-Datensatz vorhanden ist. Nur bei Treffer erscheint der Button **QRZ.com** im Bereich **Aktuelle Station**.
+- Neues nicht-modales Fenster **QRZ.com – <Rufzeichen>** mit Profilbild, Name, Ort, Region, Land, Locator, Koordinaten, CQ-/ITU-Zone und QSL-Informationen.
+- Lokale Qt-Karte ohne externen Kartenanbieter: Weltübersicht mit eigener Station und Gegenstation als Flaggenmarker; **Details** zoomt auf die Umgebung der Gegenstation, **Weltkarte** kehrt zurück.
+- Button **QRZ.com öffnen** öffnet die öffentliche Profilseite im Browser.
+- QRZ-Session-Key wird wiederverwendet und bei erkannten Session-/Timeoutfehlern automatisch erneuert.
+- Keine Änderung am DMR-, AMBE-, RX-, TX- oder Audiokern.
+
+## 0.2.1.45
+
+- RX-AGC für einen eindeutigen Praxistest beim Programmstart bewusst ausgeschaltet. Die AGC kann während der laufenden Sitzung weiterhin manuell über die bestehende Checkbox aktiviert werden.
+- Timing-Diagnose erweitert: Jede interne RX-Stop-Anforderung schreibt `RX_STOP_ANGEFORDERT` mit Grund, Running-/TX-Pause-Status und Switch-Information in `logs/tx_rx_timing.log`.
+- `ConnectionManager` protokolliert zusätzlich `RX_STOP_QUELLE` für Disconnect, Kanalwechsel und den alten TX-Pfad. Damit lässt sich ein unerwarteter RX-Abbruch beim nächsten Auftreten eindeutig einer internen Ursache zuordnen.
+- Qt-Fontwarnung beim Beenden adressiert: die visuelle Statusanzeige verwendet keine Pixel-Schriftgröße mehr, deren `pointSize()` intern `-1` ergibt, sondern eine gültige Punktgröße.
+- Keine Änderung an DMR-Protokoll, AMBE-Decoder, BrandMeister-Heartbeat oder RX-Zeitbegrenzung.
+
+## 0.2.1.44
+
+- Falsche TG-Monitor-IPC-Fehlermeldung behoben: `waitForBytesWritten()` ist nicht mehr das Erfolgskriterium; maßgeblich ist die tatsächliche Antwort von CarenDMR.
+- Menü `Programm` um **TG-Monitor starten** ergänzt. Der Monitor wird als eigener Prozess mit derselben Python-/venv-Umgebung gestartet.
+- TG-Monitor als Einzelinstanz abgesichert. Ein zweiter Start wird erkannt und mit dem Hinweis `Der TG-Monitor läuft bereits.` abgewiesen.
+- Bestehende Kanalübergabe, BrandMeister-Last-Heard-Monitoring, 3-Sekunden-Mindestdauerfilter und 5-Minuten-TX-Sicherheitslimit bleiben unverändert.
+- Keine Änderung am DMR-, AMBE-, RX- oder Audiokern.
+
+## 0.2.1.43
+
+- Historische TX-Sicherheitsabschaltung von 60 Sekunden auf 300 Sekunden (5 Minuten) erhöht.
+- Bestehende Installationen mit dem alten gespeicherten Standardwert 60 Sekunden werden beim Start automatisch auf 300 Sekunden migriert; bewusst abweichende Werte bleiben erhalten.
+- Zulässige Obergrenze des TX-Sicherheitslimits auf 300 Sekunden erweitert.
+- TG-Monitor erhält einen einstellbaren Mindestsprechdauer-Filter, Standard 3 Sekunden. Kurze Verbindungs-/Kerchunk-Tests werden ausgeblendet; 0 Sekunden deaktiviert den Filter.
+- Mindestsprechdauer wird in `config/tg_monitor.local.json` gespeichert.
+- Keine weiteren Änderungen am DMR-, AMBE-, TX/RX- oder Audiokern.
+
+## 0.2.1.42
+
+- BrandMeister-Last-Heard-Subscription ergänzt: Nach erfolgreichem Socket.IO-Connect sendet der TG-Monitor `join = everything`.
+- Live-Test bestätigt: Ohne Subscription kamen 0 `mqtt`-Events; mit Subscription wurden sofort BrandMeister-Events geliefert.
+- Diagnose-Logging aus 0.2.1.41 bleibt erhalten und protokolliert nun zusätzlich `SUBSCRIBE join=everything`.
+- Keine Änderung am DMR-, AMBE-, TX/RX- oder Audiokern.
+
+## 0.2.1.41
+
+- TG-Monitor um gezieltes Diagnose-Logging in `logs/tg_monitor.log` erweitert.
+- Protokolliert Socket.IO-Verbindungsaufbau/-abbau, Fehler, jedes empfangene `mqtt`-Rohereignis, geparste Felder und die Filterentscheidung für überwachte Talkgroups.
+- Diagnosefehler bleiben vom Monitorbetrieb entkoppelt; Schreibfehler im Log dürfen den TG-Monitor nicht stoppen.
+- Keine Änderung am DMR-, AMBE-, TX/RX- oder Audiokern.
+
+## 0.2.1.40
+
+- Eigenständiges Startprogramm `tg_monitor.py` ergänzt. Der TG-Monitor beobachtet mehrere frei wählbare BrandMeister-Talkgroups über den offiziellen Last-Heard-Socket.IO-Datenweg.
+- TG-Monitor läuft unabhängig vom DMR-/AMBE-/Audiokern und kann daher parallel zu CarenDMR betrieben werden.
+- Aktivitätsanzeige pro TG mit Status, Station, Name, Dauer und letzter Aktivität.
+- Überwachte TGs und gewünschter Übergabe-Timeslot werden lokal in `config/tg_monitor.local.json` gespeichert.
+- Lokale Qt-IPC (`QLocalServer`/`QLocalSocket`) zur Übergabe eines markierten Kanals an eine laufende CarenDMR-Instanz.
+- CarenDMR weist externe Kanalwechsel während TX oder während Verbindungsaufbau/-abbau ab. Bei bestehender RX-Verbindung erfolgt der vorhandene Ablauf Trennen → Kanal setzen → Verbinden.
+- Neue Laufzeitabhängigkeit `python-socketio[client]` für den BrandMeister-Last-Heard-Feed.
+
+## 0.2.1.39
+
+- RX-Lautstärke 100 % gibt gültige PCM16-Samples jetzt unverändert (0 dB) aus; der bisherige `tanh`-Soft-Limiter senkt normale Empfangspegel nicht mehr ab.
+- Pegel außerhalb des PCM16-Bereichs werden weiterhin sicher auf -32768 bis +32767 begrenzt, insbesondere nach AGC/Verstärkung.
+- Veraltetes separates TX-Zeit/Zähler-Label unter dem TX-Button entfernt; die TX-Laufzeit bleibt ausschließlich im großen TX-Button sichtbar.
+- Release-ZIP bereinigt: reproduzierbare `native/vendor`-Quellen und `native/md380_dynarmic_build/out`-Buildartefakte werden nicht mehr mitarchiviert; die benötigten Buildskripte und nativen Quellen bleiben enthalten.
+
+## 0.2.1.38 – Favoriten-Drop sauber neu aufbauen + beste TG-Suche zuerst
+
+- Behebt den rein visuellen Drag&Drop-Fehler, bei dem die verdrängte Favoritenzeile bis zum nächsten Refresh verschwand.
+- Die Favoritenreihenfolge wird weiterhin ausschließlich im `FavoriteService` gespeichert.
+- Der interne QTableWidget-Zeilenmove wird beim Drop nicht mehr zusätzlich ausgeführt.
+- Die Tabelle wird unmittelbar im nächsten Qt-Event-Loop-Schritt aus der gespeicherten Reihenfolge komplett neu aufgebaut.
+- Ohne Suchtext bleiben Favoriten geschlossen oben und folgen ihrer Drag&Drop-Reihenfolge.
+- Bei aktiver Suche hat Trefferqualität Vorrang vor Favoritenstatus.
+- Eine exakt eingegebene TG/DMR-ID steht immer ganz oben, z. B. `262` vor `2621`, `2622`, `2623` usw.
+- Danach folgen numerische Präfix-Treffer, dann exakte/beginnende Namen und erst anschließend allgemeine Teiltreffer.
+- Funk- und Audiopfad bleiben unverändert.
+
+## 0.2.1.38 – Favoriten per Maus sortieren + TX sichtbar größer
+
+- Favoriten bleiben im Talkgroups-Reiter immer als geschlossener Block ganz oben.
+- Nur Favoritenzeilen sind per Maus verschiebbar.
+- Die Reihenfolge wird direkt in `favorites.local.json` gespeichert.
+- Die neue Reihenfolge bestimmt zugleich die drei Schnellwahl-Buttons im Betrieb.
+- Bei aktiven Filtern ist Drag&Drop bewusst gesperrt, damit keine uneindeutige Teilreihenfolge gespeichert wird.
+- TX wurde ausdrücklich nach unten vergrößert: feste Höhe 150 px.
+- Die bisher separat reservierte TX-Sekundenzeile entfällt; während des Sendens steht die Laufzeit direkt im großen TX-Button.
+- Funk- und Audiopfad bleiben unverändert.
+
+## 0.2.1.38 – Schnellwahl, sofortige RX-Liste, breiter TX
+
+- Die ersten drei Einträge der vorhandenen Favoritenliste erscheinen im Betrieb als Schnellwahl-Hotbuttons.
+- Ein Hotbutton übernimmt immer den kompletten DMR-Kanal: Ziel/TG, Timeslot und Rufart.
+- Im getrennten Zustand verbindet die Schnellwahl nach der Übernahme automatisch.
+- Bei bestehender Verbindung läuft der Wechsel strikt `Trennen → Favorit übernehmen → neu verbinden`.
+- Schnellwahl ist während TX gesperrt.
+- `Zuletzt gehört` wird nun erst nach dem tatsächlichen Speichern des abgeschlossenen Empfangs aktualisiert und zeigt die neue Station sofort.
+- TX nutzt nahezu die gesamte Breite der rechten Bedienkarte.
+- Funk- und Audiopfad bleiben unverändert.
+
+## 0.2.1.38 – Ziel-Dopplungen entfernt, TX priorisiert
+
+- Entfernt das redundante Feld `Ziel` aus `Aktuelle Station`.
+- Entfernt die redundante Spalte `Ziel` aus `Zuletzt gehört`.
+- QSO-Status nutzt die frei gewordene Breite in der Stationskarte.
+- TX ist deutlich höher und über nahezu die gesamte Breite der rechten Bedienkarte gezogen.
+- TX bleibt damit der optisch wichtigste und am schnellsten erfassbare Bedienknopf.
+- Funk- und Audiokern unverändert.
+
+## 0.2.1.38 – Betriebsmaske strukturiert und optisch beruhigt
+
+- `Aktuelle Station` wurde neu strukturiert: Beschriftungen sind zurückhaltend, Werte stehen in klar erkennbaren Wertefeldern.
+- `Zuletzt gehört` ist jetzt eine echte kompakte Tabelle mit den Spalten Zeit, Rufzeichen, Name, Land und Ziel.
+- Angezeigt werden die letzten drei unterschiedlichen Stationen, damit wiederholte Durchgänge derselben Station die Liste nicht verdrängen.
+- Die Tabelle bleibt zunächst rein informativ; es wird kein Privatruf ausgelöst.
+- Die rechte Funk-/Audiokarte endet direkt nach TX; der bisherige große künstliche Leerraum unter TX entfällt.
+- Betriebsinformationen schließen direkt unter den Bedienkarten an.
+- Das alte übergroße Fenstermaß aus 0.2.1.33 wird bei der ersten 0.2.1.38-Ausführung einmalig auf 980 × 720 normalisiert; danach werden Position und Größe wieder wie gewohnt gespeichert.
+- DMR-Kanal und Audio-Bedienung verwenden die gleiche klare Beschriftungs-/Wertehierarchie.
+- Das separate Audio-Tuner-Fenster wurde vollständig neu aufgeteilt: natürlicher Dialogaufbau, Profilzeile, gleichmäßige Reglerzeilen, klar abgegrenzte Werte und erklärender Hinweis.
+- Das Audio-Tuner-Fenster verwendet seine natürliche Inhaltshöhe statt freie Fläche zwischen den Zeilen zu verteilen.
+- Funk-, BrandMeister- und Audio-Signalpfad bleiben unverändert.
+
+## 0.2.1.38 – Ruhige Betriebsmaske, eigener Audio-Tuner, zuletzt gehört
+
+- Der DMR Audio-Tuner ist aus der Betriebsmaske entfernt und öffnet als eigenes nicht-modales Fenster.
+- Öffnen/Schließen des Tuners verschiebt TX, Pegelanzeigen oder andere Bedienelemente nicht mehr.
+- In der Betriebsmaske bleibt nur der kompakte Button `Audio-Tuner…`.
+- Der redundante große CarenDMR-Kopfblock entfällt; Titel und Version stehen bereits in der Fenstertitelleiste.
+- Außenabstände und vertikale Abstände der Betriebsmaske wurden reduziert.
+- TX wurde kompakter, ohne seine zentrale Position in der Bedienung zu verlieren.
+- Unter `Aktuelle Station` werden die drei zuletzt gehörten Stationen angezeigt.
+- Anzeige je Station: Uhrzeit, Rufzeichen bzw. DMR-ID, Name, Land sowie TG/TS.
+- Die Liste ist zunächst reine Information; es wird bewusst noch kein Privatruf ausgelöst.
+- Betriebsinformationen bleiben durch die gewonnene Höhe besser sichtbar.
+- Funk-, BrandMeister- und Audioverarbeitung bleiben unverändert.
+
+## 0.2.1.38 – Audio Coach wartet auf vollständiges Parrot-Echo
+
+- Behebt die vorzeitige Coach-Auswertung nach einem kurzen/stalen Parrot-Terminator.
+- Der Coach kennt jetzt die tatsächliche Länge der unmittelbar zuvor gesendeten TX-Aufnahme.
+- Ein eingehender Parrot-Terminator beendet den Test nur, wenn mindestens 85 % dieser realen TX-Länge als RX-PCM empfangen wurden.
+- Kurze Zwischen-/Alt-Terminatoren werden protokolliert und ignoriert; die PCM-Sammlung läuft weiter.
+- Kein künstlicher fester Warte-Timer: Vollständigkeit wird aus der realen TX-Länge plus DMR-Terminator bestimmt.
+- Erst danach wird die Parrot-WAV gespeichert und die Analyse gestartet.
+- Tuner-/Coach-UI aus 0.2.1.31 bleibt unverändert.
+
+## 0.2.1.38 – Tuner kompakter + Coach-Empfehlungen eindeutig
+
+- Entfernt die sichtbaren Buttons `Parrot vorbereiten` und `Audio-Assistent` aus dem DMR Audio-Tuner.
+- Entfernt die zusätzliche Audio-Assistent-Statuszeile unter dem Tuner.
+- `Zurücksetzen` bleibt erhalten und sitzt platzsparend neben der Profilauswahl.
+- Der Audio Coach bleibt der einzige sichtbare Einstieg für einen Modulationstest.
+- Coach-Empfehlungen werden nicht mehr als missverständliche reine Delta-Werte angezeigt.
+- Statt `Tiefen -2` bei bereits aktiven `-2 dB` zeigt der Coach nun z. B. `Tiefen → -4 dB (aktuell -2 dB, weitere Änderung -2)`.
+- Gleiches gilt für Sprachmitten, Präsenz, Höhen, Dynamik und Mic-Gain.
+- Messalgorithmus und Funk-/Audio-Pfad bleiben unverändert.
+
+## 0.2.1.38 – Audio Coach erkennt echten Parrot + RX-AGC-Startzustand
+
+- Audio Coach beendet seine Sitzung nicht mehr direkt nach TX, sondern wartet auf die echte Parrot-Antwort.
+- Die reale dekodierte Parrot-Antwort `9990 -> eigene DMR-ID` wird im Audio-Testordner gespeichert und erst am Terminator als vollständig markiert.
+- Der TX-Bericht mit vorläufig `echo_received=false` wird beim Coach nicht mehr vor der realen RX-Antwort erzeugt.
+- Gespeicherte RX-Audioeinstellungen (Lautstärke, Stumm, AGC) werden beim Programmstart nun tatsächlich in den ReceiveService übernommen.
+- Behebt damit den Zustand „AGC im UI aus, intern im RX trotzdem an“, der den hörbaren leisen Satzanfang mit anschließendem Hochregeln verursachte.
+- Audio Coach bleibt passiv; kein separater Mikrofon-Vorlauf.
+- Fensterposition/-größe aus 0.2.1.29 bleibt erhalten.
+
+## 0.2.1.38 – Audio Coach passiv + Fensterposition merken
+
+- Audio Coach öffnet das Mikrofon nicht mehr vor dem eigentlichen PTT.
+- Der Coach benutzt beim Test exakt denselben Live-TX-Pfad wie ein normaler PTT und beobachtet ihn nur.
+- Der frühere separate 2-s-Mikrofon-Vorlauf wurde entfernt, weil er WASAPI-/Headset-Zustände verändern konnte.
+- Der One-Shot-Test verzögert die TX-Audiokette nicht mehr gegenüber einem normalen PTT.
+- Position, Größe und Qt-Fensterzustand des Hauptfensters werden beim Beenden gespeichert und beim nächsten Start wiederhergestellt.
+- Liegt eine gespeicherte Position nach einem Monitorwechsel außerhalb aller Bildschirme, wird das Fenster sicher auf einen vorhandenen Bildschirm zurückgeholt.
+- Persistente BrandMeister-Session, Private-RX-Filter, MD380, +2 dB und 240-ms-Puffer bleiben unverändert.
+
+## 0.2.1.38 – Privatruf-RX korrekt an eigene DMR-ID
+
+- Behebt den nach Wireshark eindeutig nachgewiesenen RX-Filterfehler bei Privatrufen.
+- Gruppenruf bleibt unverändert: empfangen wird die eingestellte Talkgroup.
+- Privatruf wird korrekt als eingehender Ruf an die eigene DMR-ID gefiltert.
+- Damit wird z. B. die Parrot-Antwort `9990 -> 2632198` nicht mehr verworfen.
+- Persistente BrandMeister-Session aus 0.2.1.27, MD380, +2 dB und 240-ms-Puffer bleiben unverändert.
+
+## 0.2.1.38 – Persistente BrandMeister-Session für TX/RX
+
+- RX und TX verwenden jetzt dieselbe angemeldete BrandMeister-UDP-Verbindung.
+- Beim Drücken von PTT wird nur der RX-Thread pausiert; Socket, Login und Funkziel bleiben erhalten.
+- Nach dem DMR-Terminator wird derselbe Socket unmittelbar wieder vom RX-Thread übernommen.
+- Kein Logout/Login und keine erneute Zielaktivierung zwischen TX und RX.
+- Bei echtem TG-/TS-/Rufart-Wechsel wird die bestehende Session bewusst geschlossen und für das neue Funkziel neu aufgebaut.
+- Neue Timing-Marken dokumentieren Session-Wiederverwendung und den RX↔TX-Handover.
+- MD380, +2 dB Eingangspegel und 240-ms-Encoderpuffer bleiben unverändert.
+
+## 0.2.1.38 – Sofortiger RX nach TX
+
+- Kritischer Funkablauf korrigiert: Live-TX wartet nach dem DMR-Terminator nicht mehr auf ein Parrot-Echo.
+- Nach PTT AUS werden Voice-Frames und Terminator beendet; anschließend kehrt die Anwendung sofort in den normalen RX-Pfad zurück.
+- Parrot-Antworten werden damit wie jede andere eingehende Funkstation über den normalen Empfang verarbeitet.
+- MD380/DroidStar, +2 dB Eingangspegel und der 240-ms-TX-Puffer bleiben unverändert.
+- Die spezielle Offline-/Legacy-Parrot-Testfunktion bleibt getrennt und wird von diesem Live-Fix nicht verändert.
+
+## 0.2.1.25 – MD380-Live-TX mit +2 dB Arbeitspunkt
+
+- Übernimmt den Gewinner des kontrollierten Offline-Hörtests: +2 dB unmittelbar vor dem MD380/DroidStar-Vocoder.
+- Pegelanhebung erfolgt ausschließlich im `Md380DynarmicEncoder` mit sicherer PCM16-Begrenzung.
+- Keine Änderung an 240-ms-TX-Puffer, DMR-Sendetakt, TX/RX-Umschaltung, Audio-Tuner oder RX.
+- Ziel des Live-Parrot-Tests: bestätigen, dass die offline bewerteten 8–9/10 auch über BrandMeister erhalten bleiben.
+
+## 0.2.1.25 – Zirkelimport im MD380-Pegeltest behoben
+
+- `carendmr.vocoder` lädt den DMR-Extractor nicht mehr beim Paketimport, sondern erst beim tatsächlichen Aufruf.
+- Dadurch kann `NativeMbeReceiveVocoder` im Offline-MD380-Pegeltest ohne `brandmeister <-> vocoder`-Zirkel importiert werden.
+- Der Pegeltest aus 0.2.1.23 bleibt unverändert: -2, -1, 0, +1, +2 und +3 dB.
+- Keine Änderung am Live-TX, MD380-Puffer, RX oder Klangpfad.
+
+## 0.2.1.25 – MD380-Pegel-Feinhörtest
+
+- Neuer Offline-Test `tools/ambe_md380_level_sweep.py`.
+- Vergleicht denselben 8-kHz-PCM-Eingang ausschließlich über MD380/DroidStar bei -2, -1, 0, +1, +2 und +3 dB.
+- Keine Änderung am Live-TX, 240-ms-Puffer, RX, Audio-Tuner oder Mikrofonpfad.
+- Ziel: besten MD380-Arbeitspunkt für Lautstärke und saubere Wortenden bestimmen.
+
+## 0.2.1.25 – MD380-Live-TX entkoppelt
+
+- Entkoppelt Mikrofon/PCM-Erfassung, MD380-Encoding und den festen 60-ms-DMR-Sendetakt über zwei begrenzte Queues.
+- Nutzt den bestehenden 240-ms-TX-Vorlauf zugleich als vier Bursts großen Encoder-Reservepuffer.
+- Ziel: gemessene sporadische MD380-Latenzspitzen dürfen den DMR-Sendetakt nicht mehr unterbrechen.
+- Neue Diagnosepunkte `TX_ENCODER_PUFFER_BEREIT` und `TX_ENCODER_PUFFER_STATISTIK`.
+- Keine Änderung an Audio-Tuner, Mikrofonpegel, RX-Umschaltung oder Parrot-Zustandslogik.
+
+## 0.2.1.25 – Windows-DLL-Ladepfad für MD380
+
+- Registriert unter Windows `C:\msys64\ucrt64\bin` automatisch über `os.add_dll_directory()`, bevor `carendmr_md380_bridge.dll` geladen wird.
+- Behebt damit den bestätigten Startfehler durch fehlende Laufzeitauflösung von `libgcc_s_seh-1.dll`, `libwinpthread-1.dll` und `libstdc++-6.dll`.
+- Keine manuelle PATH-Erweiterung mehr nötig.
+- Live-TX bleibt auf dem MD380/DroidStar-Encoder; keine weitere Klangänderung in diesem Schritt.
+
+## 0.2.1.25 – MD380/DroidStar als Live-TX-Encoder
+
+- Der im kontrollierten Offline-A/B-Test deutlich bessere MD380/DroidStar-Vocoder wird zum bevorzugten Live-TX-Encoder.
+- Der bisherige Windows-Vocoder bleibt vorerst als Fallback erhalten, falls die MD380-Bridge auf einer Installation fehlt.
+- Parrot und normale Gruppen-/Privat-TX-Wege verwenden dieselbe Encoder-Factory.
+- Keine zusätzliche Pegel-, Gate- oder EQ-Änderung: Der Codecwechsel wird zunächst isoliert im echten Parrot-Betrieb bewertet.
+
+## 0.2.1.25 – MD380-Dynarmic Windows-Linkfix
+
+- Behebt den reproduzierbaren Linkfehler `cannot find -lSTATIC` im MD380-Dynarmic-Windows-Build.
+- Der festgelegte Upstream-Commit enthält `target_link_libraries(md380_vocoder STATIC dynarmic)`; `STATIC` wird dort fälschlich als Bibliotheksname behandelt.
+- Das Build-Script korrigiert ausschließlich diese Zeile reproduzierbar auf `PRIVATE dynarmic`.
+- `core_perl` wird für `shasum` automatisch in den PATH aufgenommen.
+- `CMAKE_POLICY_VERSION_MINIMUM=3.5` wird im Build-Script selbst gesetzt.
+- Keine Änderung am Live-Audio- oder Funkpfad.
+
+## 0.2.1.25 – DroidStar-MD380-A/B
+
+- Der Upstream-Codevergleich belegt: Der festgelegte DroidStar-Stand verwendet für DMR bei aktiviertem `USE_MD380_VOCODER` den Pfad `md380_encode_fec()` statt `MBEVocoder::encode_2450x1150()`.
+- Neuer Windows-x86_64-Diagnosepfad über `md380_vocoder_dynarmic`, um diesen Android/DroidStar-Vocoderpfad auf dem N100 vergleichbar zu machen.
+- `native/build_md380_dynarmic_windows.ps1` baut eine lokale `carendmr_md380_bridge.dll` aus einem fest fixierten Upstream-Commit.
+- `tools/ambe_md380_ab.py` vergleicht dieselbe 10/10-WAV bei +1 dB: bisheriges Vocoder-Plugin A gegen MD380/Dynarmic B; beide werden mit demselben CarenDMR/mbelib-Decoder wiedergegeben.
+- Kein Eingriff in Live-TX, DSP, BrandMeister oder GUI.
+
+## 0.2.1.17 – Vocoder-Build A/B
+
+- Neuer Offline-Test `tools/ambe_plugin_ab.py`.
+- Vergleicht zwei DroidStar-kompatible Windows-Vocoder-Binaries mit exakt demselben 8-kHz-PCM16-Eingang.
+- Fester Encoder-Eingangspegel: +1 dB, der beste Punkt aus dem Feinsweep 0.2.1.16.
+- Beide Encoder-Ausgaben werden mit demselben CarenDMR/mbelib-Decoder zurück in PCM gewandelt.
+- `report.json` dokumentiert Dateigröße, SHA-256 des Plugins, SHA-256 der erzeugten AMBE-Codewörter sowie ob Binärdateien bzw. AMBE-Ausgaben identisch sind.
+- Upstream-Abgleich korrigiert eine frühere Annahme: DroidStar auf Android/iOS lädt ebenfalls externe Vocoder-Plugins; deshalb ist der kontrollierte Vergleich ein Plugin-Build-A/B und kein Plattform-Audiotest.
+- Kein Netzwerk, kein BrandMeister, kein TX und keine Änderung am Live-Funkpfad.
+
+## 0.2.1.16 – AMBE-Pegel-Feinsweep korrigiert
+
+- Fehlendes Werkzeug `tools/ambe_level_fine_sweep.py` ergänzt.
+- Feste Offline-Teststufen +1, +2, +3, +4 und +5 dB.
+- Direkter Skriptstart aus der Projektwurzel funktioniert über abgesicherten Importpfad.
+- Clipping-Risiko wird vor dem Encode erkannt; gefährliche Varianten werden übersprungen.
+- Ergebnisordner `ambe_level_fine_sweep` enthält Referenz, Loopback-WAVs und `report.json`.
+- `DEPLOY.md` nennt exakt das tatsächlich vorhandene Feinsweep-Werkzeug.
+- Kein Eingriff in Live-TX, DSP, AMBE-Framing oder BrandMeister.
+
+## 0.2.1.15 – AMBE-Pegel-Feinsweep
+
+- Feinsweep um den bisher besten Encoder-Eingangspegel: +1, +2, +3, +4 und +5 dB.
+- Verwendet unverändert dieselbe 10/10-Referenz-WAV und denselben DroidStar-Encoder/CarenDMR-mbelib-Decoder.
+- Keine Änderung am Live-Audiopfad; weiterhin vollständig offline.
+- Ziel: optimalen Encoder-Eingangspegel zwischen dem guten +3-dB-Ergebnis und dem bereits angekratzten +6-dB-Ergebnis bestimmen.
+
+## 0.2.1.14 – AMBE-Pegelsweep
+
+- Neues Offline-Werkzeug `tools/ambe_level_sweep.py`.
+- Verwendet die bereits als 10/10 bewertete `03_vor_ambe_8k.wav` als unveränderte Referenz.
+- Testet 0, +3, +6, +9 und +12 dB vor dem AMBE-Encoder.
+- Jede Variante läuft durch den realen DroidStar-AMBE-Encoder und den aktuellen CarenDMR/mbelib-Decoder.
+- Vor jeder Codierung wird Clipping-Risiko geprüft; gefährliche Varianten werden übersprungen statt hart begrenzt.
+- Ausgabe enthält Referenz-WAV, Loopback-WAVs und `report.json` mit RMS/Peak und Codec-Statistik.
+- Kein Netzwerk, kein BrandMeister, kein Parrot und keine Änderung am Live-Audiopfad.
+
+## 0.2.1.13 – AMBE Codec Lab korrigiert
+
+- Direkter Start von `tools/ambe_codec_lab.py` aus der Projektwurzel repariert.
+- Windows-Build erzeugt jetzt Decoder und DroidStar-Vocoder-Bridge gemeinsam und prüft deren Exporte.
+- Zwei verbliebene pytest-Abhängigkeiten in Tests entfernt; vollständiger Lauf wieder mit `unittest` allein möglich.
+- DEPLOY auf den aktuellen Entwicklungs- und Offline-Hörtest reduziert.
+- Keine Änderung am Funk- oder Audiopfad.
+
+
+## 0.2.1.12 – AMBE Codec Lab
+
+- Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
+- Eine vorhandene `03_vor_ambe_8k.wav` wird unverändert als feste Hörreferenz verwendet.
+- Dasselbe AMBE-Codewort wird über zwei Decoderpfade verglichen: aktueller CarenDMR-mbelib-Decoder und das konfigurierte DroidStar-Vocoder-Plugin.
+- Die native Vocoder-Bridge stellt dafür zusätzlich `decode_2450x1150` bereit.
+- Ausgabe: Eingang, CarenDMR/mbelib-Loopback, DroidStar-Plugin-Loopback, AMBE-Frames und `report.json`.
+- Keine Änderung an Live-TX, DMR-Paketierung, DSP, Mic-Gain oder BrandMeister-Verhalten.
+
+## 0.2.1.11 – Pegelpfad vor AMBE messbar
+
+- Geführte Audio-Tests erzeugen zusätzlich `level_path.json`.
+- Der Bericht weist RMS, Peak und Crest-Faktor für Mikrofon roh, nach Mic-Gain, nach Sprachaufbereitung und unmittelbar vor AMBE aus.
+- Für jede Stufe wird die Pegeländerung gegenüber der vorherigen Stufe in dB ausgewiesen.
+- `test_metadata.json` enthält nun zusätzlich den linearen Mic-Gain-Faktor und dessen dB-Wert.
+- `tx_rx_timing.log` erhält `TX_PEGELPFAD` mit Mic-Gain-Prozent, Faktor und dB-Wert.
+- Wichtig: Die Messung bestätigt die bestehende Semantik: 100 % Mic-Gain = 0 dB; 25 % = Faktor 0,25 = ungefähr -12,04 dB. An der Audiobearbeitung selbst wurde bewusst noch nichts verändert.
+- Keine Änderungen an DMR-Protokoll, AMBE, Parrot-Steuerung oder RX-Audio.
+
+## 0.2.1.10 – TX-Ende und Parrot-Signalisierung getrennt
+
+- Der Doppel-Piep wird jetzt unmittelbar nach dem tatsächlich gesendeten DMR-Terminator ausgelöst.
+- Die akustische TX-Ende-Quittung wartet nicht mehr auf das vollständige Parrot-Echo.
+- Nach Loslassen der PTT bleibt die Oberfläche im Zustand „TX wird beendet“, bis der Terminator gesendet wurde.
+- Während des Parrot-Echos zeigt die Oberfläche „Warte auf Antwort“; PTT bleibt bis zur vollständigen RX-Rückkehr gesperrt.
+- Erst nach Parrot-Abschluss und Neustart des normalen Empfangs wird der Zustand wieder auf RX gesetzt.
+- Keine Änderungen an DMR-Paketierung, AMBE, DSP oder Audioqualität.
+
 ## 0.2.1.9 – WASAPI-Ausgabe und Gerätebindung
 
 - Parrot- und normaler RX-Audioausgang verwenden jetzt ausdrücklich das in den Einstellungen gewählte Wiedergabegerät.
@@ -53,6 +485,25 @@
 
 # Changelog
 
+## 0.2.1.12 – AMBE Codec Lab
+
+- Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
+- Eine vorhandene `03_vor_ambe_8k.wav` wird unverändert als feste Hörreferenz verwendet.
+- Dasselbe AMBE-Codewort wird über zwei Decoderpfade verglichen: aktueller CarenDMR-mbelib-Decoder und das konfigurierte DroidStar-Vocoder-Plugin.
+- Die native Vocoder-Bridge stellt dafür zusätzlich `decode_2450x1150` bereit.
+- Ausgabe: Eingang, CarenDMR/mbelib-Loopback, DroidStar-Plugin-Loopback, AMBE-Frames und `report.json`.
+- Keine Änderung an Live-TX, DMR-Paketierung, DSP, Mic-Gain oder BrandMeister-Verhalten.
+
+## 0.2.1.11 – Pegelpfad vor AMBE messbar
+
+- Geführte Audio-Tests erzeugen zusätzlich `level_path.json`.
+- Der Bericht weist RMS, Peak und Crest-Faktor für Mikrofon roh, nach Mic-Gain, nach Sprachaufbereitung und unmittelbar vor AMBE aus.
+- Für jede Stufe wird die Pegeländerung gegenüber der vorherigen Stufe in dB ausgewiesen.
+- `test_metadata.json` enthält nun zusätzlich den linearen Mic-Gain-Faktor und dessen dB-Wert.
+- `tx_rx_timing.log` erhält `TX_PEGELPFAD` mit Mic-Gain-Prozent, Faktor und dB-Wert.
+- Wichtig: Die Messung bestätigt die bestehende Semantik: 100 % Mic-Gain = 0 dB; 25 % = Faktor 0,25 = ungefähr -12,04 dB. An der Audiobearbeitung selbst wurde bewusst noch nichts verändert.
+- Keine Änderungen an DMR-Protokoll, AMBE, Parrot-Steuerung oder RX-Audio.
+
 ## 0.2.1 – Audio-Werkzeuge aus der Hauptoberfläche ausgelagert
 
 - Der Hauptreiter **Audio-Benchmark** wurde aus der CarenDMR-Hauptoberfläche entfernt.
@@ -97,6 +548,25 @@
 - Rohfälle liegen in `data/audio_benchmarks/benchmark.db`; `reference.json` enthält die aktuelle TG-Referenz.
 
 # Changelog
+
+## 0.2.1.12 – AMBE Codec Lab
+
+- Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
+- Eine vorhandene `03_vor_ambe_8k.wav` wird unverändert als feste Hörreferenz verwendet.
+- Dasselbe AMBE-Codewort wird über zwei Decoderpfade verglichen: aktueller CarenDMR-mbelib-Decoder und das konfigurierte DroidStar-Vocoder-Plugin.
+- Die native Vocoder-Bridge stellt dafür zusätzlich `decode_2450x1150` bereit.
+- Ausgabe: Eingang, CarenDMR/mbelib-Loopback, DroidStar-Plugin-Loopback, AMBE-Frames und `report.json`.
+- Keine Änderung an Live-TX, DMR-Paketierung, DSP, Mic-Gain oder BrandMeister-Verhalten.
+
+## 0.2.1.11 – Pegelpfad vor AMBE messbar
+
+- Geführte Audio-Tests erzeugen zusätzlich `level_path.json`.
+- Der Bericht weist RMS, Peak und Crest-Faktor für Mikrofon roh, nach Mic-Gain, nach Sprachaufbereitung und unmittelbar vor AMBE aus.
+- Für jede Stufe wird die Pegeländerung gegenüber der vorherigen Stufe in dB ausgewiesen.
+- `test_metadata.json` enthält nun zusätzlich den linearen Mic-Gain-Faktor und dessen dB-Wert.
+- `tx_rx_timing.log` erhält `TX_PEGELPFAD` mit Mic-Gain-Prozent, Faktor und dB-Wert.
+- Wichtig: Die Messung bestätigt die bestehende Semantik: 100 % Mic-Gain = 0 dB; 25 % = Faktor 0,25 = ungefähr -12,04 dB. An der Audiobearbeitung selbst wurde bewusst noch nichts verändert.
+- Keine Änderungen an DMR-Protokoll, AMBE, Parrot-Steuerung oder RX-Audio.
 
 ## 0.1.9.3
 
@@ -478,6 +948,25 @@
 
 # Changelog
 
+## 0.2.1.12 – AMBE Codec Lab
+
+- Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
+- Eine vorhandene `03_vor_ambe_8k.wav` wird unverändert als feste Hörreferenz verwendet.
+- Dasselbe AMBE-Codewort wird über zwei Decoderpfade verglichen: aktueller CarenDMR-mbelib-Decoder und das konfigurierte DroidStar-Vocoder-Plugin.
+- Die native Vocoder-Bridge stellt dafür zusätzlich `decode_2450x1150` bereit.
+- Ausgabe: Eingang, CarenDMR/mbelib-Loopback, DroidStar-Plugin-Loopback, AMBE-Frames und `report.json`.
+- Keine Änderung an Live-TX, DMR-Paketierung, DSP, Mic-Gain oder BrandMeister-Verhalten.
+
+## 0.2.1.11 – Pegelpfad vor AMBE messbar
+
+- Geführte Audio-Tests erzeugen zusätzlich `level_path.json`.
+- Der Bericht weist RMS, Peak und Crest-Faktor für Mikrofon roh, nach Mic-Gain, nach Sprachaufbereitung und unmittelbar vor AMBE aus.
+- Für jede Stufe wird die Pegeländerung gegenüber der vorherigen Stufe in dB ausgewiesen.
+- `test_metadata.json` enthält nun zusätzlich den linearen Mic-Gain-Faktor und dessen dB-Wert.
+- `tx_rx_timing.log` erhält `TX_PEGELPFAD` mit Mic-Gain-Prozent, Faktor und dB-Wert.
+- Wichtig: Die Messung bestätigt die bestehende Semantik: 100 % Mic-Gain = 0 dB; 25 % = Faktor 0,25 = ungefähr -12,04 dB. An der Audiobearbeitung selbst wurde bewusst noch nichts verändert.
+- Keine Änderungen an DMR-Protokoll, AMBE, Parrot-Steuerung oder RX-Audio.
+
 ## 0.0.27.3 – Einstellungen abgeschlossen
 
 - Sicherheitsabfrage vor dem Vormerken der Hotkey-Werkseinstellungen.
@@ -627,6 +1116,25 @@
 
 # Changelog
 
+## 0.2.1.12 – AMBE Codec Lab
+
+- Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
+- Eine vorhandene `03_vor_ambe_8k.wav` wird unverändert als feste Hörreferenz verwendet.
+- Dasselbe AMBE-Codewort wird über zwei Decoderpfade verglichen: aktueller CarenDMR-mbelib-Decoder und das konfigurierte DroidStar-Vocoder-Plugin.
+- Die native Vocoder-Bridge stellt dafür zusätzlich `decode_2450x1150` bereit.
+- Ausgabe: Eingang, CarenDMR/mbelib-Loopback, DroidStar-Plugin-Loopback, AMBE-Frames und `report.json`.
+- Keine Änderung an Live-TX, DMR-Paketierung, DSP, Mic-Gain oder BrandMeister-Verhalten.
+
+## 0.2.1.11 – Pegelpfad vor AMBE messbar
+
+- Geführte Audio-Tests erzeugen zusätzlich `level_path.json`.
+- Der Bericht weist RMS, Peak und Crest-Faktor für Mikrofon roh, nach Mic-Gain, nach Sprachaufbereitung und unmittelbar vor AMBE aus.
+- Für jede Stufe wird die Pegeländerung gegenüber der vorherigen Stufe in dB ausgewiesen.
+- `test_metadata.json` enthält nun zusätzlich den linearen Mic-Gain-Faktor und dessen dB-Wert.
+- `tx_rx_timing.log` erhält `TX_PEGELPFAD` mit Mic-Gain-Prozent, Faktor und dB-Wert.
+- Wichtig: Die Messung bestätigt die bestehende Semantik: 100 % Mic-Gain = 0 dB; 25 % = Faktor 0,25 = ungefähr -12,04 dB. An der Audiobearbeitung selbst wurde bewusst noch nichts verändert.
+- Keine Änderungen an DMR-Protokoll, AMBE, Parrot-Steuerung oder RX-Audio.
+
 ## 0.0.27.3 – Einstellungen abgeschlossen
 
 - Sicherheitsabfrage vor dem Vormerken der Hotkey-Werkseinstellungen.
@@ -687,6 +1195,25 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 
 # Changelog
 
+## 0.2.1.12 – AMBE Codec Lab
+
+- Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
+- Eine vorhandene `03_vor_ambe_8k.wav` wird unverändert als feste Hörreferenz verwendet.
+- Dasselbe AMBE-Codewort wird über zwei Decoderpfade verglichen: aktueller CarenDMR-mbelib-Decoder und das konfigurierte DroidStar-Vocoder-Plugin.
+- Die native Vocoder-Bridge stellt dafür zusätzlich `decode_2450x1150` bereit.
+- Ausgabe: Eingang, CarenDMR/mbelib-Loopback, DroidStar-Plugin-Loopback, AMBE-Frames und `report.json`.
+- Keine Änderung an Live-TX, DMR-Paketierung, DSP, Mic-Gain oder BrandMeister-Verhalten.
+
+## 0.2.1.11 – Pegelpfad vor AMBE messbar
+
+- Geführte Audio-Tests erzeugen zusätzlich `level_path.json`.
+- Der Bericht weist RMS, Peak und Crest-Faktor für Mikrofon roh, nach Mic-Gain, nach Sprachaufbereitung und unmittelbar vor AMBE aus.
+- Für jede Stufe wird die Pegeländerung gegenüber der vorherigen Stufe in dB ausgewiesen.
+- `test_metadata.json` enthält nun zusätzlich den linearen Mic-Gain-Faktor und dessen dB-Wert.
+- `tx_rx_timing.log` erhält `TX_PEGELPFAD` mit Mic-Gain-Prozent, Faktor und dB-Wert.
+- Wichtig: Die Messung bestätigt die bestehende Semantik: 100 % Mic-Gain = 0 dB; 25 % = Faktor 0,25 = ungefähr -12,04 dB. An der Audiobearbeitung selbst wurde bewusst noch nichts verändert.
+- Keine Änderungen an DMR-Protokoll, AMBE, Parrot-Steuerung oder RX-Audio.
+
 ## 0.0.27.3 – Einstellungen abgeschlossen
 
 - Sicherheitsabfrage vor dem Vormerken der Hotkey-Werkseinstellungen.
@@ -729,6 +1256,25 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - TX- und Parrot-RX-Diagnose-WAVs bleiben aktiv.
 
 # Changelog
+
+## 0.2.1.12 – AMBE Codec Lab
+
+- Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
+- Eine vorhandene `03_vor_ambe_8k.wav` wird unverändert als feste Hörreferenz verwendet.
+- Dasselbe AMBE-Codewort wird über zwei Decoderpfade verglichen: aktueller CarenDMR-mbelib-Decoder und das konfigurierte DroidStar-Vocoder-Plugin.
+- Die native Vocoder-Bridge stellt dafür zusätzlich `decode_2450x1150` bereit.
+- Ausgabe: Eingang, CarenDMR/mbelib-Loopback, DroidStar-Plugin-Loopback, AMBE-Frames und `report.json`.
+- Keine Änderung an Live-TX, DMR-Paketierung, DSP, Mic-Gain oder BrandMeister-Verhalten.
+
+## 0.2.1.11 – Pegelpfad vor AMBE messbar
+
+- Geführte Audio-Tests erzeugen zusätzlich `level_path.json`.
+- Der Bericht weist RMS, Peak und Crest-Faktor für Mikrofon roh, nach Mic-Gain, nach Sprachaufbereitung und unmittelbar vor AMBE aus.
+- Für jede Stufe wird die Pegeländerung gegenüber der vorherigen Stufe in dB ausgewiesen.
+- `test_metadata.json` enthält nun zusätzlich den linearen Mic-Gain-Faktor und dessen dB-Wert.
+- `tx_rx_timing.log` erhält `TX_PEGELPFAD` mit Mic-Gain-Prozent, Faktor und dB-Wert.
+- Wichtig: Die Messung bestätigt die bestehende Semantik: 100 % Mic-Gain = 0 dB; 25 % = Faktor 0,25 = ungefähr -12,04 dB. An der Audiobearbeitung selbst wurde bewusst noch nichts verändert.
+- Keine Änderungen an DMR-Protokoll, AMBE, Parrot-Steuerung oder RX-Audio.
 
 ## 0.0.27.3 – Einstellungen abgeschlossen
 
@@ -874,6 +1420,25 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Keine Änderung am BrandMeister-Protokoll, Aktivierungsruf oder Decoderverfahren.
 
 # Changelog
+
+## 0.2.1.12 – AMBE Codec Lab
+
+- Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
+- Eine vorhandene `03_vor_ambe_8k.wav` wird unverändert als feste Hörreferenz verwendet.
+- Dasselbe AMBE-Codewort wird über zwei Decoderpfade verglichen: aktueller CarenDMR-mbelib-Decoder und das konfigurierte DroidStar-Vocoder-Plugin.
+- Die native Vocoder-Bridge stellt dafür zusätzlich `decode_2450x1150` bereit.
+- Ausgabe: Eingang, CarenDMR/mbelib-Loopback, DroidStar-Plugin-Loopback, AMBE-Frames und `report.json`.
+- Keine Änderung an Live-TX, DMR-Paketierung, DSP, Mic-Gain oder BrandMeister-Verhalten.
+
+## 0.2.1.11 – Pegelpfad vor AMBE messbar
+
+- Geführte Audio-Tests erzeugen zusätzlich `level_path.json`.
+- Der Bericht weist RMS, Peak und Crest-Faktor für Mikrofon roh, nach Mic-Gain, nach Sprachaufbereitung und unmittelbar vor AMBE aus.
+- Für jede Stufe wird die Pegeländerung gegenüber der vorherigen Stufe in dB ausgewiesen.
+- `test_metadata.json` enthält nun zusätzlich den linearen Mic-Gain-Faktor und dessen dB-Wert.
+- `tx_rx_timing.log` erhält `TX_PEGELPFAD` mit Mic-Gain-Prozent, Faktor und dB-Wert.
+- Wichtig: Die Messung bestätigt die bestehende Semantik: 100 % Mic-Gain = 0 dB; 25 % = Faktor 0,25 = ungefähr -12,04 dB. An der Audiobearbeitung selbst wurde bewusst noch nichts verändert.
+- Keine Änderungen an DMR-Protokoll, AMBE, Parrot-Steuerung oder RX-Audio.
 
 ## 0.0.27.3 – Einstellungen abgeschlossen
 

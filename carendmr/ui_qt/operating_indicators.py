@@ -66,7 +66,11 @@ class StatusIndicator(QWidget):
         painter.setPen(QColor("#F7FAFC"))
         font = painter.font()
         font.setBold(True)
-        font.setPixelSize(13)
+        # Keine Pixel-Schriftgröße verwenden: QFont meldet bei Pixel-Fonts
+        # pointSize() == -1. Einige Qt-Pfade versuchen diesen Wert beim
+        # Beenden als Punktgröße zurückzuschreiben und erzeugen dann
+        # "QFont::setPointSize: Point size <= 0 (-1)".
+        font.setPointSize(10)
         painter.setFont(font)
         painter.drawText(QRectF(34.0, 0.0, self.width() - 42.0, self.height()), Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, label)
 

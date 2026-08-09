@@ -4,7 +4,7 @@ from carendmr.version import __version__
 
 
 def test_release_version_0217():
-    assert __version__ == "0.2.1.9"
+    assert __version__ == "0.2.1.32"
 
 
 def test_audio_coach_has_cancel_toggle_and_common_finish():

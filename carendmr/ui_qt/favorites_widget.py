@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import (
     QAbstractItemView, QCheckBox, QComboBox, QDialog, QFileDialog,
     QFormLayout, QHBoxLayout, QLabel, QLineEdit, QMessageBox, QPushButton,
@@ -12,6 +12,74 @@ from PySide6.QtWidgets import (
 
 from carendmr.application import FavoriteService, TalkgroupCatalogService, TalkgroupSearchService
 from carendmr.domain import DmrChannel, FavoriteChannel
+
+
+class FavoriteOrderTable(QTableWidget):
+    """Tabelle, in der ausschließlich Favoritenzeilen per Maus sortiert werden."""
+
+    def __init__(self, owner, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._owner = owner
+        self.setDragEnabled(True)
+        self.setAcceptDrops(True)
+        self.viewport().setAcceptDrops(True)
+        self.setDropIndicatorShown(True)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self.setDefaultDropAction(Qt.DropAction.MoveAction)
+        self.setDragDropOverwriteMode(False)
+
+    def dropEvent(self, event) -> None:
+        source_row = self.currentRow()
+        if source_row < 0:
+            event.ignore()
+            return
+        item = self.item(source_row, 0)
+        channel = item.data(Qt.ItemDataRole.UserRole) if item else None
+        if not isinstance(channel, DmrChannel):
+            event.ignore()
+            return
+        favorite = self._owner.service.find(channel.target, channel.timeslot, channel.call_type)
+        if favorite is None:
+            event.ignore()
+            return
+        # Reihensortierung bleibt eindeutig: nur ohne aktive Filter verschieben.
+        if (
+            self._owner.filter_edit.text().strip()
+            or self._owner.country_filter.currentData()
+            or self._owner.language_filter.currentData()
+        ):
+            QMessageBox.information(
+                self._owner,
+                "Favoriten sortieren",
+                "Zum Sortieren der Favoriten bitte zuerst die Filter zurücksetzen.",
+            )
+            event.ignore()
+            return
+
+        favorites = list(self._owner.service.favorites)
+        if len(favorites) < 2:
+            event.ignore()
+            return
+        old_index = favorites.index(favorite)
+        point = event.position().toPoint()
+        destination_row = self.indexAt(point).row()
+        if destination_row < 0:
+            destination_row = len(favorites) - 1
+        destination_row = max(0, min(destination_row, len(favorites) - 1))
+        if self.dropIndicatorPosition() is QAbstractItemView.DropIndicatorPosition.BelowItem:
+            destination_row = min(destination_row + 1, len(favorites) - 1)
+
+        self._owner.service.move(old_index, destination_row)
+        self._owner.search_service.set_favorites(self._owner.service.favorites)
+        self._owner.changed.emit()
+
+        # Die Reihenfolge wird vollständig von FavoriteService verwaltet.
+        # QTableWidget darf danach keinen zweiten internen Zeilen-Move mehr
+        # ausführen, sonst verschwindet die verdrängte Zeile bis zum nächsten
+        # manuellen Refresh. Drop daher hier beenden und den Tabellenaufbau
+        # erst im nächsten Event-Loop-Schritt aus den gespeicherten Daten machen.
+        event.ignore()
+        QTimer.singleShot(0, lambda row=destination_row: self._owner._refresh_after_favorite_drop(row))
 
 
 class FavoriteEditDialog(QDialog):
@@ -71,7 +139,7 @@ class FavoritesWidget(QWidget):
         root.addLayout(filters)
         self.filter_edit.textChanged.connect(self.refresh)
         self.country_filter.currentIndexChanged.connect(self.refresh); self.language_filter.currentIndexChanged.connect(self.refresh)
-        self.table = QTableWidget(0, 9, self)
+        self.table = FavoriteOrderTable(self, 0, 9, self)
         self.table.setHorizontalHeaderLabels(["★", "Eigener Name", "Standardname", "TG", "TS", "R", "Land", "Sprache", "Notiz"])
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows); self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers); self.table.verticalHeader().hide(); self.table.horizontalHeader().setStretchLastSection(True)
@@ -82,6 +150,11 @@ class FavoritesWidget(QWidget):
             b=QPushButton(text); b.setMinimumWidth(0); b.setMaximumWidth(b.sizeHint().width()+18); b.clicked.connect(callback); buttons.addWidget(b)
         buttons.addStretch(1); root.addLayout(buttons); self._populate_metadata_filters(); self.refresh()
 
+    def _refresh_after_favorite_drop(self, row: int) -> None:
+        self.refresh()
+        if self.table.rowCount():
+            self.table.selectRow(max(0, min(int(row), self.table.rowCount() - 1)))
+
     def _populate_metadata_filters(self) -> None:
         countries = sorted({c.country for c in self.search_service.channels if c.country})
         languages = sorted({part.strip() for c in self.search_service.channels for part in c.language.split("/") if part.strip()})
@@ -89,16 +162,80 @@ class FavoritesWidget(QWidget):
         for value in languages: self.language_filter.addItem(value, value)
 
     def _visible_channels(self):
-        query=self.filter_edit.text().strip().casefold()
-        channels=list(self.search_service.channels)
+        query = self.filter_edit.text().strip().casefold()
+        channels = list(self.search_service.channels)
+        favorites = {
+            (f.target, f.timeslot, f.call_type): f
+            for f in self.service.favorites
+        }
+
+        country = str(self.country_filter.currentData() or "")
+        language = str(self.language_filter.currentData() or "")
+        if country:
+            channels = [c for c in channels if c.country == country]
+        if language:
+            channels = [c for c in channels if language in c.language.split("/")]
+
+        def favorite_for(channel):
+            return favorites.get((channel.target, channel.timeslot, channel.call_type))
+
+        def searchable_text(channel) -> str:
+            favorite = favorite_for(channel)
+            parts = [
+                str(channel.target),
+                channel.name,
+                channel.country,
+                channel.language,
+            ]
+            if favorite is not None:
+                parts.extend([
+                    favorite.custom_name,
+                    favorite.default_name,
+                    favorite.note,
+                ])
+            return " ".join(str(part or "") for part in parts).casefold()
+
         if query:
-            channels=[c for c in channels if query in str(c.target) or query in c.name.casefold() or query in c.country.casefold() or query in c.language.casefold()]
-        country=str(self.country_filter.currentData() or "")
-        language=str(self.language_filter.currentData() or "")
-        if country: channels=[c for c in channels if c.country == country]
-        if language: channels=[c for c in channels if language in c.language.split("/")]
-        favorites={(f.target,f.timeslot,f.call_type):f for f in self.service.favorites}
-        channels.sort(key=lambda c: (0 if (c.target,c.timeslot,c.call_type) in favorites else 1, favorites.get((c.target,c.timeslot,c.call_type)).position if (c.target,c.timeslot,c.call_type) in favorites else 999999, c.target))
+            channels = [c for c in channels if query in searchable_text(c)]
+
+            def match_rank(channel):
+                favorite = favorite_for(channel)
+                target = str(channel.target)
+                name = str(channel.name or "").casefold()
+                fav_name = str(favorite.display_name if favorite else "").casefold()
+
+                # Exakte TG/DMR-ID ist immer der beste Treffer.
+                if target == query:
+                    return (0, 0, channel.target)
+
+                # Bei numerischer Suche folgen Präfix-Treffer wie 2621, 2622 ...
+                if query.isdigit() and target.startswith(query):
+                    return (1, len(target), channel.target)
+
+                # Danach exakte bzw. beginnende Namen.
+                if name == query or fav_name == query:
+                    return (2, 0, channel.target)
+                if name.startswith(query) or fav_name.startswith(query):
+                    return (3, 0, channel.target)
+
+                # Danach sonstige Teiltreffer. Favoritenstatus ist hier nur
+                # noch Tie-Breaker; Trefferqualität geht bei aktiver Suche vor.
+                favorite_rank = 0 if favorite is not None else 1
+                favorite_position = favorite.position if favorite is not None else 999999
+                return (4, favorite_rank, favorite_position, channel.target)
+
+            channels.sort(key=match_rank)
+            return channels
+
+        # Ohne Suche bleiben Favoriten wie bisher geschlossen oben und folgen
+        # exakt der per Drag&Drop gespeicherten Reihenfolge.
+        channels.sort(
+            key=lambda c: (
+                0 if favorite_for(c) is not None else 1,
+                favorite_for(c).position if favorite_for(c) is not None else 999999,
+                c.target,
+            )
+        )
         return channels
 
     def refresh(self, *_args) -> None:
@@ -109,6 +246,10 @@ class FavoritesWidget(QWidget):
             self.table.insertRow(row)
             for col,value in enumerate(values):
                 item=QTableWidgetItem(value); item.setData(Qt.ItemDataRole.UserRole, channel)
+                if fav:
+                    item.setFlags(item.flags() | Qt.ItemFlag.ItemIsDragEnabled)
+                else:
+                    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsDragEnabled)
                 if col==8 and fav: item.setToolTip(fav.note)
                 if col in {0,3,4,5}: item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.table.setItem(row,col,item)

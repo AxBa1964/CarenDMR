@@ -9,10 +9,12 @@ import secrets
 import time
 import wave
 import array
+import queue
+import threading
 from datetime import datetime
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Callable, Iterable
 
 from carendmr.audio import BufferedPcmOutput
 from carendmr.encoder import AmbeEncoder
@@ -91,6 +93,10 @@ def execute_live_voice_once(
     client_factory=BrandMeisterClient, output_factory=BufferedPcmOutput,
     decoder_factory=NativeMbeReceiveVocoder, monotonic=time.monotonic, sleep=time.sleep,
     rx_debug_dir: Path | None = None, rx_playback_gate=None, ambe_debug_path: Path | None = None,
+    tx_complete_callback: Callable[[], None] | None = None,
+    existing_client: BrandMeisterClient | None = None,
+    preserve_client: bool = False,
+    defer_debug_report: bool = False,
 ) -> VoiceTransmitResult:
     """Sendet PCM fortlaufend. Nach Ende des Iterators folgen nur Pad/Terminator."""
     source_id = config.dmr_id
@@ -99,7 +105,7 @@ def execute_live_voice_once(
     flco = 0x03 if call_type is DmrdCallType.PRIVATE else 0x00
     lc = bytes((flco, 0, 0)) + destination_id.to_bytes(3, 'big') + source_id.to_bytes(3, 'big')
     embedded = _encode_embedded_lc(lc)
-    client = client_factory(config)
+    client = existing_client or client_factory(config)
     output = output_factory(sample_rate=8000) if wait_for_parrot_echo else None
     decoder = None
     loopback_decoder = None
@@ -208,10 +214,14 @@ def execute_live_voice_once(
                 loopback_decoder = decoder_factory()
             except Exception as exc:
                 timing_mark("CODEC_LOOPBACK_NICHT_VERFUEGBAR", str(exc))
-        timing_mark('TX_LOGIN_START')
-        client.login()
-        timing_mark('TX_LOGIN_FERTIG')
-        authenticated = client.state is LoginState.CONNECTED
+        if client.state is LoginState.CONNECTED and client.transport is not None:
+            authenticated = True
+            timing_mark('TX_SESSION_WIEDERVERWENDET', 'Bestehende BrandMeister-Verbindung')
+        else:
+            timing_mark('TX_LOGIN_START')
+            client.login()
+            timing_mark('TX_LOGIN_FERTIG')
+            authenticated = client.state is LoginState.CONNECTED
         if not authenticated or client.transport is None:
             raise RuntimeError('BrandMeister-Anmeldung fehlgeschlagen.')
         tx_start = monotonic()
@@ -224,75 +234,168 @@ def execute_live_voice_once(
         send_packet(header, paced=False)
         sequence = (sequence + 1) & 0xFF
 
-        pcm_buffer = [0] * int(round(8000 * lead_in_seconds))
+        # 0.2.1.22: PCM-Erfassung/MD380-Encoding vom 60-ms-Sendetakt entkoppeln.
+        # Die 240-ms-TX-Vorlaufstille liefert zugleich einen Reservepuffer von
+        # vier DMR-Voice-Bursts. Kurze Encoder-Ausreißer (im Feld bis 156 ms)
+        # können dadurch abgefangen werden, ohne den Netz-Sendetakt zu zerreißen.
+        pcm_frame_queue: queue.Queue[tuple[int, ...] | object] = queue.Queue(maxsize=256)
+        encoded_queue: queue.Queue[bytes | object] = queue.Queue(maxsize=256)
+        pipeline_end = object()
+        pipeline_error: list[BaseException] = []
+        feeder_done = threading.Event()
+        encoder_done = threading.Event()
+        encoder_queue_max = 0
+        encoded_queue_max = 0
+        pcm_frames_produced = 0
+
+        def feeder_worker() -> None:
+            nonlocal encoder_queue_max, pcm_frames_produced
+            pcm_buffer = [0] * int(round(8000 * lead_in_seconds))
+            try:
+                for chunk in pcm_chunks:
+                    if monotonic() - tx_start >= PARROT_TRANSMIT_CAP_SECONDS:
+                        raise RuntimeError('Die Sendezeitgrenze wurde erreicht.')
+                    pcm_buffer.extend(chunk)
+                    while len(pcm_buffer) >= PCM_FRAME_SAMPLES:
+                        frame = tuple(pcm_buffer[:PCM_FRAME_SAMPLES])
+                        del pcm_buffer[:PCM_FRAME_SAMPLES]
+                        pcm_frame_queue.put(frame)
+                        pcm_frames_produced += 1
+                        encoder_queue_max = max(encoder_queue_max, pcm_frame_queue.qsize())
+                if pcm_buffer:
+                    frame = tuple(pcm_buffer[:PCM_FRAME_SAMPLES])
+                    if len(frame) < PCM_FRAME_SAMPLES:
+                        frame += (0,) * (PCM_FRAME_SAMPLES - len(frame))
+                    pcm_frame_queue.put(frame)
+                    pcm_frames_produced += 1
+                    encoder_queue_max = max(encoder_queue_max, pcm_frame_queue.qsize())
+            except BaseException as error:
+                pipeline_error.append(error)
+            finally:
+                feeder_done.set()
+                pcm_frame_queue.put(pipeline_end)
+
+        def encoder_worker() -> None:
+            nonlocal loopback_corrected_errors, loopback_decode_exceptions, loopback_frames, encoded_queue_max
+            first_frame = True
+            try:
+                while True:
+                    item = pcm_frame_queue.get()
+                    if item is pipeline_end:
+                        break
+                    frame = item
+                    encode_started = monotonic()
+                    if first_frame:
+                        timing_mark("TX_ERSTES_PCM_FRAME", f"Samples={len(frame)};Min={min(frame)};Max={max(frame)}")
+                    word = encoder.encode_2450x1150(frame)
+                    encoder_times_ms.append((monotonic() - encode_started) * 1000.0)
+                    if first_frame:
+                        timing_mark("TX_ERSTES_AMBE_CODEWORT", f"Bytes={len(word)}")
+                        first_frame = False
+                    if len(word) != 9:
+                        raise ParrotSafetyError('Der Encoder lieferte keinen 9-Byte-AMBE-Rahmen.')
+
+                    if loopback_decoder is not None:
+                        try:
+                            decoded_loop = loopback_decoder.decode(word)
+                            loopback_frames += 1
+                            loopback_samples.extend(int(v) for v in decoded_loop.samples)
+                            loopback_corrected_errors += max(0, int(decoded_loop.corrected_errors))
+                            if loopback_frames == 1:
+                                timing_mark(
+                                    "CODEC_LOOPBACK_ERSTER_FRAME",
+                                    f"KorrigierteBits={decoded_loop.corrected_errors};Samples={len(decoded_loop.samples)}",
+                                )
+                        except Exception as exc:
+                            loopback_decode_exceptions += 1
+                            timing_mark("CODEC_LOOPBACK_FEHLER", str(exc))
+
+                    if ambe_debug_path is not None:
+                        Path(ambe_debug_path).parent.mkdir(parents=True, exist_ok=True)
+                        with Path(ambe_debug_path).open("ab") as ambe_file:
+                            ambe_file.write(word)
+
+                    encoded_queue.put(word)
+                    encoded_queue_max = max(encoded_queue_max, encoded_queue.qsize())
+            except BaseException as error:
+                pipeline_error.append(error)
+            finally:
+                encoder_done.set()
+                encoded_queue.put(pipeline_end)
+
+        feeder_thread = threading.Thread(
+            target=feeder_worker, name="CarenDMR-TX-PCM-Feeder", daemon=True
+        )
+        encoder_thread = threading.Thread(
+            target=encoder_worker, name="CarenDMR-TX-MD380-Encoder", daemon=True
+        )
+        feeder_thread.start()
+        encoder_thread.start()
+
+        # Vier vollständige Bursts (240 ms) vorfüllen. Das entspricht genau dem
+        # bestehenden TX-Lead-In und verändert den hörbaren Sprachbeginn nicht.
+        prebuffer_words: list[bytes] = []
+        while len(prebuffer_words) < 12:
+            item = encoded_queue.get()
+            if item is pipeline_end:
+                break
+            prebuffer_words.append(item)
+        timing_mark(
+            "TX_ENCODER_PUFFER_BEREIT",
+            f"Codewords={len(prebuffer_words)};ReserveMs={len(prebuffer_words) * 20}",
+        )
+
         ambe_frames: list[bytes] = []
         burst_number = 0
 
-        def drain(final: bool = False) -> None:
-            nonlocal sequence, burst_number, loopback_corrected_errors, loopback_decode_exceptions, loopback_frames
-            while len(pcm_buffer) >= PCM_FRAME_SAMPLES or (final and pcm_buffer):
-                frame = tuple(pcm_buffer[:PCM_FRAME_SAMPLES])
-                del pcm_buffer[:PCM_FRAME_SAMPLES]
-                if len(frame) < PCM_FRAME_SAMPLES:
-                    frame += (0,) * (PCM_FRAME_SAMPLES - len(frame))
-                encode_started = monotonic()
-                if not ambe_frames and burst_number == 0:
-                    timing_mark("TX_ERSTES_PCM_FRAME", f"Samples={len(frame)};Min={min(frame)};Max={max(frame)}")
-                word = encoder.encode_2450x1150(frame)
-                encoder_times_ms.append((monotonic() - encode_started) * 1000.0)
-                if not ambe_frames and burst_number == 0:
-                    timing_mark("TX_ERSTES_AMBE_CODEWORT", f"Bytes={len(word)}")
-                if len(word) != 9:
-                    raise ParrotSafetyError('Der Encoder lieferte keinen 9-Byte-AMBE-Rahmen.')
-                ambe_frames.append(word)
-                if loopback_decoder is not None:
-                    try:
-                        decoded_loop = loopback_decoder.decode(word)
-                        loopback_frames += 1
-                        loopback_samples.extend(int(v) for v in decoded_loop.samples)
-                        # Der native Decoder meldet hier korrigierte Bitfehler,
-                        # keine fehlgeschlagenen Frames. Der alte Zähler nannte
-                        # jedes Codewort fälschlich einen "Loopback-Fehler".
-                        loopback_corrected_errors += max(0, int(decoded_loop.corrected_errors))
-                        if loopback_frames == 1:
-                            timing_mark("CODEC_LOOPBACK_ERSTER_FRAME", f"KorrigierteBits={decoded_loop.corrected_errors};Samples={len(decoded_loop.samples)}")
-                    except Exception as exc:
-                        loopback_decode_exceptions += 1
-                        timing_mark("CODEC_LOOPBACK_FEHLER", str(exc))
-                if ambe_debug_path is not None:
-                    Path(ambe_debug_path).parent.mkdir(parents=True, exist_ok=True)
-                    with Path(ambe_debug_path).open("ab") as ambe_file:
-                        ambe_file.write(word)
-                if len(ambe_frames) == 3:
-                    burst = _pack_ambe(tuple(ambe_frames))
-                    number = burst_number % 6
-                    if number == 0:
-                        _add_sync(burst, _MS_AUDIO_SYNC)
-                        frame_class = DmrdFrameClass.VOICE_SYNC
-                        voice_no = None
-                    else:
-                        _apply_embedded_lc(burst, number, embedded)
-                        frame_class = DmrdFrameClass.VOICE
-                        voice_no = number
-                    packet = _packet(sequence=sequence, source_id=source_id,
-                                     destination_id=destination_id, repeater_id=source_id,
-                                     timeslot=timeslot, call_type=call_type,
-                                     frame_class=frame_class, stream_id=stream_id,
-                                     payload=bytes(burst), voice_no=voice_no)
-                    send_packet(packet)
-                    sequence = (sequence + 1) & 0xFF
-                    burst_number += 1
-                    ambe_frames.clear()
+        def send_word(word: bytes) -> None:
+            nonlocal sequence, burst_number
+            ambe_frames.append(word)
+            if len(ambe_frames) < 3:
+                return
+            burst = _pack_ambe(tuple(ambe_frames))
+            number = burst_number % 6
+            if number == 0:
+                _add_sync(burst, _MS_AUDIO_SYNC)
+                frame_class = DmrdFrameClass.VOICE_SYNC
+                voice_no = None
+            else:
+                _apply_embedded_lc(burst, number, embedded)
+                frame_class = DmrdFrameClass.VOICE
+                voice_no = number
+            packet = _packet(
+                sequence=sequence, source_id=source_id, destination_id=destination_id,
+                repeater_id=source_id, timeslot=timeslot, call_type=call_type,
+                frame_class=frame_class, stream_id=stream_id,
+                payload=bytes(burst), voice_no=voice_no,
+            )
+            send_packet(packet)
+            sequence = (sequence + 1) & 0xFF
+            burst_number += 1
+            ambe_frames.clear()
 
-        # Die ersten während des RX-Abbaus gepufferten Chunks werden nach Login
-        # zügig, aber mit korrektem 60-ms-DMR-Takt abgearbeitet.
-        for chunk in pcm_chunks:
-            if monotonic() - tx_start >= PARROT_TRANSMIT_CAP_SECONDS:
-                raise RuntimeError('Die Sendezeitgrenze wurde erreicht.')
-            pcm_buffer.extend(chunk)
-            drain()
-        drain(final=True)
+        for word in prebuffer_words:
+            send_word(word)
+
+        while True:
+            item = encoded_queue.get()
+            if item is pipeline_end:
+                break
+            send_word(item)
+
+        feeder_thread.join(timeout=2.0)
+        encoder_thread.join(timeout=2.0)
+        if pipeline_error:
+            raise pipeline_error[0]
+
         timing_mark("TX_LETZTER_AMBE_FRAME_CODIERT", f"Restframes={len(ambe_frames)}")
+        timing_mark(
+            "TX_ENCODER_PUFFER_STATISTIK",
+            f"PCMFrames={pcm_frames_produced};PCMQueueMax={encoder_queue_max};"
+            f"AMBEQueueMax={encoded_queue_max};FeederFertig={int(feeder_done.is_set())};"
+            f"EncoderFertig={int(encoder_done.is_set())}",
+        )
+
         if ambe_debug_path is not None and loopback_samples:
             loopback_path = Path(ambe_debug_path).parent / "04_codec_loopback_8k.wav"
             pcm_loop = array.array("h", loopback_samples)
@@ -300,25 +403,20 @@ def execute_live_voice_once(
             if sys.byteorder != "little":
                 pcm_loop.byteswap()
             write_pcm16_mono(loopback_path, 8000, pcm_loop.tobytes())
-            timing_mark("CODEC_LOOPBACK_WAV", f"Pfad={loopback_path};Samples={len(loopback_samples)};KorrigierteBits={loopback_corrected_errors};DecodeAusnahmen={loopback_decode_exceptions};Frames={loopback_frames}")
+            timing_mark(
+                "CODEC_LOOPBACK_WAV",
+                f"Pfad={loopback_path};Samples={len(loopback_samples)};"
+                f"KorrigierteBits={loopback_corrected_errors};"
+                f"DecodeAusnahmen={loopback_decode_exceptions};Frames={loopback_frames}",
+            )
+
+        # Letzten unvollständigen 60-ms-Burst mit MD380-Stille auffüllen.
         while ambe_frames:
             encode_started = monotonic()
             pad_word = encoder.encode_2450x1150((0,) * PCM_FRAME_SAMPLES)
             encoder_times_ms.append((monotonic() - encode_started) * 1000.0)
-            ambe_frames.append(pad_word)
-            if len(ambe_frames) == 3:
-                burst = _pack_ambe(tuple(ambe_frames))
-                number = burst_number % 6
-                if number == 0:
-                    _add_sync(burst, _MS_AUDIO_SYNC); frame_class = DmrdFrameClass.VOICE_SYNC; voice_no = None
-                else:
-                    _apply_embedded_lc(burst, number, embedded); frame_class = DmrdFrameClass.VOICE; voice_no = number
-                send_packet(_packet(sequence=sequence, source_id=source_id, destination_id=destination_id,
-                                    repeater_id=source_id, timeslot=timeslot, call_type=call_type,
-                                    frame_class=frame_class, stream_id=stream_id,
-                                    payload=bytes(burst), voice_no=voice_no))
-                sequence = (sequence + 1) & 0xFF
-                ambe_frames.clear()
+            send_word(pad_word)
+
         intervals_ms = [(b-a)*1000.0 for a,b in zip(send_times, send_times[1:])]
         def _stats(values: list[float]) -> tuple[float,float,float,float]:
             if not values: return (0.0,0.0,0.0,0.0)
@@ -338,6 +436,11 @@ def execute_live_voice_once(
         send_packet(terminator)
         timing_mark("TX_TERMINATOR_GESENDET")
         timing_mark('TX_LETZTER_FRAME_GESENDET')
+        if tx_complete_callback is not None:
+            try:
+                tx_complete_callback()
+            except Exception as error:
+                timing_mark("TX_ENDE_CALLBACK_FEHLER", str(error))
         tx_elapsed = monotonic() - tx_start
 
         if wait_for_parrot_echo:
@@ -489,13 +592,16 @@ def execute_live_voice_once(
         timer_resolution.__exit__(None, None, None)
         if decoder is not None:
             decoder.close()
-        client.close()
+        if not preserve_client:
+            client.close()
+            timing_mark('TX_VERBINDUNG_GESCHLOSSEN')
+        else:
+            timing_mark('TX_SESSION_OFFEN_GEHALTEN', 'RX übernimmt denselben BrandMeister-Socket')
         if output is not None:
             output.close()
-        timing_mark('TX_VERBINDUNG_GESCHLOSSEN')
         if loopback_decoder is not None:
             loopback_decoder.close()
-        if rx_debug_dir is not None:
+        if rx_debug_dir is not None and not defer_debug_report:
             try:
                 schedule_session_report(Path(rx_debug_dir), extra={
                     "codec_loopback_frames": loopback_frames,

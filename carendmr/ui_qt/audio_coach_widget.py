@@ -178,10 +178,38 @@ class AudioCoachWidget(QWidget):
     def _finish_failed(self, message: str) -> None:
         self._finish_test(False, message, invoke_cancel=True)
 
+    @staticmethod
+    def _recommendation_target(parameter: str, change: int, tuner: dict, gain) -> tuple[str, str]:
+        """Gibt einen eindeutigen Zielwert statt eines missverständlichen Delta-Werts aus."""
+        mapping = {
+            "Tiefen": ("low_db", -12, 12, "dB"),
+            "Sprachmitten": ("mids_db", -12, 12, "dB"),
+            "Präsenz": ("presence_db", -12, 12, "dB"),
+            "Höhen": ("high_db", -12, 12, "dB"),
+            "Dynamik": ("dynamics_percent", 0, 100, "%"),
+        }
+        if parameter == "Mic-Gain" and gain is not None:
+            current = int(round(float(gain)))
+            target = max(0, min(100, current + int(change)))
+            return f"{target} %", f"aktuell {current} %, Änderung {int(change):+d}"
+        spec = mapping.get(parameter)
+        if spec is None:
+            return f"{int(change):+d}", f"Änderung {int(change):+d}"
+        key, minimum, maximum, unit = spec
+        current = int(round(float(tuner.get(key, 0))))
+        target = max(minimum, min(maximum, current + int(change)))
+        return f"{target:+d} {unit}" if unit == "dB" else f"{target} {unit}", (
+            f"aktuell {current:+d} {unit}, weitere Änderung {int(change):+d}"
+            if unit == "dB" else
+            f"aktuell {current} {unit}, Änderung {int(change):+d}"
+        )
+
     def _show_comparison(self, result: dict) -> None:
         rows = result.get("rows") or []
         recommendations = {item.get("parameter"): item for item in result.get("recommendations") or []}
         test_metadata = result.get("test_metadata") or {}
+        tuner = test_metadata.get("tx_audio_tuner") or {}
+        gain = test_metadata.get("microphone_gain_percent")
         self.comparison_table.setRowCount(len(rows))
         parameter_by_key = {
             "active_rms_dbfs": "Mic-Gain",
@@ -199,7 +227,11 @@ class AudioCoachWidget(QWidget):
             assessment = "im Referenzbereich"
             if recommendation:
                 change = int(recommendation.get("change", 0))
-                assessment = f"{parameter} {change:+d}: {recommendation.get('reason', '')}"
+                target, detail = self._recommendation_target(parameter, change, tuner, gain)
+                assessment = (
+                    f"{parameter} Ziel {target} ({detail}): "
+                    f"{recommendation.get('reason', '')}"
+                )
             values = (
                 str(item.get("label", "")),
                 f"{float(item.get('reference', 0)):g} {unit}",
@@ -211,15 +243,19 @@ class AudioCoachWidget(QWidget):
                 self.comparison_table.setItem(row, column, QTableWidgetItem(value))
 
         count = int(result.get("reference_stations", 0))
-        tuner = test_metadata.get("tx_audio_tuner") or {}
         profile = str(tuner.get("profile", "Unbekannt"))
-        gain = test_metadata.get("microphone_gain_percent")
         measured_with = f"Gemessen mit Profil {profile}" + (f", Mic-Gain {gain} %" if gain is not None else "")
         if result.get("recommendations"):
-            summary = "; ".join(f"{r['parameter']} {int(r['change']):+d}" for r in result["recommendations"])
+            targets = []
+            for recommendation in result["recommendations"]:
+                parameter = str(recommendation.get("parameter", ""))
+                change = int(recommendation.get("change", 0))
+                target, detail = self._recommendation_target(parameter, change, tuner, gain)
+                targets.append(f"{parameter} → {target} ({detail})")
+            summary = "; ".join(targets)
             self.modulation_status.setText(
                 f"{measured_with}. Vergleich mit {result.get('reference_name', 'Referenz')} ({count} Stationen): "
-                f"Empfohlene Änderungen: {summary}. Noch nichts wurde automatisch verändert."
+                f"Nächster empfohlener Schritt: {summary}. Noch nichts wurde automatisch verändert."
             )
         else:
             self.modulation_status.setText(

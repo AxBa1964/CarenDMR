@@ -134,14 +134,14 @@ class AudioSendServiceTests(unittest.TestCase):
         self.assertTrue((self.root / "config" / "audio_send.local.json").exists())
 
     def test_tx_safety_limit_is_validated_and_persisted(self):
-        self.service.set_tx_safety_limit_seconds(60)
+        self.service.set_tx_safety_limit_seconds(120)
         self.service.save_settings()
         reloaded = AudioSendService(self.root, backend=self.backend)
-        self.assertEqual(60, reloaded.tx_safety_limit_seconds)
-        with self.assertRaisesRegex(ValueError, "zwischen 5 und 180"):
+        self.assertEqual(120, reloaded.tx_safety_limit_seconds)
+        with self.assertRaisesRegex(ValueError, "zwischen 5 und 300"):
             self.service.set_tx_safety_limit_seconds(4)
-        with self.assertRaisesRegex(ValueError, "zwischen 5 und 180"):
-            self.service.set_tx_safety_limit_seconds(181)
+        with self.assertRaisesRegex(ValueError, "zwischen 5 und 300"):
+            self.service.set_tx_safety_limit_seconds(301)
 
 
 if __name__ == "__main__":

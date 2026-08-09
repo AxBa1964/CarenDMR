@@ -4,7 +4,7 @@ from carendmr.version import __version__
 
 
 def test_radio_workflow_version_and_short_labels():
-    assert __version__ == "0.2.1.9"
+    assert __version__ == "0.2.1.32"
     source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
     assert 'self.ptt_button = QPushButton("TX")' in source
     assert 'self.ptt_button.setText("RX")' not in source

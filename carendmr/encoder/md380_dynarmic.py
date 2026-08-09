@@ -1,0 +1,69 @@
+"""ctypes-Zugriff auf den Windows-x86_64-MD380-Dynarmic-Vocoder."""
+from __future__ import annotations
+
+import ctypes
+import os
+from pathlib import Path
+
+PCM_SAMPLES_PER_FRAME = 160
+AMBE_BYTES_PER_FRAME = 9
+MD380_INPUT_GAIN_DB = 2.0
+MD380_INPUT_GAIN = 10.0 ** (MD380_INPUT_GAIN_DB / 20.0)
+
+
+class Md380DynarmicEncoder:
+    def __init__(self, project_root: Path, library_path: Path | None = None) -> None:
+        self._path = (library_path or project_root / "native" / "carendmr_md380_bridge.dll").resolve()
+        if not self._path.is_file():
+            raise RuntimeError(f"MD380-Dynarmic-Bridge fehlt: {self._path}")
+
+        self._dll_directory_handle = None
+        if os.name == "nt" and hasattr(os, "add_dll_directory"):
+            runtime_dir = Path(r"C:\msys64\ucrt64\bin")
+            if runtime_dir.is_dir():
+                self._dll_directory_handle = os.add_dll_directory(str(runtime_dir))
+
+        try:
+            self._lib = ctypes.CDLL(str(self._path))
+        except OSError as error:
+            raise RuntimeError(
+                "MD380-Dynarmic-Bridge konnte nicht geladen werden. "
+                "Unter Windows muss die MSYS2-UCRT64-Laufzeit verfügbar sein "
+                "(erwartet unter C:\\msys64\\ucrt64\\bin). "
+                f"Originalfehler: {error}"
+            ) from error
+        self._lib.carendmr_md380_init.argtypes = []
+        self._lib.carendmr_md380_init.restype = ctypes.c_int
+        self._lib.carendmr_md380_encode_fec.argtypes = [
+            ctypes.POINTER(ctypes.c_int16), ctypes.POINTER(ctypes.c_uint8)
+        ]
+        self._lib.carendmr_md380_encode_fec.restype = ctypes.c_int
+        result = int(self._lib.carendmr_md380_init())
+        if result != 0:
+            raise RuntimeError(f"MD380-Dynarmic konnte nicht initialisiert werden (Code {result}).")
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    def close(self) -> None:
+        handle = self._dll_directory_handle
+        self._dll_directory_handle = None
+        if handle is not None:
+            handle.close()
+
+    def encode_2450x1150(self, pcm: tuple[int, ...]) -> bytes:
+        if len(pcm) != PCM_SAMPLES_PER_FRAME:
+            raise ValueError("Ein PCM-Frame muss genau 160 Samples enthalten.")
+        # 0.2.1.25: +2 dB ist der Gewinner des kontrollierten MD380-Hörtests.
+        # Ausschließlich der Eingang des MD380-Vocoders wird angehoben.
+        adjusted = tuple(
+            max(-32768, min(32767, int(round(sample * MD380_INPUT_GAIN))))
+            for sample in pcm
+        )
+        pcm_buf = (ctypes.c_int16 * PCM_SAMPLES_PER_FRAME)(*adjusted)
+        ambe_buf = (ctypes.c_uint8 * AMBE_BYTES_PER_FRAME)()
+        result = int(self._lib.carendmr_md380_encode_fec(pcm_buf, ambe_buf))
+        if result != 0:
+            raise RuntimeError(f"MD380-Encoding fehlgeschlagen (Code {result}).")
+        return bytes(ambe_buf)

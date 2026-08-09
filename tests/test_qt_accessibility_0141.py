@@ -13,8 +13,8 @@ def test_ptt_keeps_focus_while_stopping() -> None:
     source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
     stop = source[source.index("def _stop_tx"):source.index("def _finish_tx")]
     assert "self._tx_stopping = True" in stop
-    assert "self.ptt_button.setEnabled(True)" in stop
-    assert "self.ptt_button.setEnabled(False)" not in stop
+    assert "self.ptt_button.setEnabled(False)" in stop
+    assert 'self.tx_status.setText("TX wird beendet")' in stop
 
 
 def test_radio_accessible_names_do_not_duplicate_selection_state() -> None:

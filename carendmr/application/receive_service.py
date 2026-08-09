@@ -7,6 +7,8 @@ from threading import Event, Lock, Thread
 from typing import Callable
 
 from carendmr.brandmeister.config import BrandMeisterConfigStore
+from carendmr.brandmeister.client import BrandMeisterClient
+from carendmr.brandmeister.protocol import LoginState
 from carendmr.brandmeister.dynamic_subscription import validate_receive_target
 from carendmr.brandmeister.listen import (
     LiveCallActivity, LiveListenProgress, LiveListenResult, listen_receive_only,
@@ -59,6 +61,9 @@ class ReceiveService:
         self._call_activity_observer = None
         self._audio_debug_dir_provider = None
         self._output_factory = None
+        self._persistent_client: BrandMeisterClient | None = None
+        self._session_target: tuple[int, int, str] | None = None
+        self._tx_pause_requested = Event()
         self.contacts = ContactService(self.project_root)
         self.history = QsoHistoryService(self.project_root)
         self.current_calls = CurrentCallService(
@@ -87,6 +92,29 @@ class ReceiveService:
         self._audio_debug_enabled = bool(enabled)
         return self._audio_debug_enabled
 
+    @property
+    def session_client(self) -> BrandMeisterClient | None:
+        client = self._persistent_client
+        if client is not None and client.state is LoginState.CONNECTED and client.transport is not None:
+            return client
+        return None
+
+    def pause_for_tx(self) -> None:
+        """Pausiert ausschließlich den RX-Thread; der BrandMeister-Socket bleibt offen."""
+        self._tx_pause_requested.set()
+        self._request_stop(cancel_pending_switch=False, message="Empfang wird für Senden pausiert")
+
+    def resume_after_tx(self) -> bool:
+        """Startet RX auf derselben BrandMeister-Session ohne Login/Zielwechsel neu."""
+        self._tx_pause_requested.clear()
+        return self.start()
+
+    def _close_persistent_session(self) -> None:
+        client, self._persistent_client = self._persistent_client, None
+        self._session_target = None
+        if client is not None:
+            client.close()
+
     def set_receive_target(self, talkgroup: int, timeslot: int, call_type: str = "group") -> None:
         talkgroup, timeslot = validate_receive_target(talkgroup, timeslot)
         call_type = str(call_type).strip().lower()
@@ -94,6 +122,10 @@ class ReceiveService:
             raise ValueError("Die Rufart muss group oder private sein.")
         if self.is_running:
             raise RuntimeError("Die Talkgroup kann nur bei getrenntem Empfang direkt geändert werden.")
+        new_target = (talkgroup, timeslot, call_type)
+        old_target = (self._target_talkgroup, self._target_timeslot, self._target_call_type)
+        if new_target != old_target and self._persistent_client is not None:
+            self._close_persistent_session()
         self._target_talkgroup = talkgroup
         self._target_timeslot = timeslot
         self._target_call_type = call_type
@@ -232,9 +264,15 @@ class ReceiveService:
         return True
 
     def stop(self) -> None:
+        self._tx_pause_requested.clear()
         self._request_stop(cancel_pending_switch=True, message="Empfang wird beendet")
 
     def _request_stop(self, *, cancel_pending_switch: bool, message: str) -> None:
+        timing_mark(
+            "RX_STOP_ANGEFORDERT",
+            f"Grund={message};CancelSwitch={int(bool(cancel_pending_switch))};"
+            f"Running={int(bool(self.is_running))};TxPause={int(bool(self._tx_pause_requested.is_set()))}",
+        )
         if cancel_pending_switch:
             self._switch_cancel.set()
         if not self.is_running:
@@ -259,6 +297,7 @@ class ReceiveService:
         if self._connected_event_published:
             return
         self._connected_event_published = True
+        self._session_target = (self._target_talkgroup, self._target_timeslot, self._target_call_type)
         if self._connection_restored_callback is not None:
             self._connection_restored_callback()
         timing_mark("RX_VERBUNDEN_STATUS", "Direkt nach BM-Anmeldung und Zielaktivierung")
@@ -329,6 +368,19 @@ class ReceiveService:
         try:
             path = self.project_root / "config" / "brandmeister.local.json"
             config = BrandMeisterConfigStore(path).load()
+            use_persistent_session = self._listen is listen_receive_only
+            session_client = None
+            reuse_target = False
+            if use_persistent_session:
+                if self._persistent_client is None:
+                    self._persistent_client = BrandMeisterClient(config)
+                session_client = self._persistent_client
+                current_target = (self._target_talkgroup, self._target_timeslot, self._target_call_type)
+                reuse_target = (
+                    session_client.state is LoginState.CONNECTED
+                    and session_client.transport is not None
+                    and self._session_target == current_target
+                )
             self.state_store.update(
                 connection=ConnectionState.CONNECTING,
                 server=f"{config.host}:{config.port}",
@@ -347,8 +399,7 @@ class ReceiveService:
                 priority=InformationPriority.HIGH,
             )
             timing_mark("RX_VERBINDUNGSAUFBAU_START", f"{config.host}:{config.port}")
-            result = self._listen(
-                config,
+            listen_kwargs = dict(
                 seconds=seconds,
                 target_talkgroup=self._target_talkgroup,
                 target_timeslot=self._target_timeslot,
@@ -364,12 +415,38 @@ class ReceiveService:
                 output_level_callback=self._on_output_level,
                 decoded_pcm_callback=self._decoded_pcm_callback,
                 audio_debug_dir=(self._audio_debug_dir_provider if self._audio_debug_dir_provider is not None else (self.project_root / "logs" / "audio_lab")) if self._audio_debug_enabled else None,
-                **({"output_factory": self._output_factory} if self._output_factory is not None else {}),
             )
+            if self._output_factory is not None:
+                listen_kwargs["output_factory"] = self._output_factory
+            if use_persistent_session:
+                listen_kwargs.update(
+                    existing_client=session_client,
+                    skip_target_activation=reuse_target,
+                    preserve_client_on_exit=self._tx_pause_requested.is_set,
+                )
+            result = self._listen(config, **listen_kwargs)
             self.current_calls.finish()
-            self._apply_result(result)
+            if use_persistent_session and self._tx_pause_requested.is_set():
+                self.state_store.update(
+                    connection=ConnectionState.CONNECTED,
+                    brandmeister_connected=True,
+                    receive_active=False,
+                    audio_active=False,
+                    message="Senden aktiv",
+                )
+            else:
+                if use_persistent_session:
+                    self._persistent_client = None
+                    self._session_target = None
+                self._apply_result(result)
         except Exception as error:
             self.current_calls.finish()
+            if self._persistent_client is not None:
+                try:
+                    self._persistent_client.close()
+                finally:
+                    self._persistent_client = None
+                    self._session_target = None
             if self._connection_lost_callback is not None:
                 self._connection_lost_callback()
             self.state_store.update(
