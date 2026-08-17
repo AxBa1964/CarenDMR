@@ -5,6 +5,7 @@ from .speech import (
     ConsoleSpeechOutput,
     MacOSSpeechOutput,
     SpeechManager,
+    InformationSpeechBridge,
     SpeechOutput,
 )
 from .parrot import ParrotTestAnnouncer, ParrotTestPhase
@@ -15,6 +16,7 @@ __all__ = [
     "ParrotTestAnnouncer",
     "ParrotTestPhase",
     "SpeechManager",
+    "InformationSpeechBridge",
     "SpeechOutput",
     "message_for_status",
 ]

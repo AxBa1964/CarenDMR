@@ -1,14 +1,22 @@
 """Dynamischer Gruppenruf-Empfang mit Audio-Decodierung und Wiedergabe."""
 
 from __future__ import annotations
+from carendmr.diagnostics.wav_io import write_pcm16_mono
 
 import math
 import time
+import wave
+import array
+from datetime import datetime
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Callable
 
 from carendmr.audio.pcm_output import BufferedPcmOutput
 from carendmr.network import NetworkReceiveTimeout
+from carendmr.diagnostics import diagnostic_print
+from carendmr.diagnostics.tx_rx_timing import mark as timing_mark
+from carendmr.diagnostics.audio_report_worker import schedule_session_report
 from carendmr.vocoder import NativeMbeReceiveVocoder, extract_ambe_codewords
 from carendmr.vocoder.playout import DmrJitterBuffer
 
@@ -23,6 +31,28 @@ MAX_LISTEN_SECONDS = 3600.0
 DEFAULT_PROGRESS_INTERVAL_SECONDS = 30.0
 DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 5.0
 DIAGNOSTIC_SUMMARY_INTERVAL_SECONDS = 5.0
+
+
+def _pcm_level_dbfs(peak: int, sum_squares: int, count: int) -> tuple[float, float]:
+    """Berechnet Peak- und RMS-Pegel in dBFS für PCM16-Rohsamples."""
+    if count <= 0:
+        return float("-inf"), float("-inf")
+    full_scale = 32767.0
+    peak_dbfs = 20.0 * math.log10(max(1.0, float(peak)) / full_scale)
+    rms = math.sqrt(float(sum_squares) / float(count))
+    rms_dbfs = 20.0 * math.log10(max(1.0, rms) / full_scale)
+    return peak_dbfs, rms_dbfs
+
+
+def _format_pcm_level(
+    *, peak: int, sum_squares: int, count: int, source_id: int, stream_id: int
+) -> str:
+    peak_dbfs, rms_dbfs = _pcm_level_dbfs(peak, sum_squares, count)
+    rms = math.sqrt(float(sum_squares) / float(count)) if count else 0.0
+    return (
+        f"Src={source_id};Stream={stream_id:08X};Samples={count};"
+        f"Peak={peak};RMS={rms:.1f};Peak_dBFS={peak_dbfs:.1f};RMS_dBFS={rms_dbfs:.1f}"
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +113,7 @@ def listen_receive_only(
     target_call_type: str = "group",
     progress_callback: Callable[[LiveListenProgress], None] | None = None,
     call_activity_callback: Callable[[LiveCallActivity], None] | None = None,
+    connected_callback: Callable[[], None] | None = None,
     progress_interval: float = DEFAULT_PROGRESS_INTERVAL_SECONDS,
     heartbeat_interval: float = DEFAULT_HEARTBEAT_INTERVAL_SECONDS,
     stop_requested: Callable[[], bool] | None = None,
@@ -90,7 +121,12 @@ def listen_receive_only(
     output_volume: Callable[[], float] | None = None,
     output_agc_enabled: Callable[[], bool] | None = None,
     output_level_callback: Callable[[float], None] | None = None,
+    decoded_pcm_callback: Callable[[int, int, int, int | None, tuple[int, ...], int], None] | None = None,
+    audio_debug_dir: Path | Callable[[], Path | None] | None = None,
     client_factory=BrandMeisterClient,
+    existing_client: BrandMeisterClient | None = None,
+    skip_target_activation: bool = False,
+    preserve_client_on_exit: Callable[[], bool] | None = None,
     output_factory=BufferedPcmOutput,
     decoder_factory=NativeMbeReceiveVocoder,
     monotonic=time.monotonic,
@@ -111,10 +147,34 @@ def listen_receive_only(
     if heartbeat_interval <= 0:
         raise ValueError("Das Heartbeat-Intervall muss größer als null sein.")
 
-    client = client_factory(config)
+    client = existing_client or client_factory(config)
+    rx_decoded_samples: list[int] = []
+    rx_output_samples: list[int] = []
+    session_dir: Path | None = None
+    def resolve_session_dir() -> Path | None:
+        nonlocal session_dir
+        if session_dir is not None:
+            return session_dir
+        if audio_debug_dir is None:
+            return None
+        candidate = audio_debug_dir() if callable(audio_debug_dir) else Path(audio_debug_dir)
+        if candidate is None:
+            return None
+        candidate = Path(candidate)
+        if callable(audio_debug_dir):
+            session_dir = candidate
+        else:
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+            session_dir = candidate / f"RX_{stamp}"
+        session_dir.mkdir(parents=True, exist_ok=True)
+        return session_dir
+    def output_tap(values: tuple[int, ...]) -> None:
+        if values and resolve_session_dir() is not None:
+            rx_output_samples.extend(int(v) for v in values)
     output = output_factory(
         sample_rate=8000, muted=output_muted, volume=output_volume,
         agc_enabled=output_agc_enabled, level_callback=output_level_callback,
+        processed_tap=output_tap,
     )
     decoder = None
     jitter = DmrJitterBuffer()
@@ -127,38 +187,120 @@ def listen_receive_only(
     next_diagnostic_summary = started_at + DIAGNOSTIC_SUMMARY_INTERVAL_SECONDS
     rejected_tg = rejected_ts = rejected_call_type = rejected_frame = 0
     headers = terminators = audio_writes = audio_samples = non_dmrd = pongs = 0
+    first_datagram_marked = False
+    first_target_dmrd_marked = False
+    first_header_marked = False
+    first_voice_marked = False
+    first_decode_marked = False
+    first_pcm_handoff_marked = False
+    level_peak = 0
+    level_sum_squares = 0
+    level_sample_count = 0
+    level_source_id = 0
+    level_stream_id = 0
+
+    def reset_pcm_level() -> None:
+        nonlocal level_peak, level_sum_squares, level_sample_count, level_source_id, level_stream_id
+        level_peak = 0
+        level_sum_squares = 0
+        level_sample_count = 0
+        level_source_id = 0
+        level_stream_id = 0
+
+    def add_pcm_level(values: list[int], source_id: int, stream_id: int) -> None:
+        nonlocal level_peak, level_sum_squares, level_sample_count, level_source_id, level_stream_id
+        if not values:
+            return
+        level_source_id = source_id
+        level_stream_id = stream_id
+        local_peak = max(abs(int(v)) for v in values)
+        level_peak = max(level_peak, local_peak)
+        level_sum_squares += sum(int(v) * int(v) for v in values)
+        level_sample_count += len(values)
+
+    def log_pcm_level(event: str = "RX_PCM_LEVEL") -> None:
+        if level_sample_count <= 0:
+            return
+        timing_mark(
+            event,
+            _format_pcm_level(
+                peak=level_peak,
+                sum_squares=level_sum_squares,
+                count=level_sample_count,
+                source_id=level_source_id,
+                stream_id=level_stream_id,
+            ),
+        )
 
     try:
         output.start()
         audio_started = True
-        print("[DIAG][AUDIO] Ausgabestream geöffnet: 8000 Hz, mono, int16", flush=True)
+        timing_mark("RX_AUDIO_GEOEFFNET")
+        diagnostic_print("[DIAG][AUDIO] Ausgabestream geöffnet: 8000 Hz, mono, int16", flush=True)
         synthetic = _synthetic_samples()
         if output_muted is None or not output_muted():
             output.write(synthetic)
         synthetic_count = len(synthetic)
-        sleep(0.25)
+        # Der Audioausgang ist bereits geöffnet. Login und Zielaktivierung geben
+        # ihm anschließend ohnehin rund eine halbe Sekunde Anlaufzeit; eine
+        # zusätzliche feste 250-ms-Pause verzögert TX→RX nur unnötig.
+        timing_mark("RX_AUDIO_VORLAUF_FERTIG", "ohne zusätzliche Wartezeit")
 
         decoder = decoder_factory()
-        print("[DIAG][DECODER] Nativer MBE-Decoder geöffnet", flush=True)
-        print(f"[DIAG][NETZ] Verbinde mit {config.host}:{config.port}", flush=True)
-        client.login()
-        authenticated = client.state is LoginState.CONNECTED
+        diagnostic_print("[DIAG][DECODER] Nativer MBE-Decoder geöffnet", flush=True)
+        diagnostic_print(f"[DIAG][NETZ] Verbinde mit {config.host}:{config.port}", flush=True)
+        if client.state is LoginState.CONNECTED and client.transport is not None:
+            authenticated = True
+            timing_mark("RX_SESSION_WIEDERVERWENDET", "Bestehende BrandMeister-Verbindung")
+        else:
+            timing_mark("RX_LOGIN_START")
+            client.login()
+            timing_mark("RX_LOGIN_FERTIG")
+            authenticated = client.state is LoginState.CONNECTED
         if not authenticated or client.transport is None:
             raise RuntimeError("Die Empfangsverbindung ist nicht eindeutig aktiv.")
-        print("[DIAG][NETZ] BrandMeister-Anmeldung erfolgreich", flush=True)
-        print(
-            f"[DIAG][ZIEL] Aktiviere TG {target_talkgroup} auf TS{target_timeslot}",
-            flush=True,
-        )
+        diagnostic_print("[DIAG][NETZ] BrandMeister-Anmeldung erfolgreich", flush=True)
+        if skip_target_activation:
+            timing_mark("RX_ZIELAKTIVIERUNG_UEBERSPRUNGEN", "Funkziel der bestehenden Session unverändert")
+        elif target_call_type == "private":
+            # Dynamische Talkgroup-Aktivierung ist ausschließlich für Gruppenrufe
+            # erforderlich. Ein stummer Privatruf würde das private Ziel bereits
+            # tatsächlich anrufen (bei TG 9990 also den BrandMeister-Parrot
+            # auslösen), noch bevor der Benutzer PTT drückt.
+            diagnostic_print(
+                f"[DIAG][ZIEL] Keine Zielaktivierung für Privatruf {target_talkgroup} auf TS{target_timeslot}",
+                flush=True,
+            )
+            timing_mark(
+                "RX_ZIELAKTIVIERUNG_UEBERSPRUNGEN",
+                "Privatrufe werden nicht per stummem DMR-Ruf aktiviert",
+            )
+        else:
+            diagnostic_print(
+                f"[DIAG][ZIEL] Aktiviere TG {target_talkgroup} auf TS{target_timeslot}",
+                flush=True,
+            )
+            timing_mark("RX_ZIELAKTIVIERUNG_START")
+            activate_dynamic_talkgroup(
+                client.transport,
+                dmr_id=config.dmr_id,
+                talkgroup=target_talkgroup,
+                timeslot=target_timeslot,
+                call_type=target_call_type,
+            )
+            diagnostic_print("[DIAG][ZIEL] Aktivierungsruf vollständig gesendet", flush=True)
+            timing_mark("RX_ZIELAKTIVIERUNG_FERTIG")
+        # Nach erfolgreichem Login und Zielaktivierung ist RX technisch bereit.
+        # Der bisherige Fortschritts-Callback kam erst deutlich später und ließ
+        # die Oberfläche unnötig lange auf „Verbindung wird aufgebaut“ stehen.
+        if connected_callback is not None:
+            connected_callback()
 
-        activate_dynamic_talkgroup(
-            client.transport,
-            dmr_id=config.dmr_id,
-            talkgroup=target_talkgroup,
-            timeslot=target_timeslot,
-            call_type=target_call_type,
-        )
-        print("[DIAG][ZIEL] Aktivierungsruf vollständig gesendet", flush=True)
+        # Im Dauerempfang darf recv() nicht mehrere Sekunden blockieren, weil
+        # PTT den RX-Thread sonst erst nach Ablauf des Login-Timeouts beendet.
+        # 100 ms hält die CPU-Last gering und macht den Abbruch praktisch sofort.
+        if hasattr(client.transport, "set_receive_timeout"):
+            client.transport.set_receive_timeout(0.1)
 
         deadline = None if seconds is None else started_at + seconds
         try:
@@ -184,7 +326,7 @@ def listen_receive_only(
                     )
                     next_progress = now + progress_interval
                 if now >= next_diagnostic_summary:
-                    print(
+                    diagnostic_print(
                         "[DIAG][STAT] "
                         f"UDP={datagrams} DMRD-Voice={voice} Header={headers} "
                         f"Terminator={terminators} Codewörter={codewords} "
@@ -202,12 +344,15 @@ def listen_receive_only(
                 except NetworkReceiveTimeout:
                     continue
                 datagrams += 1
+                if not first_datagram_marked:
+                    timing_mark("RX_ERSTES_UDP_DATAGRAMM", f"{len(datagram)} Byte; Start={datagram[:4]!r}")
+                    first_datagram_marked = True
                 if is_master_pong(datagram, config.dmr_id):
                     pongs += 1
                     continue
                 if not datagram.startswith(b"DMRD"):
                     non_dmrd += 1
-                    print(
+                    diagnostic_print(
                         f"[DIAG][RX] Sonstiges UDP-Paket: {len(datagram)} Byte, "
                         f"Start={datagram[:12].hex(' ')}",
                         flush=True,
@@ -217,7 +362,7 @@ def listen_receive_only(
                     packet = parse_dmrd_packet(datagram)
                 except (TypeError, ValueError) as error:
                     invalid += 1
-                    print(
+                    diagnostic_print(
                         f"[DIAG][DMRD] Ungültiges Paket ({len(datagram)} Byte): {error}",
                         flush=True,
                     )
@@ -227,24 +372,33 @@ def listen_receive_only(
                     if packet.frame_class is DmrdFrameClass.VOICE
                     else packet.frame_class.name
                 )
-                print(
+                diagnostic_print(
                     f"[DIAG][DMRD] Seq={packet.sequence:03d} Src={packet.source_id} "
                     f"Dst={packet.destination_id} TS{packet.timeslot} "
                     f"Ruf={packet.call_type.name} Frame={frame_name} "
                     f"Stream={packet.stream_id:08X}",
                     flush=True,
                 )
-                if packet.destination_id != target_talkgroup:
+                # Gruppenruf: Ziel muss die eingestellte Talkgroup sein.
+                # Privatruf: Die Gegenstation antwortet an unsere eigene DMR-ID.
+                # Beispiel Parrot: TX 2632198 -> 9990, RX 9990 -> 2632198.
+                if target_call_type == "private":
+                    target_matches = packet.destination_id == config.dmr_id
+                    target_description = f"eigene DMR-ID {config.dmr_id}"
+                else:
+                    target_matches = packet.destination_id == target_talkgroup
+                    target_description = f"TG {target_talkgroup}"
+                if not target_matches:
                     rejected_tg += 1
-                    print(
-                        f"[DIAG][FILTER] VERWORFEN: TG {packet.destination_id} "
-                        f"statt TG {target_talkgroup}",
+                    diagnostic_print(
+                        f"[DIAG][FILTER] VERWORFEN: Ziel {packet.destination_id} "
+                        f"statt {target_description}",
                         flush=True,
                     )
                     continue
                 if packet.timeslot != target_timeslot:
                     rejected_ts += 1
-                    print(
+                    diagnostic_print(
                         f"[DIAG][FILTER] VERWORFEN: TS{packet.timeslot} "
                         f"statt TS{target_timeslot}",
                         flush=True,
@@ -253,12 +407,28 @@ def listen_receive_only(
                 expected_call_type = "PRIVATE" if target_call_type == "private" else "GROUP"
                 if packet.call_type.name != expected_call_type:
                     rejected_call_type += 1
-                    print(f"[DIAG][FILTER] VERWORFEN: Rufart {packet.call_type.name} statt {expected_call_type}", flush=True)
+                    diagnostic_print(f"[DIAG][FILTER] VERWORFEN: Rufart {packet.call_type.name} statt {expected_call_type}", flush=True)
                     continue
-                print("[DIAG][FILTER] AKZEPTIERT: TG, Timeslot und Rufart passen", flush=True)
+                diagnostic_print("[DIAG][FILTER] AKZEPTIERT: Ziel, Timeslot und Rufart passen", flush=True)
+                if not first_target_dmrd_marked:
+                    timing_mark(
+                        "RX_ERSTER_PASSENDER_DMRD_FRAME",
+                        f"Seq={packet.sequence}; Src={packet.source_id}; Dst={packet.destination_id}; "
+                        f"TS={packet.timeslot}; Frame={frame_name}; Stream={packet.stream_id:08X}",
+                    )
+                    first_target_dmrd_marked = True
                 if packet.is_voice_lc_header:
                     headers += 1
-                    print("[DIAG][FRAME] Voice-LC-Header erkannt; Decoder wird zurückgesetzt", flush=True)
+                    if not first_header_marked:
+                        timing_mark(
+                            "RX_ERSTER_VOICE_LC_HEADER",
+                            f"Seq={packet.sequence}; Src={packet.source_id}; Stream={packet.stream_id:08X}",
+                        )
+                        first_header_marked = True
+                    diagnostic_print("[DIAG][FRAME] Voice-LC-Header erkannt; Decoder wird zurückgesetzt", flush=True)
+                    if level_sample_count:
+                        log_pcm_level("RX_PCM_LEVEL_ABSCHLUSS")
+                    reset_pcm_level()
                     if call_activity_callback is not None:
                         call_activity_callback(
                             LiveCallActivity(
@@ -272,7 +442,7 @@ def listen_receive_only(
                     continue
                 if packet.is_terminator_with_lc:
                     terminators += 1
-                    print("[DIAG][FRAME] Terminator mit LC erkannt", flush=True)
+                    diagnostic_print("[DIAG][FRAME] Terminator mit LC erkannt", flush=True)
                     if call_activity_callback is not None:
                         call_activity_callback(
                             LiveCallActivity(
@@ -284,11 +454,16 @@ def listen_receive_only(
                     for frame in batch.frames:
                         if output_muted is None or not output_muted():
                             output.write(frame)
+                            if not first_pcm_handoff_marked:
+                                timing_mark("RX_ERSTE_PCM_UEBERGABE", f"{len(frame)} Samples an Audiopuffer")
+                                first_pcm_handoff_marked = True
                             samples += len(frame)
                             audio_writes += 1
                             audio_samples += len(frame)
-                            print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben", flush=True)
+                            diagnostic_print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben", flush=True)
                     concealed += batch.concealed_bursts
+                    log_pcm_level("RX_PCM_LEVEL_ABSCHLUSS")
+                    reset_pcm_level()
                     jitter.reset()
                     continue
                 if packet.frame_class not in (
@@ -296,7 +471,7 @@ def listen_receive_only(
                     DmrdFrameClass.VOICE_SYNC,
                 ):
                     rejected_frame += 1
-                    print("[DIAG][FILTER] VERWORFEN: kein Sprachrahmen", flush=True)
+                    diagnostic_print("[DIAG][FILTER] VERWORFEN: kein Sprachrahmen", flush=True)
                     continue
 
                 if call_activity_callback is not None:
@@ -307,21 +482,45 @@ def listen_receive_only(
                         )
                     )
                 voice += 1
+                if not first_voice_marked:
+                    timing_mark(
+                        "RX_ERSTER_VOICE_FRAME",
+                        f"Seq={packet.sequence}; Voice={packet.voice_frame_number}; "
+                        f"Src={packet.source_id}; Stream={packet.stream_id:08X}",
+                    )
+                    first_voice_marked = True
                 decoded: list[int] = []
                 try:
+                    packet_corrected = 0
                     for word in extract_ambe_codewords(packet):
                         frame = decoder.decode(word)
                         decoded.extend(frame.samples)
+                        if frame.samples and resolve_session_dir() is not None:
+                            rx_decoded_samples.extend(int(v) for v in frame.samples)
                         codewords += 1
                         corrected += frame.corrected_errors
+                        packet_corrected += frame.corrected_errors
+                    if decoded:
+                        add_pcm_level(decoded, packet.source_id, packet.stream_id)
+                    if decoded_pcm_callback is not None and decoded:
+                        decoded_pcm_callback(
+                            packet.source_id, packet.destination_id, packet.timeslot,
+                            packet.stream_id or None, tuple(decoded), packet_corrected,
+                        )
                 except Exception as error:
                     decode_errors += 1
-                    print(
+                    diagnostic_print(
                         f"[DIAG][DECODER] FEHLER {type(error).__name__}: {error}",
                         flush=True,
                     )
                     continue
-                print(
+                if decoded and not first_decode_marked:
+                    timing_mark(
+                        "RX_ERSTE_AMBE_DECODIERUNG",
+                        f"{codewords} Codewörter gesamt; {len(decoded)} PCM-Samples im Frame",
+                    )
+                    first_decode_marked = True
+                diagnostic_print(
                     f"[DIAG][DECODER] 3 AMBE-Codewörter -> {len(decoded)} PCM-Samples",
                     flush=True,
                 )
@@ -330,14 +529,19 @@ def listen_receive_only(
                 for frame in batch.frames:
                     if output_muted is None or not output_muted():
                         output.write(frame)
+                        if not first_pcm_handoff_marked:
+                            timing_mark("RX_ERSTE_PCM_UEBERGABE", f"{len(frame)} Samples an Audiopuffer")
+                            first_pcm_handoff_marked = True
                         samples += len(frame)
                         audio_writes += 1
                         audio_samples += len(frame)
-                        print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben", flush=True)
+                        diagnostic_print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben", flush=True)
                 concealed += batch.concealed_bursts
         except KeyboardInterrupt:
             interrupted = True
 
+        log_pcm_level("RX_PCM_LEVEL_ABSCHLUSS")
+        reset_pcm_level()
         batch = jitter.flush()
         for frame in batch.frames:
             if output_muted is None or not output_muted():
@@ -345,10 +549,15 @@ def listen_receive_only(
                 samples += len(frame)
                 audio_writes += 1
                 audio_samples += len(frame)
-                print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben (Restpuffer)", flush=True)
+                diagnostic_print(f"[DIAG][AUDIO] {len(frame)} PCM-Samples geschrieben (Restpuffer)", flush=True)
         concealed += batch.concealed_bursts
-        sleep(0.25)
-        print(
+        stopping = stop_requested is not None and stop_requested()
+        if not stopping:
+            sleep(0.25)
+            timing_mark("RX_ABBAU_NACHLAUF_FERTIG", "feste 250 ms")
+        else:
+            timing_mark("RX_ABBAU_NACHLAUF_FERTIG", "bei aktivem Stopp übersprungen")
+        diagnostic_print(
             "[DIAG][ENDE] "
             f"UDP={datagrams} Voice={voice} Header={headers} Terminator={terminators} "
             f"Codewörter={codewords} Audio-Schreibvorgänge={audio_writes} "
@@ -361,13 +570,28 @@ def listen_receive_only(
         elapsed = max(0.0, monotonic() - started_at)
         if decoder is not None:
             decoder.close()
-        client.close()
+        session_dir = resolve_session_dir() if (rx_decoded_samples or rx_output_samples) else session_dir
+        if session_dir is not None and (rx_decoded_samples or rx_output_samples):
+            def write_wav(path: Path, values: list[int]) -> None:
+                import sys
+                pcm=array.array("h", values)
+                if sys.byteorder != "little": pcm.byteswap()
+                write_pcm16_mono(path, 8000, pcm.tobytes())
+            if rx_decoded_samples:
+                write_wav(session_dir / "05_nach_ambe_decoder_8k.wav", rx_decoded_samples)
+            if rx_output_samples:
+                write_wav(session_dir / "06_vor_lautsprecher_8k.wav", rx_output_samples)
+            schedule_session_report(session_dir, extra={"talkgroup": target_talkgroup, "timeslot": target_timeslot, "call_type": target_call_type})
+            timing_mark("RX_AUDIO_LAB", f"Ordner={session_dir}")
+        timing_mark("RX_CLOSE_START")
+        preserve_client = bool(preserve_client_on_exit and preserve_client_on_exit())
+        if not preserve_client:
+            client.close()
+        else:
+            timing_mark("RX_SESSION_OFFEN_GEHALTEN", "TX übernimmt denselben BrandMeister-Socket")
         output.close()
-        closed = (
-            client.transport is None
-            and client.state is LoginState.DISCONNECTED
-            and not output.is_open
-        )
+        timing_mark("RX_CLOSE_FERTIG")
+        closed = not output.is_open
 
     return LiveListenResult(
         authenticated=authenticated,

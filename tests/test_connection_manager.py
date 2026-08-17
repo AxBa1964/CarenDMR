@@ -20,6 +20,7 @@ class _Receive:
         self.is_switching = False
         self.target_talkgroup = 91
         self.target_timeslot = 2
+        self.target_call_type = "group"
         self.events = _Events()
         self.calls = []
 
@@ -31,10 +32,11 @@ class _Receive:
         self.calls.append(("wait", timeout))
         return True
 
-    def set_receive_target(self, talkgroup, timeslot):
-        self.calls.append(("target", talkgroup, timeslot))
+    def set_receive_target(self, talkgroup, timeslot, call_type="group"):
+        self.calls.append(("target", talkgroup, timeslot, call_type))
         self.target_talkgroup = talkgroup
         self.target_timeslot = timeslot
+        self.target_call_type = call_type
 
     def start(self):
         self.calls.append("start")
@@ -66,7 +68,7 @@ class ConnectionManagerTests(unittest.TestCase):
         self.assertEqual(result, "ok")
         self.assertEqual(
             receive.calls,
-            ["stop", ("wait", 8.0), ("target", 91, 2), "start"],
+            ["stop", ("wait", 8.0), ("target", 91, 2, "group"), "start"],
         )
         self.assertTrue(receive.is_running)
 
@@ -87,6 +89,28 @@ class ConnectionManagerTests(unittest.TestCase):
         manager.run_parrot_hold_to_talk(Event())
 
         self.assertEqual(receive.calls, [])
+
+
+    def test_connect_stops_stale_receive_before_changing_target(self):
+        receive = _Receive(running=True)
+        manager = ConnectionManager(receive, _Parrot(), events=receive.events)
+
+        self.assertTrue(manager.connect(262, 1, "private"))
+
+        self.assertEqual(
+            receive.calls,
+            ["stop", ("wait", 8.0), ("target", 262, 1, "private"), "start"],
+        )
+        self.assertEqual(262, receive.target_talkgroup)
+        self.assertEqual(1, receive.target_timeslot)
+        self.assertEqual("private", receive.target_call_type)
+
+    def test_connect_same_running_target_is_idempotent(self):
+        receive = _Receive(running=True)
+        manager = ConnectionManager(receive, _Parrot(), events=receive.events)
+
+        self.assertFalse(manager.connect(91, 2, "group"))
+        self.assertEqual([], receive.calls)
 
     def test_switch_is_delegated(self):
         receive = _Receive(running=True)

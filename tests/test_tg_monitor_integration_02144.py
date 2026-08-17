@@ -1,0 +1,36 @@
+from pathlib import Path
+import unittest
+
+
+class TGMonitorIntegration02144Tests(unittest.TestCase):
+    def test_ipc_does_not_treat_wait_for_bytes_written_as_send_failure(self):
+        source = Path("carendmr/ipc/channel_control.py").read_text(encoding="utf-8")
+        self.assertIn("socket.waitForBytesWritten(min(timeout_ms, 250))", source)
+        self.assertNotIn(
+            'if not socket.waitForBytesWritten(timeout_ms):\n'
+            '        return False, "Kanal konnte nicht an CarenDMR gesendet werden."',
+            source,
+        )
+        self.assertIn("if not socket.waitForReadyRead(timeout_ms):", source)
+
+    def test_main_menu_can_start_tg_monitor(self):
+        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        self.assertIn('QAction("TG-Monitor starten", self)', source)
+        self.assertIn("subprocess.Popen(", source)
+        self.assertIn("[sys.executable, str(script)]", source)
+
+    def test_main_window_checks_for_existing_monitor(self):
+        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        self.assertIn("if is_tg_monitor_running():", source)
+        self.assertIn("Der TG-Monitor läuft bereits.", source)
+
+    def test_monitor_enforces_single_instance(self):
+        source = Path("carendmr/tg_monitor/window.py").read_text(encoding="utf-8")
+        control = Path("carendmr/tg_monitor/instance_control.py").read_text(encoding="utf-8")
+        self.assertIn("acquire_tg_monitor_instance()", source)
+        self.assertIn("TG_MONITOR_INSTANCE_SERVER", control)
+        self.assertIn("if is_tg_monitor_running():", control)
+
+
+if __name__ == "__main__":
+    unittest.main()

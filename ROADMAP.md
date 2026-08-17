@@ -1,86 +1,21 @@
-Aktueller stabiler Entwicklungsstand: **0.0.19.4** – Hold-to-Talk und bereinigte Sendeoberfläche.
+# CarenDMR Roadmap
 
-# Roadmap
+## 0.2.0 – Modulationsvergleich
 
-Die Roadmap beschreibt Produktmeilensteine, keine festen Termine. Jeder
-Meilenstein muss automatisiert getestet, dokumentiert und nach den
-[Accessibility-Anforderungen](docs/ACCESSIBILITY_REQUIREMENTS.md) praktisch
-abgenommen werden.
+- Eigener AMBE-Loopback gegen benannte TG-Referenz
+- reproduzierbarer Referenztext
+- Vergleichstabelle und Tuner-Empfehlungen
+- Empfehlungen zunächst ohne automatische Übernahme
 
-## Abgeschlossen
+## 0.1.9.4 – Benannte Referenzstruktur
 
-### 0.0.17 – Dauerempfang und QSO-Historie
+- TG91-Bestand einmalig als `TG91_Global` übernehmen
+- aktive Referenz über `index.json` verwalten
+- Metadaten je Referenz dauerhaft aktualisieren
+- Grundlage für mehrere TG- und Sprachreferenzen schaffen
 
-- periodischer BrandMeister-Heartbeat im Live-Empfang
-- unbegrenzter GUI-Empfang bis zur Benutzeraktion
-- lokaler, eigener Reiter für abgeschlossene Sprechdurchgänge
+## Nächster Schwerpunkt
 
-### Fundament und BrandMeister
-
-- Projekt-, Test- und Release-Grundlage
-- Audio-Geräteerkennung und lokaler Selbsttest
-- BrandMeister-Login, Heartbeat und Diagnose
-- eigene kompatible Software- und Package-Kennung
-
-### DMR-Empfang
-
-- striktes DMRD-Paketmodell
-- AMBE+2-Empfangsgrenze und nativer mbelib-Decoder
-- Jitterpuffer und PCM-Wiedergabe
-- bestätigter TG91-Live-Empfang auf Timeslot 2
-
-### 0.0.14 und 0.0.14.1 – Read-only-Hauptfenster
-
-- getrennte Anzeige von BrandMeister, Empfang und Audio
-- Verbinden und Trennen ohne PTT
-- zugängliches Ereignisprotokoll
-- vollständige Tastaturbedienung der Kernaktionen
-
-### 0.0.15 – Aktuelle Station
-
-- DMR-ID, Talkgroup und Timeslot des aktuellen Sprechers
-- Sprechbeginn, Sprecherwechsel und Sprechende
-- laufende Sprechdauer
-- gemeinsame Application-Schicht für GUI und Konsole
-
-## Nächste Meilensteine
-
-### 0.0.16 – Zugängliche Einrichtung
-
-- getrennter Bereich „Einrichtung und Verbindung“
-- Audio-Ein- und Ausgabegeräte
-- BrandMeister-Konfiguration ohne Offenlegung von Geheimnissen
-- Speichern und Verbindungstest als getrennte Aktionen
-
-### 0.0.17 – Nutzbarer Empfang
-
-- lokale Rufzeichen- und Kontaktauflösung aus einer rechtlich geklärten Quelle
-- robuste Wiederverbindung und verständliche Diagnose
-- subjektive Sprachverständlichkeit mit der Nutzerin abnehmen
-
-### 0.0.18 – Kontrollierte PTT
-
-- Mikrofon-PCM und rechtlich geklärte Encoderstrategie
-- eindeutig bedienbare PTT mit akustischer Sende-/Empfangsrückmeldung
-- harte Zeit- und Zielschutzregeln
-- ausschließlich private, kontrollierte Tests vor Freigabe
-
-## Vor Version 1.0
-
-- vollständige Kernabläufe mit VoiceOver und NVDA testen
-- Windows- und macOS-Paketierung reproduzierbar machen
-- Datenschutz-, Codec-/Patent- und Vertriebsfragen klären
-- Installations-, Diagnose- und Notfallanleitungen mit Nutzerinnen testen
-
-## Nicht geplant
-
-- andere digitale Betriebsarten
-- Hotspot- oder Repeaterbetrieb
-- automatisierte Aussendungen auf öffentlichen Talkgroups
-- eine komplexe, visuell dominierte Mehrprotokoll-Oberfläche
-
-## Aktueller Zwischenstand 0.0.19.1
-
-- optionale DroidStar-Vocoder-Plugin-Integration
-- lokaler PCM-zu-AMBE-Test ohne Funkübertragung
-- nächster Schritt: hart verriegelter privater Parrot-Sprachtest
+- eigene Modulation mit der TG91-Referenz vergleichen
+- Abweichungen auf Mic-Gain, Tiefen, Mitten, Präsenz, Höhen, Dynamik und Limiter abbilden
+- geführte Optimierung mit Vorher-/Nachher-Test

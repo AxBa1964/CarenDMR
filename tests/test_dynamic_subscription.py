@@ -44,6 +44,19 @@ class DynamicSubscriptionTests(unittest.TestCase):
         self.assertEqual(8, len(transport.sent))
         self.assertTrue(all(len(packet) == 55 for packet in transport.sent))
 
+    def test_private_call_cannot_be_used_as_dynamic_tg_activation(self):
+        transport = FakeTransport()
+        with self.assertRaisesRegex(ValueError, "nur für Gruppenrufe"):
+            activate_dynamic_talkgroup(
+                transport,
+                dmr_id=2632198,
+                talkgroup=9990,
+                timeslot=2,
+                call_type="private",
+                sleep=lambda _seconds: None,
+            )
+        self.assertEqual([], transport.sent)
+
     def test_target_validation(self):
         self.assertEqual((91, 2), validate_receive_target(91, 2))
         with self.assertRaises(ValueError):

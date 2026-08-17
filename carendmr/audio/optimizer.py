@@ -75,3 +75,77 @@ def optimize_transmit_pcm(samples: tuple[int, ...], *, sample_rate: int = 8000) 
         gain_db=gain_db,
         clipped_samples=clipped,
     )
+
+
+class StreamingTxSpeechProcessor:
+    """Zustandsbehaftete, bewusst dezente DMR-Sprachaufbereitung.
+
+    Sie entfernt Gleichanteile und tieffrequentes Rumpeln vor der
+    16-kHz-zu-8-kHz-Wandlung und begrenzt nur echte Spitzen weich. Es gibt
+    keine automatische Lautheitsnormalisierung und keinen aggressiven
+    Kompressor; dadurch bleibt die Stimme natürlich und die Verarbeitung
+    kann nicht "pumpen" oder scheppern.
+    """
+
+    def __init__(self, *, sample_rate: int = 16000, enabled: bool = True) -> None:
+        if sample_rate <= 0:
+            raise ValueError("Die Abtastrate muss positiv sein.")
+        self.sample_rate = int(sample_rate)
+        self.enabled = bool(enabled)
+        self._previous_input = 0.0
+        self._previous_output = 0.0
+        self.input_peak = 0.0
+        self.output_peak = 0.0
+        self.limited_samples = 0
+        import math
+        cutoff_hz = 100.0
+        dt = 1.0 / float(self.sample_rate)
+        rc = 1.0 / (2.0 * math.pi * cutoff_hz)
+        self._hp_alpha = rc / (rc + dt)
+
+    def process(self, samples):
+        import numpy as np
+        x = np.asarray(samples, dtype=np.float32).reshape(-1)
+        if not x.size:
+            return np.empty(0, dtype=np.float32)
+        self.input_peak = max(self.input_peak, float(np.max(np.abs(x))))
+        if not self.enabled:
+            self.output_peak = max(self.output_peak, self.input_peak)
+            return x.astype(np.float32, copy=False)
+
+        # Zustandsbehafteter Hochpass. Im Gegensatz zum blockweisen Abziehen
+        # des Mittelwerts gibt es an Blockgrenzen keine Sprünge.
+        hp = np.empty_like(x)
+        prev_in = self._previous_input
+        prev_out = self._previous_output
+        alpha = self._hp_alpha
+        for index, value in enumerate(x):
+            current = alpha * (prev_out + float(value) - prev_in)
+            hp[index] = current
+            prev_in = float(value)
+            prev_out = current
+        self._previous_input = prev_in
+        self._previous_output = prev_out
+
+        # Transparenter Soft-Limiter: unter -1,7 dBFS unverändert, darüber
+        # sanfte Begrenzung. Bei den gemessenen CarenDMR-Pegeln greift er nur
+        # bei einzelnen Ausreißern und verändert normale Sprache nicht.
+        threshold = 0.82
+        magnitude = np.abs(hp)
+        over = magnitude > threshold
+        if np.any(over):
+            excess = (magnitude[over] - threshold) / max(1e-9, 1.0 - threshold)
+            magnitude[over] = threshold + (1.0 - threshold) * np.tanh(excess)
+            self.limited_samples += int(np.count_nonzero(over))
+        processed = np.sign(hp) * magnitude
+        processed = np.clip(processed, -0.98, 0.98).astype(np.float32, copy=False)
+        self.output_peak = max(self.output_peak, float(np.max(np.abs(processed))))
+        return processed
+
+    def diagnostics(self) -> dict[str, float | int | bool]:
+        return {
+            "enabled": self.enabled,
+            "input_peak_percent": round(self.input_peak * 100.0, 3),
+            "output_peak_percent": round(self.output_peak * 100.0, 3),
+            "limited_samples": self.limited_samples,
+        }

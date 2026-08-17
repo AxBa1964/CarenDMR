@@ -32,6 +32,8 @@ def build_dynamic_tg_packets(*, dmr_id: int, talkgroup: int, timeslot: int,
     """Erzeugt einen vollständigen gültigen stummen DMR-Gruppenruf."""
     talkgroup, timeslot = validate_receive_target(talkgroup, timeslot)
     call_type = normalize_call_type(call_type)
+    if call_type != "group":
+        raise ValueError("Dynamische Talkgroup-Aktivierung ist nur für Gruppenrufe zulässig.")
     if not 1 <= dmr_id <= 0xFFFFFF:
         raise ValueError("Die DMR-ID muss für DMRD in 24 Bit passen.")
     if stream_id is None:
@@ -39,14 +41,18 @@ def build_dynamic_tg_packets(*, dmr_id: int, talkgroup: int, timeslot: int,
     return build_silent_call_fixture(
         source_id=dmr_id, repeater_id=dmr_id, destination_id=talkgroup,
         timeslot=timeslot, stream_id=stream_id,
-        call_type=DmrdCallType.PRIVATE if call_type == "private" else DmrdCallType.GROUP,
+        call_type=DmrdCallType.GROUP,
     ).to_bytes()
 
 
 def activate_dynamic_talkgroup(transport, *, dmr_id: int, talkgroup: int,
                                timeslot: int, call_type: str = "group", pause_seconds: float = 0.06,
                                sleep: Callable[[float], None] = time.sleep) -> None:
-    """Sendet einen vollständigen stummen Gruppenruf über die Login-Sitzung."""
+    """Sendet einen vollständigen stummen Gruppenruf über die Login-Sitzung.
+
+    Privatrufe dürfen diesen Mechanismus nicht verwenden: Der vermeintliche
+    Aktivierungsruf wäre bereits ein echter privater DMR-Ruf.
+    """
     packets = build_dynamic_tg_packets(
         dmr_id=dmr_id, talkgroup=talkgroup, timeslot=timeslot, call_type=call_type
     )

@@ -22,6 +22,8 @@ EXCLUDED_DIRECTORIES = {
     "plugins",
     "release",
     "venv",
+    "vendor",
+    "out",
 }
 
 EXCLUDED_PATTERNS = {

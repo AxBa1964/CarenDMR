@@ -8,15 +8,15 @@ class RadioUi021Tests(unittest.TestCase):
         cls.source = (Path(__file__).parents[1] / "carendmr" / "ui" / "main_window.py").read_text(encoding="utf-8")
 
     def test_three_user_oriented_tabs(self):
-        self.assertIn('text="Betrieb"', self.source)
-        self.assertIn('text="QSO-Historie"', self.source)
-        self.assertIn('text="Einstellungen"', self.source)
+        self.assertIn('◉  BETRIEB', self.source)
+        self.assertIn('QSO-HISTORIE', self.source)
+        self.assertIn('EINSTELLUNGEN', self.source)
         self.assertNotIn('self.notebook.add(transmit, text="Senden")', self.source)
 
     def test_toggle_ptt_and_sixty_second_limit(self):
-        self.assertIn('text="TX AUS"', self.source)
+        self.assertIn('text="TX AUS\\nZum Senden drücken"', self.source)
         self.assertIn('command=self._toggle_transmit', self.source)
-        self.assertIn('set_tx_safety_limit_seconds(60)', self.source)
+        self.assertIn('set_tx_safety_limit_seconds(300)', self.source)
 
     def test_encoder_is_verified_automatically(self):
         self.assertIn('self.root.after(0, self._initialize_once)', self.source)
@@ -25,7 +25,7 @@ class RadioUi021Tests(unittest.TestCase):
     def test_connection_toggle_and_call_type(self):
         self.assertIn('text="CONNECT"', self.source)
         self.assertIn('text="DISCONNECT"', self.source)
-        self.assertIn('values=("Gruppe", "Privat")', self.source)
+        self.assertIn('for row, value in enumerate(("Gruppe", "Privat"))', self.source)
         self.assertIn('text="Stumm (Strg+M)"', self.source)
 
     def test_operation_hides_developer_status_texts(self):

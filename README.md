@@ -1,144 +1,77 @@
 # CarenDMR
 
-Aktueller Entwicklungsstand: **0.0.21.1**
+## Version 0.2.1.38
 
-> Ein freier, konsequent barrierefrei entwickelter DMR-Client für
-> BrandMeister.
+Neu: Die eigene Modulation kann über einen geführten Parrot-Test gegen die aktive DMR-Audio-Referenz verglichen werden. Der Vergleich verwendet den lokalen AMBE-Codec-Loopback und zeigt konkrete, noch nicht automatisch angewendete Tuner-Empfehlungen.
 
-CarenDMR entsteht für blinde und sehbehinderte Funkamateure. Das konkrete
-Ziel ist ein kleiner, zuverlässiger Client, mit dem Caren weltweit – besonders
-auf Talkgroup 91 – englischsprachige Funkgespräche führen kann.
+Der DMR-Audio-Benchmark besitzt jetzt eine unterbrechungssichere Referenz-Engine mit SQLite-Datenbank und direkt zum Audio-Tuner passenden Messwerten.
 
-Barrierefreiheit ist keine spätere Ergänzung. Eine Funktion gilt erst als
-fertig, wenn sie ohne Maus, ohne visuelle Orientierung und mit verständlichen
-akustischen beziehungsweise Screenreader-Rückmeldungen bedienbar ist.
+# CarenDMR
 
-## Projektumfang
+## Version 0.1.9.3
 
-CarenDMR konzentriert sich ausschließlich auf:
+Der passive Audio-Benchmark ist jetzt korrekt mit dem laufenden RX-Datenstrom verbunden.
 
-- DMR über das BrandMeister-Netzwerk,
-- Empfang und später kontrolliertes Senden von Sprache,
-- vollständige Tastaturbedienung,
-- VoiceOver unter macOS sowie später NVDA und JAWS unter Windows,
-- verständliche Status-, Fehler- und Sicherheitsmeldungen,
-- Windows und macOS; Linux bleibt eine unterstützte Entwicklungsplattform.
 
-D-Star, YSF, P25, NXDN, M17, AllStar und ein allgemeines
-Digitalfunk-Framework gehören nicht zum Projektumfang.
+## 0.1.9.3
 
-## Aktueller Stand: 0.0.21.1
+- Audio-Benchmark erkennt wiederholte Voice-Aktivitätsmeldungen desselben Streams korrekt und zerlegt einen Sprechdurchgang nicht mehr in Einzelpakete.
+- Aktuelle Station, laufende Sprechdauer und Analysewarteschlange werden live angezeigt.
+- Fremde oder verspätete Stream-Ende-Ereignisse können den aktiven Testfall nicht mehr beenden.
 
-Der technische Stand umfasst:
+CarenDMR 0.1.9.1.2 – Passiver Audio-Analyzer
 
-- bestätigten BrandMeister-Login und Heartbeat,
-- striktes Parsen und Modellieren von DMRD-Paketen,
-- empfangsseitige AMBE+2-Extraktion und einen nativen, nur dekodierenden
-  mbelib-Adapter für macOS, Linux und Windows,
-- Jitterpuffer und begrenzte PCM-Wiedergabe,
-- bestätigten TG91-Live-Empfang,
-- ein hart verriegeltes privates Parrot-Testprofil für 9990 auf Timeslot 2,
-- lokale Sprachausgabe unter macOS,
-- barrierefreies Read-only-Hauptfenster mit Live-QSO-Anzeige,
-- aktuelle DMR-ID, Talkgroup, Timeslot und Sprechdauer,
-- lokaler Mikrofon-Sendepfad mit Pegelanzeige, Testaufnahme, Wiedergabe und Loopback,
-- optionaler, separat bereitgestellter DroidStar-Vocoder über native Bridge,
-- lokaler PCM-zu-AMBE-Prüflauf ohne Funkübertragung,
-- dynamisch schaltbarer Empfang für frei gewählte Talkgroup und TS1/TS2,
-- automatische Rückkehr zum zuvor aktiven Empfang nach einem Parrot-Test,
-- weiterhin verfügbare Empfangsdiagnose für Netzwerk, Filter, Decoder und Audio,
-- 195 automatisierte Tests im aktuellen Prüfstand.
+Der geführte Audio-Test beobachtet die bestehende Funkstrecke, ohne RX, TX, Socket oder Audioausgabe zu steuern.
 
-Der Parrot-Sendepfad bleibt experimentell: Verzögerung und Sendeaudioqualität sind noch nicht optimiert. Freie Aussendungen oder allgemeine Zielwahl sind nicht freigegeben; der Test bleibt fest auf den privaten Parrot 9990/TS2 begrenzt.
+CarenDMR 0.1.8.5 – Codec-Diagnose und TX-Timing
 
-Zusätzlich führt die GUI eine lokale QSO-Historie abgeschlossener empfangener Sprechdurchgänge.
+# CarenDMR 0.1.8.0 – Talkgroup-Metadaten
 
-## Schnellstart
+CarenDMR ist ein barrierefrei bedienbarer Qt-Desktop-DMR-Client für BrandMeister.
 
-Repository klonen und die Anleitung für das Betriebssystem verwenden:
+Diese Version ergänzt das weltweite Talkgroup-Verzeichnis um abgeleitete Länder- und Sprachinformationen. Im Reiter **Talkgroups** kann nach Nummer, Name, Land und wahrscheinlicher Betriebssprache gesucht und gefiltert werden. Favoriten lassen sich im Bearbeiten-Dialog sowie über eigene kompakte Schaltflächen setzen und entfernen.
 
-- [macOS](INSTALL_MACOS.md)
-- [Windows](INSTALL_WINDOWS.md)
-- [Linux](INSTALL_LINUX.md)
+Die Sprache ist eine hilfreiche Ableitung aus MCC-Präfix und Talkgroup-Name, keine garantierte Aussage über jedes einzelne QSO.
 
-Der kürzeste plattformunabhängige Prüfablauf nach aktivierter virtueller
-Umgebung ist:
+## CarenDMR 0.1.8.2
 
-```text
-python -m pip install -r requirements.txt
-python -m unittest discover -s tests -v
+Der geführte Audio-Test puffert zwei Sekunden Mikrofon-Vorlauf ausschließlich im RAM und zeichnet danach genau die nächste TX-Sendung an mehreren Messpunkten auf. Die Diagnose endet automatisch und erzeugt WAV-/BIN-Dateien sowie Analyseberichte unter `logs/audio_lab/`.
+
+
+## Audioqualität 0.1.9.1.2
+Die optionale, standardmäßig aktive DMR-Sprachaufbereitung arbeitet bewusst dezent: Hochpass gegen Rumpeln und Soft-Limiter für einzelne Spitzen, ohne Pumpen oder automatische Lautheitsanhebung.
+
+
+## DMR Audio-Tuner 0.1.9.1.2
+
+Auf der Betriebsseite lässt sich der Tuner ausklappen. Neutral ist die Referenz. Klar, DX und Warm sind sofort nutzbare Profile. Eigene Werte werden dauerhaft in `config/audio.local.json` gespeichert und gelten ab dem nächsten TX.
+
+## DMR-Audio-Benchmark
+
+Der Reiter **Audio-Benchmark** sammelt passiv Referenzdaten aus normalen DMR-Empfangsdurchgängen. Durchgänge ab fünf Sekunden werden getrennt nach Rufzeichen und Stream ausgewertet. Analyse und Speicherung laufen außerhalb des RX-Echtzeitpfads. Messreihen können pausiert, später fortgesetzt und nach einem Programmneustart wieder aufgenommen werden. Vollständige Sprachaufnahmen werden nicht dauerhaft gespeichert; gespeichert werden ausschließlich Kennzahlen und Metadaten.
+
+Aktuelle Version: **0.1.9.2**
+
+
+### Eigenständiger TG-Monitor
+
+Der optionale TG-Monitor wird parallel zu CarenDMR gestartet:
+
+```powershell
+python tg_monitor.py
 ```
 
-Für den nativen Empfangsdecoder ist zusätzlich ein C-Compiler erforderlich.
-Die betriebssystemspezifischen Anleitungen beschreiben den Build.
+Er beobachtet frei wählbare BrandMeister-Talkgroups über den Last-Heard-Feed, ohne den laufenden DMR-/AMBE-/Audiobetrieb zu beeinflussen. Eine markierte TG kann über eine ausschließlich lokale Qt-IPC an eine laufende CarenDMR-Instanz übergeben werden.
 
 
-## TG91-Live-Empfang
+### QRZ.com Stationsinformation
 
-Nach aktivierter virtueller Umgebung und gebautem nativen Decoder startet der
-bereits vorhandene, rein empfangende Live-Test mit:
+Optional kann CarenDMR Daten aus dem QRZ.com XML Callbook Data Service anzeigen. Dazu:
 
-```text
-python main.py --listen
+```powershell
+Copy-Item config\qrz.example.json config\qrz.local.json
 ```
 
-Der Lauf ist fest auf TG91 und Timeslot 2 begrenzt und endet mit Strg+C oder
-optional mit `--duration`. Er sendet keine DMRD-Pakete. Vor dem Netzempfang
-wird der lokale Audioweg mit einem kurzen Prüfton kontrolliert.
+Anschließend `config/qrz.local.json` mit eigenem QRZ-Benutzernamen, Passwort und Rufzeichen ausfüllen. Diese lokale Datei wird durch `.gitignore` und den Release-Builder ausgeschlossen.
 
-## Read-only-Hauptfenster
-
-```text
-python main.py --gui
-```
-
-Das Fenster zeigt BrandMeister-, Empfangs- und Audiozustand sowie die aktuelle
-DMR-ID, Talkgroup, Timeslot und Sprechdauer. Strg+R startet den Empfang,
-Strg+T trennt ihn, Esc oder Strg+Q beendet das Programm.
-
-## Lokaler Audio-Sendepfad
-
-Im Reiter **„Senden – lokaler Audiotest“** können Mikrofone eingelesen und
-ausgewählt, eine fünfsekündige Testaufnahme erstellt, der Pegel beobachtet und
-die Aufnahme lokal wiedergegeben werden. Ein viersekündiger Loopback-Test prüft
-Mikrofon und Lautsprecher gemeinsam. Version 0.0.18.2 besitzt weiterhin keine PTT,
-keinen AMBE-Encoder und keine Netzwerk-Sendefunktion.
-
-## Dokumentation
-
-- [Roadmap](ROADMAP.md)
-- [Mitarbeiten](CONTRIBUTING.md)
-- [Architektur](docs/ARCHITECTURE.md)
-- [Verbindliche Accessibility-Anforderungen](docs/ACCESSIBILITY_REQUIREMENTS.md)
-- [BrandMeister-Kompatibilität](docs/BRANDMEISTER_COMPATIBILITY.md)
-- [Upstream-Provenienz und Lizenzgrenzen](docs/UPSTREAM_PROVENANCE.md)
-- [Release- und Deployment-Ablauf](DEPLOY.md)
-- [Änderungsverlauf](CHANGELOG.md)
-
-## Sicherheit und sensible Daten
-
-Lokale Dateien `config/*.local.json` dürfen Zugangsdaten enthalten und werden
-von Git sowie vom Release-ZIP ausgeschlossen. Passwörter, DMR-Zugangsdaten,
-Paketmitschnitte mit persönlichen Inhalten und lokale Audioaufnahmen gehören
-niemals in Issues, Commits oder Logs.
-
-Sendefunktionen werden fail-closed entwickelt: keine freie Zielwahl, keine
-unbegrenzten Wiederholungen und keine automatisierten Tests auf öffentlichen
-Talkgroups.
-
-## Lizenz
-
-CarenDMR steht unter
-[GNU GPL Version 3 oder später](LICENSE). Herkunft und Lizenzgrenzen
-adaptierter Referenzbestandteile sind in
-[UPSTREAM_PROVENANCE.md](docs/UPSTREAM_PROVENANCE.md) dokumentiert.
-
-
-## Längerer TG91-Empfang
-
-`python main.py --listen` läuft rein empfangend bis Strg+C. Mit `python main.py --listen --duration 600` wird der Lauf auf zehn Minuten begrenzt. Alle 30 Sekunden werden Diagnosewerte ausgegeben.
-
-
-## Dynamischer Talkgroup-Empfang
-
-Im Reiter **Empfang** werden Talkgroup und Timeslot vor dem Verbinden eingetragen. Nach der Anmeldung sendet CarenDMR einen kurzen stummen DMRD-Gruppenruf-Impuls über die bestehende UDP-Verbindung. Dadurch wird die gewählte Talkgroup dynamisch aktiviert. Ein BrandMeister-API-Key ist nicht erforderlich. Für einen Zielwechsel zuerst trennen, neues Ziel eintragen und erneut verbinden.
+Bei einer aktuell empfangenen Station erscheint **QRZ.com** nur dann, wenn der XML-Dienst einen Datensatz für das Rufzeichen liefert. Das separate Fenster zeigt Profilbild und Stationsdaten sowie eine lokale Kartenansicht mit eigener Station und Gegenstation. Für vollständige Callbook-Daten kann ein passendes QRZ.com-Abo erforderlich sein.

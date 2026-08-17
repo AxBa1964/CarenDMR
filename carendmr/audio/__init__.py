@@ -20,7 +20,10 @@ __all__ = [
     "BufferedPcmOutput",
     "PcmOutputError",
     "SoundDeviceBackend",
-    "OptimizerDiagnostics", "optimize_transmit_pcm",
+    "OptimizerDiagnostics", "optimize_transmit_pcm", "StreamingTxSpeechProcessor",
+    "TxAudioTunerSettings", "StreamingTxAudioTuner", "TUNER_PRESETS", "tuner_preset",
 ]
 
-from .optimizer import OptimizerDiagnostics, optimize_transmit_pcm
+from .optimizer import OptimizerDiagnostics, StreamingTxSpeechProcessor, optimize_transmit_pcm
+
+from .tuner import TxAudioTunerSettings, StreamingTxAudioTuner, PRESETS as TUNER_PRESETS, preset as tuner_preset

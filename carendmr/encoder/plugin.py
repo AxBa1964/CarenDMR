@@ -61,6 +61,12 @@ class DroidStarPluginEncoder(AmbeEncoder):
             ctypes.POINTER(ctypes.c_uint8),
         ]
         self._library.carendmr_vocoder_encode_2450x1150.restype = ctypes.c_int
+        self._library.carendmr_vocoder_decode_2450x1150.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_uint8),
+            ctypes.POINTER(ctypes.c_int16),
+        ]
+        self._library.carendmr_vocoder_decode_2450x1150.restype = ctypes.c_int
         self._library.carendmr_vocoder_last_error.argtypes = []
         self._library.carendmr_vocoder_last_error.restype = ctypes.c_char_p
 
@@ -93,6 +99,21 @@ class DroidStarPluginEncoder(AmbeEncoder):
         if len(encoded) != AMBE_BYTES_PER_FRAME:
             raise EncoderValidationError("Das Plugin lieferte keinen 72-Bit-AMBE-Rahmen.")
         return encoded
+
+    def decode_2450x1150(self, codeword: bytes) -> tuple[int, ...]:
+        """Dekodiert ein 72-Bit-AMBE-Codewort mit demselben DroidStar-Plugin."""
+        if len(codeword) != AMBE_BYTES_PER_FRAME:
+            raise ValueError("Ein AMBE-Codewort muss genau 9 Bytes lang sein.")
+        if not self._handle:
+            raise EncoderUnavailableError("Der AMBE-Vocoder ist geschlossen.")
+        encoded = (ctypes.c_uint8 * AMBE_BYTES_PER_FRAME).from_buffer_copy(codeword)
+        pcm = (ctypes.c_int16 * PCM_SAMPLES_PER_FRAME)()
+        result = self._library.carendmr_vocoder_decode_2450x1150(
+            ctypes.c_void_p(self._handle), encoded, pcm
+        )
+        if result != 0:
+            raise EncoderValidationError(self._last_error())
+        return tuple(int(value) for value in pcm)
 
     def close(self) -> None:
         if self._handle:

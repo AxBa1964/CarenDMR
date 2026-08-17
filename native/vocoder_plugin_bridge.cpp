@@ -181,6 +181,27 @@ int carendmr_vocoder_encode_2450x1150(void* opaque, const int16_t* pcm, uint8_t*
 #ifdef _WIN32
 __declspec(dllexport)
 #endif
+int carendmr_vocoder_decode_2450x1150(void* opaque, const uint8_t* input, int16_t* pcm) {
+    last_error.clear();
+    auto* handle = static_cast<BridgeHandle*>(opaque);
+    if (!handle || !handle->vocoder || !input || !pcm) {
+        set_error("Ungültiger Decoderaufruf.");
+        return 1;
+    }
+    try {
+        uint8_t frame[9];
+        std::memcpy(frame, input, 9);
+        handle->vocoder->decode_2450x1150(pcm, frame);
+    } catch (...) {
+        set_error("Das Plugin meldete beim AMBE-Decoding einen Fehler.");
+        return 2;
+    }
+    return 0;
+}
+
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
 const char* carendmr_vocoder_last_error() {
     return last_error.c_str();
 }
