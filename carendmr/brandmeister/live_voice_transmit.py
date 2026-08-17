@@ -5,6 +5,7 @@ from carendmr.diagnostics.wav_io import write_pcm16_mono
 import ctypes
 import math
 import os
+import platform
 import secrets
 import time
 import wave
@@ -101,7 +102,7 @@ def execute_live_voice_once(
     """Sendet PCM fortlaufend. Nach Ende des Iterators folgen nur Pad/Terminator."""
     source_id = config.dmr_id
     stream_id = secrets.randbelow(0xFFFFFFFF) + 1
-    sequence = secrets.randbelow(256)
+    sequence = 0 if platform.system() == "Darwin" else secrets.randbelow(256)
     flco = 0x03 if call_type is DmrdCallType.PRIVATE else 0x00
     lc = bytes((flco, 0, 0)) + destination_id.to_bytes(3, 'big') + source_id.to_bytes(3, 'big')
     embedded = _encode_embedded_lc(lc)
@@ -226,13 +227,27 @@ def execute_live_voice_once(
             raise RuntimeError('BrandMeister-Anmeldung fehlgeschlagen.')
         tx_start = monotonic()
         timing_mark('TX_ERSTER_FRAME_START')
+        timing_mark(
+            "TX_STREAM_START",
+            f"StreamID={stream_id:08X};Sequence={sequence};Src={source_id};"
+            f"Dst={destination_id};TS={timeslot};CallType={call_type};"
+            f"SequencePolicy={'zero-darwin' if platform.system() == 'Darwin' else 'random-existing'}",
+        )
         header = _packet(sequence=sequence, source_id=source_id, destination_id=destination_id,
                          repeater_id=source_id, timeslot=timeslot, call_type=call_type,
                          frame_class=DmrdFrameClass.DATA_SYNC, stream_id=stream_id,
                          payload=_encode_full_lc_burst(lc, 0x01),
                          data_type=DmrdDataType.VOICE_LC_HEADER.value)
-        send_packet(header, paced=False)
-        sequence = (sequence + 1) & 0xFF
+        droidstar_reference_timing = platform.system() == "Darwin"
+        if droidstar_reference_timing:
+            timing_mark(
+                "TX_HEADER_MACOS_WARTET_AUF_PUFFER",
+                "DroidStar-Referenz: LC-Header erst nach fertigem AMBE-Prebuffer",
+            )
+        else:
+            # Bestehender Windows-/Nicht-macOS-Ablauf bleibt unverändert.
+            send_packet(header, paced=False)
+            sequence = (sequence + 1) & 0xFF
 
         # 0.2.1.22: PCM-Erfassung/MD380-Encoding vom 60-ms-Sendetakt entkoppeln.
         # Die 240-ms-TX-Vorlaufstille liefert zugleich einen Reservepuffer von
@@ -345,6 +360,16 @@ def execute_live_voice_once(
             f"Codewords={len(prebuffer_words)};ReserveMs={len(prebuffer_words) * 20}",
         )
 
+        if droidstar_reference_timing:
+            send_packet(header, paced=False)
+            sequence = (sequence + 1) & 0xFF
+            next_send = monotonic() + PACKET_INTERVAL_SECONDS
+            timing_mark(
+                "TX_HEADER_MACOS_DROIDSTAR_REFERENZ",
+                f"SequenceNaechsterFrame={sequence};"
+                f"VoiceStartInMs={PACKET_INTERVAL_SECONDS * 1000.0:.1f}",
+            )
+
         ambe_frames: list[bytes] = []
         burst_number = 0
 
@@ -428,6 +453,11 @@ def execute_live_voice_once(
         timing_mark("TX_JITTER_STATISTIK", f"Bursts={len(send_times)};AbstandAvgMs={int_avg:.3f};MinMs={int_min:.3f};MaxMs={int_max:.3f};JitterRmsMs={int_rms:.3f};SollFehlerAvgMs={err_avg:.3f};MinMs={err_min:.3f};MaxMs={err_max:.3f};RmsMs={err_rms:.3f};ZuFrueh={early_bursts};ZuSpaet={late_bursts};TaktResets={late_schedule_resets}")
         timing_mark("TX_ENCODER_STATISTIK", f"Frames={len(encoder_times_ms)};AvgMs={enc_avg:.3f};MinMs={enc_min:.3f};MaxMs={enc_max:.3f};RmsMs={enc_rms:.3f}")
         timing_mark("TX_LETZTER_VOICE_FRAME_GESENDET", f"VoiceBursts={voice};TaktResets={late_schedule_resets}")
+        timing_mark(
+            "TX_STREAM_ENDE",
+            f"StreamID={stream_id:08X};Sequence={sequence};Src={source_id};"
+            f"Dst={destination_id};TS={timeslot};CallType={call_type};VoiceBursts={voice}",
+        )
         terminator = _packet(sequence=sequence, source_id=source_id, destination_id=destination_id,
                              repeater_id=source_id, timeslot=timeslot, call_type=call_type,
                              frame_class=DmrdFrameClass.DATA_SYNC, stream_id=stream_id,

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import ssl
+import sys
 from typing import Callable
 from urllib.request import Request, urlopen
 
@@ -24,7 +26,15 @@ class RadioIdDownloader:
         temporary.unlink(missing_ok=True)
         total = 0
         try:
-            with self._opener(request, timeout=30) as response, temporary.open("wb") as output:
+            if sys.platform == "darwin" and self._opener is urlopen:
+                import certifi
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+                response_context = self._opener(request, timeout=30, context=ssl_context)
+            else:
+                # Windows und andere Plattformen behalten unverändert den bisherigen Pfad.
+                response_context = self._opener(request, timeout=30)
+
+            with response_context as response, temporary.open("wb") as output:
                 while True:
                     chunk = response.read(1024 * 1024)
                     if not chunk:

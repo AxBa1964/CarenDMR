@@ -20,6 +20,7 @@ Terminator-with-LC.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import sys
 
 from .dmrd import (
     DMRD_PAYLOAD_SIZE,
@@ -37,7 +38,7 @@ from .dmrd import (
 SILENT_CALL_PACKET_COUNT = 8
 SILENT_VOICE_BURST_COUNT = 6
 
-_COLOR_CODE = 1
+_COLOR_CODE = 0 if sys.platform == "darwin" else 1
 _VOICE_LC_HEADER = 0x01
 _TERMINATOR_WITH_LC = 0x02
 _VOICE_LC_CRC_MASK = 0x96
@@ -57,7 +58,9 @@ _DMR_SILENCE_DATA = bytes.fromhex(
 # QR(16,7,6) reference values used by the deliberately fixed colour code 1
 # and LCSS values 0..3. Keeping this surface constrained avoids importing
 # DroidStar's unrelated general-purpose tables.
-_EMB_CODEWORDS = (0x11E2, 0x1391, 0x1507, 0x1774)
+_EMB_CODEWORDS_CC0 = (0x0000, 0x0273, 0x04E5, 0x0696)
+_EMB_CODEWORDS_CC1 = (0x11E2, 0x1391, 0x1507, 0x1774)
+_EMB_CODEWORDS = _EMB_CODEWORDS_CC0 if sys.platform == "darwin" else _EMB_CODEWORDS_CC1
 
 
 @dataclass(frozen=True, slots=True)

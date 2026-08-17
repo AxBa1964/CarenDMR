@@ -150,9 +150,15 @@ class SettingsDialog(QDialog):
         contacts_layout.addWidget(self.contacts_status); contacts_layout.addWidget(self.contacts_update_button, 0, Qt.AlignmentFlag.AlignLeft)
         qso_box = QGroupBox("QSO-Datenbank")
         qso_form = QFormLayout(qso_box)
-        self.qso_path_label = QLabel(str(self.project_root / "data" / "qso_history.db")); self.qso_path_label.setWordWrap(True)
+        qso_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        qso_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
+        self.qso_path_label = QLabel(str(self.project_root / "data" / "qso_history.db"))
+        self.qso_path_label.setWordWrap(True)
+        self.qso_path_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.qso_path_label.setMinimumHeight(self.qso_path_label.fontMetrics().lineSpacing() * 2 + 8)
         self.qso_status_label = QLabel("Lokale SQLite-Historie")
-        qso_form.addRow("Pfad:", self.qso_path_label); qso_form.addRow("Status:", self.qso_status_label)
+        qso_form.addRow("Pfad:", self.qso_path_label)
+        qso_form.addRow("Status:", self.qso_status_label)
         data_root.addWidget(contacts_box); data_root.addWidget(qso_box); data_root.addStretch(1)
         self.tabs.addTab(data_page, "Datenbanken")
 
@@ -160,9 +166,15 @@ class SettingsDialog(QDialog):
         codec_page = QWidget(); codec_root = QVBoxLayout(codec_page)
         codec_box = QGroupBox("AMBE-Codec")
         codec_form = QFormLayout(codec_box)
+        codec_form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
+        codec_form.setRowWrapPolicy(QFormLayout.RowWrapPolicy.WrapLongRows)
         self.encoder_backend_label = QLabel("Noch nicht geprüft")
-        self.encoder_plugin_label = QLabel("Nicht zugeordnet"); self.encoder_plugin_label.setWordWrap(True)
-        self.encoder_message_label = QLabel("—"); self.encoder_message_label.setWordWrap(True)
+        self.encoder_plugin_label = QLabel("Nicht zugeordnet")
+        self.encoder_plugin_label.setWordWrap(True)
+        self.encoder_plugin_label.setMinimumHeight(self.encoder_plugin_label.fontMetrics().lineSpacing() * 2 + 8)
+        self.encoder_message_label = QLabel("—")
+        self.encoder_message_label.setWordWrap(True)
+        self.encoder_message_label.setMinimumHeight(self.encoder_message_label.fontMetrics().lineSpacing() * 2 + 8)
         codec_form.addRow("Encoder/Decoder:", self.encoder_backend_label)
         codec_form.addRow("Plugin:", self.encoder_plugin_label)
         codec_form.addRow("Prüfergebnis:", self.encoder_message_label)
@@ -306,9 +318,15 @@ class SettingsDialog(QDialog):
             self.encoder_message_label.setText(str(exc))
 
     def _verify_encoder_plugin(self) -> None:
-        plugin = self.encoder_service.detect_plugin()
-        self.encoder_plugin_label.setText(str(plugin) if plugin else "Nicht zugeordnet")
         try:
+            if self.encoder_service.md380_available:
+                diag = self.encoder_service.verify_configured()
+                self._show_encoder_diagnostics(diag)
+                self.status_label.setText("Native MD380/Dynarmic-TX-Bridge ist bereit.")
+                return
+
+            plugin = self.encoder_service.detect_plugin()
+            self.encoder_plugin_label.setText(str(plugin) if plugin else "Nicht zugeordnet")
             if plugin is None:
                 raise RuntimeError("Kein Vocoder-Plugin gefunden. Bitte Plugin zuordnen.")
             if self.encoder_service.configured_plugin_path != plugin:

@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="https://github.com/dbehnke/md380_vocoder_dynarmic.git"
+COMMIT="55c9a2c6d502567380c7dfaf4a2e3cc4dd6d1dd5"
+VENDOR_ROOT="$SCRIPT_DIR/vendor"
+SOURCE_DIR="$VENDOR_ROOT/md380_vocoder_dynarmic"
+BUILD_DIR="$SCRIPT_DIR/md380_dynarmic_build/out-macos"
+OUTPUT="$SCRIPT_DIR/libcarendmr_md380_bridge.dylib"
+
+for tool in git cmake sh unzip xxd python3; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        echo "Fehlendes Werkzeug: $tool" >&2
+        exit 1
+    fi
+done
+
+mkdir -p "$VENDOR_ROOT"
+
+if [ ! -d "$SOURCE_DIR/.git" ]; then
+    git clone "$REPO" "$SOURCE_DIR"
+fi
+
+git -C "$SOURCE_DIR" fetch --all --tags
+git -C "$SOURCE_DIR" checkout --detach "$COMMIT"
+
+python3 - "$SOURCE_DIR/CMakeLists.txt" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+bad = "target_link_libraries(md380_vocoder STATIC dynarmic)"
+good = "target_link_libraries(md380_vocoder PRIVATE dynarmic)"
+if bad in text:
+    path.write_text(text.replace(bad, good))
+elif good not in text:
+    raise SystemExit("Erwartete md380_vocoder-Linkzeile nicht gefunden.")
+PY
+
+rm -rf "$BUILD_DIR"
+mkdir -p "$BUILD_DIR"
+
+cmake -S "$SCRIPT_DIR/md380_dynarmic_build" -B "$BUILD_DIR"     -DMD380_SOURCE_DIR="$SOURCE_DIR" -DCMAKE_BUILD_TYPE=Release
+
+cmake --build "$BUILD_DIR" --config Release -j"$(sysctl -n hw.ncpu)"
+
+CANDIDATE="$(find "$BUILD_DIR" -type f -name 'libcarendmr_md380_bridge.dylib' -print -quit)"
+if [ -z "$CANDIDATE" ]; then
+    echo "libcarendmr_md380_bridge.dylib wurde nach dem Build nicht gefunden." >&2
+    exit 1
+fi
+
+cp "$CANDIDATE" "$OUTPUT"
+echo "MD380-Dynarmic-Bridge erfolgreich gebaut: $OUTPUT"
+echo "Upstream: $REPO"
+echo "Commit: $COMMIT"

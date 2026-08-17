@@ -1,8 +1,9 @@
-"""ctypes-Zugriff auf den Windows-x86_64-MD380-Dynarmic-Vocoder."""
+"""ctypes-Zugriff auf den nativen MD380-Dynarmic-Vocoder."""
 from __future__ import annotations
 
 import ctypes
 import os
+import sys
 from pathlib import Path
 
 PCM_SAMPLES_PER_FRAME = 160
@@ -11,9 +12,19 @@ MD380_INPUT_GAIN_DB = 2.0
 MD380_INPUT_GAIN = 10.0 ** (MD380_INPUT_GAIN_DB / 20.0)
 
 
+def default_md380_bridge_path(project_root: Path) -> Path:
+    if os.name == "nt":
+        name = "carendmr_md380_bridge.dll"
+    elif sys.platform == "darwin":
+        name = "libcarendmr_md380_bridge.dylib"
+    else:
+        name = "libcarendmr_md380_bridge.so"
+    return project_root / "native" / name
+
+
 class Md380DynarmicEncoder:
     def __init__(self, project_root: Path, library_path: Path | None = None) -> None:
-        self._path = (library_path or project_root / "native" / "carendmr_md380_bridge.dll").resolve()
+        self._path = (library_path or default_md380_bridge_path(project_root)).resolve()
         if not self._path.is_file():
             raise RuntimeError(f"MD380-Dynarmic-Bridge fehlt: {self._path}")
 
@@ -26,11 +37,16 @@ class Md380DynarmicEncoder:
         try:
             self._lib = ctypes.CDLL(str(self._path))
         except OSError as error:
+            if os.name == "nt":
+                hint = (
+                    " Unter Windows muss die MSYS2-UCRT64-Laufzeit verfügbar sein "
+                    "(erwartet unter C:\\msys64\\ucrt64\\bin)."
+                )
+            else:
+                hint = ""
             raise RuntimeError(
-                "MD380-Dynarmic-Bridge konnte nicht geladen werden. "
-                "Unter Windows muss die MSYS2-UCRT64-Laufzeit verfügbar sein "
-                "(erwartet unter C:\\msys64\\ucrt64\\bin). "
-                f"Originalfehler: {error}"
+                "MD380-Dynarmic-Bridge konnte nicht geladen werden."
+                f"{hint} Originalfehler: {error}"
             ) from error
         self._lib.carendmr_md380_init.argtypes = []
         self._lib.carendmr_md380_init.restype = ctypes.c_int

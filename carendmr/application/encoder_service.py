@@ -20,7 +20,8 @@ class EncoderService:
 
     @property
     def md380_bridge_path(self) -> Path:
-        return self.project_root / "native" / "carendmr_md380_bridge.dll"
+        from carendmr.encoder.md380_dynarmic import default_md380_bridge_path
+        return default_md380_bridge_path(self.project_root)
 
     @property
     def md380_available(self) -> bool:
@@ -88,7 +89,25 @@ class EncoderService:
         return diagnostics
 
     def verify_configured(self) -> EncoderDiagnostics:
+        if self.md380_available:
+            encoder = self.create_transmit_encoder()
+            try:
+                encoder.encode_2450x1150((0,) * 160)
+            finally:
+                close = getattr(encoder, "close", None)
+                if close is not None:
+                    close()
+            return EncoderDiagnostics(
+                backend="MD380/Dynarmic",
+                plugin_path=str(self.md380_bridge_path),
+                ready=True,
+                encoded_bytes=9,
+                message=f"Native TX-Bridge bereit: {self.md380_bridge_path}",
+            )
+
         plugin_path = self.configured_plugin_path
         if plugin_path is None:
-            raise RuntimeError("Es ist noch kein DroidStar-Vocoder-Plugin ausgewählt.")
+            raise RuntimeError(
+                "Weder MD380-Dynarmic-Bridge noch ein DroidStar-Vocoder-Plugin ist verfügbar."
+            )
         return verify_plugin(self.project_root, plugin_path)

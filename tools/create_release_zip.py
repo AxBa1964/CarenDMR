@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import fnmatch
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -8,37 +8,6 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILE = PROJECT_ROOT / "carendmr" / "version.py"
 RELEASE_DIR = PROJECT_ROOT / "release"
-
-EXCLUDED_DIRECTORIES = {
-    ".git",
-    ".idea",
-    ".pytest_cache",
-    ".venv",
-    "__pycache__",
-    "build",
-    "dist",
-    "data",
-    "logs",
-    "plugins",
-    "release",
-    "venv",
-    "vendor",
-    "out",
-}
-
-EXCLUDED_PATTERNS = {
-    "*.pyc",
-    "*.pyo",
-    "*.spec",
-    "*.tmp",
-    "*.zip",
-    "*.local.json",
-    "*.dylib",
-    "*.so",
-    "*.dll",
-    "Desktop.ini",
-    "Thumbs.db",
-}
 
 REQUIRED_FILES = {
     ".gitignore",
@@ -83,28 +52,38 @@ def read_version(version_file: Path = VERSION_FILE) -> str:
     return version.strip()
 
 
-def should_exclude(relative_path: Path) -> bool:
-    if any(part in EXCLUDED_DIRECTORIES for part in relative_path.parts):
-        return True
-
-    return any(
-        fnmatch.fnmatch(relative_path.name, pattern)
-        for pattern in EXCLUDED_PATTERNS
-    )
-
-
 def collect_release_files(project_root: Path = PROJECT_ROOT) -> list[Path]:
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "-z",
+            ],
+            cwd=project_root,
+            check=True,
+            capture_output=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise ReleaseError(
+            "Git-Dateiliste konnte nicht ermittelt werden. "
+            "Das Release-ZIP wird bewusst nur aus Git/.gitignore erzeugt."
+        ) from exc
+
+    relative_paths = [
+        Path(raw.decode("utf-8"))
+        for raw in result.stdout.split(b"\0")
+        if raw
+    ]
+
     files: list[Path] = []
-
-    for path in sorted(project_root.rglob("*")):
-        if not path.is_file():
-            continue
-
-        relative_path = path.relative_to(project_root)
-        if should_exclude(relative_path):
-            continue
-
-        files.append(path)
+    for relative_path in sorted(relative_paths):
+        source_path = project_root / relative_path
+        if source_path.is_file():
+            files.append(source_path)
 
     return files
 
