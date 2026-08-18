@@ -105,13 +105,19 @@ class TalkgroupActivityService:
 
         client = socketio.Client(reconnection=True, logger=False, engineio_logger=False)
         self._client = client
+        mqtt_event_count = 0
 
         @client.event
         def connect():
             self._log("VERBUNDEN Socket.IO")
             client.emit("join", "everything")
             self._log("SUBSCRIBE join=everything")
-            self._on_status("Mit BrandMeister Last Heard verbunden.")
+            self._on_status("Mit BrandMeister Last Heard verbunden – Überwachung aktiv.")
+
+        @client.event
+        def connect_error(data):
+            self._log(f"CONNECT_ERROR {data!r}")
+            self._on_status(f"BrandMeister Last Heard Verbindungsfehler: {data}")
 
         @client.event
         def disconnect(reason=None):
@@ -121,11 +127,13 @@ class TalkgroupActivityService:
 
         @client.on("mqtt")
         def on_mqtt(data):
+            nonlocal mqtt_event_count
+            mqtt_event_count += 1
             try:
                 raw = json.dumps(data, ensure_ascii=False, separators=(",", ":"), default=str)
             except Exception:
                 raw = repr(data)
-            self._log(f"MQTT RAW={raw}")
+            self._log(f"MQTT #{mqtt_event_count} RAW={raw}")
 
             activity = self._parse_activity(data)
             if activity is None:
@@ -150,7 +158,6 @@ class TalkgroupActivityService:
             client.connect(
                 BRANDMEISTER_LASTHEARD_URL,
                 socketio_path=BRANDMEISTER_LASTHEARD_SOCKET_PATH,
-                transports=["websocket"],
                 wait_timeout=10,
             )
             client.wait()
