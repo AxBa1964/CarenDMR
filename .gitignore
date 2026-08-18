@@ -14,5 +14,5 @@ dist/
 *.dll
 *.so
 *.dylib
-native/md380_dynarmic_build/
+native/md380_dynarmic_build/out*/
 native/vendor/

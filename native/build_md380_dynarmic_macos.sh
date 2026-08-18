@@ -6,8 +6,15 @@ REPO="https://github.com/dbehnke/md380_vocoder_dynarmic.git"
 COMMIT="55c9a2c6d502567380c7dfaf4a2e3cc4dd6d1dd5"
 VENDOR_ROOT="$SCRIPT_DIR/vendor"
 SOURCE_DIR="$VENDOR_ROOT/md380_vocoder_dynarmic"
-BUILD_DIR="$SCRIPT_DIR/md380_dynarmic_build/out-macos"
+CMAKE_PROJECT="$SCRIPT_DIR/md380_dynarmic_build"
+BUILD_DIR="$CMAKE_PROJECT/out-macos"
 OUTPUT="$SCRIPT_DIR/libcarendmr_md380_bridge.dylib"
+
+if [ ! -f "$CMAKE_PROJECT/CMakeLists.txt" ]; then
+    echo "CarenDMR-CMake-Wrapper fehlt: $CMAKE_PROJECT/CMakeLists.txt" >&2
+    echo "Das Projektpaket ist unvollständig; bitte nicht auf Verdacht weitere Pakete installieren." >&2
+    exit 1
+fi
 
 for tool in git cmake sh unzip xxd python3; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -42,7 +49,9 @@ PY
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
-cmake -S "$SCRIPT_DIR/md380_dynarmic_build" -B "$BUILD_DIR"     -DMD380_SOURCE_DIR="$SOURCE_DIR" -DCMAKE_BUILD_TYPE=Release
+cmake -S "$CMAKE_PROJECT" -B "$BUILD_DIR" \
+    -DMD380_SOURCE_DIR="$SOURCE_DIR" \
+    -DCMAKE_BUILD_TYPE=Release
 
 cmake --build "$BUILD_DIR" --config Release -j"$(sysctl -n hw.ncpu)"
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import platform
 from threading import Event, Lock, Thread
 from typing import Callable
 
@@ -113,15 +114,29 @@ class ConnectionManager:
             capture=self.parrot_service.start_live_hold_to_talk(stop_event,level_callback=level_callback)
             timing_mark("MIKROFON_START_ANGEFORDERT")
             session_client = None
+            fresh_session_test = platform.system() == "Darwin"
             if resume_receive:
-                self.receive_service.pause_for_tx(); timing_mark("RX_PAUSE_FUER_TX_ANGEFORDERT")
-                if not self.receive_service.wait(self.receive_stop_timeout):
-                    stop_event.set(); raise RuntimeError("Der Empfang konnte für den Sendebetrieb nicht rechtzeitig pausiert werden.")
-                timing_mark("RX_FUER_TX_PAUSIERT")
-                session_client = self.receive_service.session_client
-                if session_client is None:
-                    stop_event.set()
-                    raise RuntimeError("Die bestehende BrandMeister-Verbindung ging beim RX→TX-Wechsel verloren.")
+                if fresh_session_test:
+                    timing_mark(
+                        "RX_STOP_FUER_TX_FRISCHE_SESSION_MACOS",
+                        "A/B-Test: RX-Session wird vor TX vollständig geschlossen",
+                    )
+                    self.receive_service.stop()
+                    if not self.receive_service.wait(self.receive_stop_timeout):
+                        stop_event.set()
+                        raise RuntimeError(
+                            "Der Empfang konnte für den macOS-Frischsession-Test nicht rechtzeitig beendet werden."
+                        )
+                    timing_mark("RX_SESSION_VOR_TX_GESCHLOSSEN_MACOS")
+                else:
+                    self.receive_service.pause_for_tx(); timing_mark("RX_PAUSE_FUER_TX_ANGEFORDERT")
+                    if not self.receive_service.wait(self.receive_stop_timeout):
+                        stop_event.set(); raise RuntimeError("Der Empfang konnte für den Sendebetrieb nicht rechtzeitig pausiert werden.")
+                    timing_mark("RX_FUER_TX_PAUSIERT")
+                    session_client = self.receive_service.session_client
+                    if session_client is None:
+                        stop_event.set()
+                        raise RuntimeError("Die bestehende BrandMeister-Verbindung ging beim RX→TX-Wechsel verloren.")
             try:
                 timing_mark("TX_LIVE_VERARBEITUNG_START")
                 return self.parrot_service.transmit_live_capture(capture,optimize=optimize,started_at=started_at,destination_id=talkgroup,timeslot=timeslot,call_type=call_type,rx_playback_gate=rx_playback_gate,tx_complete_callback=tx_complete_callback,existing_client=session_client)
@@ -129,8 +144,17 @@ class ConnectionManager:
                 if resume_receive:
                     try:
                         timing_mark("RX_FORTSETZEN_ANGEFORDERT")
-                        if not self.receive_service.resume_after_tx():
-                            raise RuntimeError("Empfangsdienst wurde nicht gestartet.")
-                        timing_mark("RX_THREAD_GLEICHE_SESSION_GESTARTET")
+                        if fresh_session_test:
+                            self.receive_service.set_receive_target(talkgroup, timeslot, call_type)
+                            if not self.receive_service.start():
+                                raise RuntimeError("Empfangsdienst wurde nicht gestartet.")
+                            timing_mark(
+                                "RX_THREAD_FRISCHE_SESSION_MACOS_GESTARTET",
+                                "A/B-Test: neuer BrandMeister-Login nach TX",
+                            )
+                        else:
+                            if not self.receive_service.resume_after_tx():
+                                raise RuntimeError("Empfangsdienst wurde nicht gestartet.")
+                            timing_mark("RX_THREAD_GLEICHE_SESSION_GESTARTET")
                     except Exception as error:
                         self.events.publish(f"Automatische Rückkehr zum Empfang fehlgeschlagen: {error}",EventLevel.ERROR)

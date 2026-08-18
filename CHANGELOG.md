@@ -1,5 +1,12 @@
 ## 0.2.1.64 – RX-Grundpegel +12 dB
 
+## 0.2.1.68
+
+- macOS/Windows MD380-Dynarmic-Build wieder reproduzierbar: der benötigte `native/md380_dynarmic_build/CMakeLists.txt`-Wrapper gehört jetzt zum Projekt.
+- `.gitignore` ignoriert nur noch die erzeugten `out*`-Verzeichnisse statt des gesamten CMake-Wrapperordners.
+- Das macOS-Buildskript prüft den Wrapper vor dem Build und meldet ein unvollständiges Projektpaket ausdrücklich.
+
+
 - Fester RX-Grundgain Faktor 4 (+12 dB) nach AGC bzw. vor der PCM16-Ausgabe.
 - RX 100 % ergibt damit Faktor 4 gegenüber dem rohen AMBE/mbelib-PCM.
 - Der vorhandene Benutzerbereich bis RX 400 % bleibt erhalten; PCM16-Clipping-Schutz bleibt aktiv.

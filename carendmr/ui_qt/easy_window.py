@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 from threading import Event, Thread
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import QEvent, QTimer, Qt
 from PySide6.QtGui import QCloseEvent, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
@@ -148,6 +148,7 @@ class EasyWindow(QMainWindow):
         self.talkgroup_edit.setPlaceholderText("Talkgroup")
         self.talkgroup_edit.setAccessibleName("Talkgroup")
         self.talkgroup_edit.setAccessibleDescription("")
+        self.talkgroup_edit.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.talkgroup_edit.editingFinished.connect(self._format_talkgroup_for_speech)
         self.talkgroup_edit.returnPressed.connect(self._focus_connect)
         layout.addWidget(self.talkgroup_edit)
@@ -156,6 +157,7 @@ class EasyWindow(QMainWindow):
         self.connect_button.setObjectName("easyConnectButton")
         self.connect_button.setMinimumHeight(72)
         self.connect_button.setAccessibleName("Verbinden")
+        self.connect_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.connect_button.clicked.connect(self._toggle_connection)
         layout.addWidget(self.connect_button)
 
@@ -164,6 +166,7 @@ class EasyWindow(QMainWindow):
         self.ptt_button.setMinimumHeight(150)
         self.ptt_button.setAccessibleName("PTT")
         self.ptt_button.setAccessibleDescription("")
+        self.ptt_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.ptt_button.clicked.connect(self._toggle_tx)
         layout.addWidget(self.ptt_button)
 
@@ -175,9 +178,63 @@ class EasyWindow(QMainWindow):
         layout.addStretch(1)
 
         self.setCentralWidget(page)
+        # Easy braucht unabhängig vom nativen macOS-Qt-Stil eine klar sichtbare
+        # Tastaturfokus-Markierung.
+        page.setStyleSheet("""
+            QLineEdit#easyTalkgroupEdit:focus {
+                border: 5px solid #FFD54A;
+                padding: 3px 5px;
+                background-color: #202C3A;
+            }
+            QPushButton#easyConnectButton:focus,
+            QPushButton#easyPttButton:focus {
+                border: 5px solid #FFD54A;
+                padding: 4px 11px;
+                background-color: #344457;
+            }
+        """)
         QWidget.setTabOrder(self.talkgroup_edit, self.connect_button)
         QWidget.setTabOrder(self.connect_button, self.ptt_button)
+        for control in (self.talkgroup_edit, self.connect_button, self.ptt_button):
+            control.installEventFilter(self)
         self._refresh_channel_label()
+
+    def eventFilter(self, watched, event) -> bool:  # noqa: N802
+        """Erzwingt in Easy eine verlässliche TAB-/Shift+TAB-Navigation.
+
+        Das umgeht plattformspezifische Unterschiede der nativen macOS-
+        Tastaturnavigation. Es werden nur TAB und Shift+TAB ohne weitere
+        Modifikatortasten behandelt; alle anderen Tasten bleiben bei Qt.
+        """
+        controls = (self.talkgroup_edit, self.connect_button, self.ptt_button)
+        if watched in controls and event.type() == QEvent.Type.KeyPress:
+            key = event.key()
+            modifiers = event.modifiers()
+            backwards = key == Qt.Key.Key_Backtab or (
+                key == Qt.Key.Key_Tab and bool(modifiers & Qt.KeyboardModifier.ShiftModifier)
+            )
+            plain_tab = key == Qt.Key.Key_Tab and modifiers in (
+                Qt.KeyboardModifier.NoModifier,
+                Qt.KeyboardModifier.ShiftModifier,
+            )
+            if key == Qt.Key.Key_Backtab or plain_tab:
+                available = [control for control in controls if control.isEnabled() and control.isVisible()]
+                if len(available) > 1:
+                    try:
+                        index = available.index(watched)
+                    except ValueError:
+                        index = 0
+                    step = -1 if backwards else 1
+                    target = available[(index + step) % len(available)]
+                    reason = (
+                        Qt.FocusReason.BacktabFocusReason
+                        if backwards
+                        else Qt.FocusReason.TabFocusReason
+                    )
+                    target.setFocus(reason)
+                    event.accept()
+                    return True
+        return super().eventFilter(watched, event)
 
     def _bind_shortcuts(self) -> None:
         for key, handler in (
@@ -575,7 +632,7 @@ class EasyWindow(QMainWindow):
 
 def run_easy_gui(project_root: Path) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
-    apply_theme(app)
+    apply_theme(app, suppress_native_focus=False)
     window = EasyWindow(project_root)
     window.show()
     return int(app.exec())

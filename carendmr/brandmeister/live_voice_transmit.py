@@ -223,6 +223,13 @@ def execute_live_voice_once(
             client.login()
             timing_mark('TX_LOGIN_FERTIG')
             authenticated = client.state is LoginState.CONNECTED
+            if authenticated and platform.system() == "Darwin":
+                timing_mark(
+                    "TX_LOGIN_SETTLE_START_MACOS",
+                    "A/B-Test: 250 ms Ruhe nach frischem BrandMeister-TX-Login",
+                )
+                time.sleep(0.250)
+                timing_mark("TX_LOGIN_SETTLE_ENDE_MACOS")
         if not authenticated or client.transport is None:
             raise RuntimeError('BrandMeister-Anmeldung fehlgeschlagen.')
         tx_start = monotonic()

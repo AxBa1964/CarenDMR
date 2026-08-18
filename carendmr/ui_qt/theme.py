@@ -367,9 +367,14 @@ def build_palette(tokens: ThemeTokens = TOKENS) -> QPalette:
     return palette
 
 
-def apply_theme(app: QApplication) -> None:
-    """Wendet Palette, Fokusdarstellung und QSS zentral an."""
-    if not isinstance(app.style(), CarenProxyStyle):
+def apply_theme(app: QApplication, *, suppress_native_focus: bool = True) -> None:
+    """Wendet Palette, Fokusdarstellung und QSS zentral an.
+
+    Die normale Desktop-Oberfläche unterdrückt das zusätzliche native
+    Fokusrechteck. Easy lässt es bewusst aktiv, damit die Plattform ihre
+    gewohnte Tastaturfokus-Markierung zusätzlich zeichnen kann.
+    """
+    if suppress_native_focus and not isinstance(app.style(), CarenProxyStyle):
         app.setStyle(CarenProxyStyle(app.style()))
     app.setPalette(build_palette())
     app.setStyleSheet(build_stylesheet())
