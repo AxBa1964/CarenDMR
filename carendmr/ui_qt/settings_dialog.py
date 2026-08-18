@@ -40,6 +40,7 @@ from carendmr.accessibility.hotkeys import DEFAULT_HOTKEYS, FUNCTION_LABELS, REQ
 from carendmr.application import ContactService, EncoderService
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.brandmeister.config import BrandMeisterConfigStore
+from carendmr.brandmeister.masters import MASTERS, by_host
 
 
 class SettingsDialog(QDialog):
@@ -125,17 +126,24 @@ class SettingsDialog(QDialog):
         network_page = QWidget(); network_root = QVBoxLayout(network_page)
         network_box = QGroupBox("BrandMeister-Profil")
         network_form = QFormLayout(network_box)
-        self.network_server = QLabel("Nicht konfiguriert")
+        self.network_server = QComboBox()
+        self.network_server.setEditable(True)
+        self.network_server.setAccessibleName("BrandMeister-Master")
+        self.network_server.setToolTip("Master auswählen oder Hostnamen direkt eingeben.")
+        for master in MASTERS:
+            self.network_server.addItem(f"{master.label} – {master.host}", (master.host, master.port))
+        self.network_server.currentIndexChanged.connect(self._network_master_changed)
+        self.network_server.editTextChanged.connect(self._network_master_changed)
         self.network_callsign = QLabel("—")
         self.network_dmr_id = QLabel("—")
         self.network_port = QLabel("62031")
         self.network_location = QLabel("—")
-        network_form.addRow("Server:", self.network_server)
+        network_form.addRow("Master:", self.network_server)
         network_form.addRow("Rufzeichen:", self.network_callsign)
         network_form.addRow("DMR-ID:", self.network_dmr_id)
         network_form.addRow("Port:", self.network_port)
         network_form.addRow("Standort:", self.network_location)
-        note = QLabel("Zugangsdaten werden weiterhin ausschließlich in config/brandmeister.local.json verwaltet.")
+        note = QLabel("Masterauswahl wird in config/brandmeister.local.json gespeichert. Zugangsdaten bleiben dort unverändert.")
         note.setWordWrap(True)
         network_root.addWidget(network_box); network_root.addWidget(note); network_root.addStretch(1)
         self.tabs.addTab(network_page, "Netzwerk")
@@ -260,14 +268,52 @@ class SettingsDialog(QDialog):
         root.addWidget(self.buttons)
         QShortcut(QKeySequence("Ctrl+S"), self, activated=self._apply)
 
+    def _network_master_changed(self, *_args) -> None:
+        data = self.network_server.currentData()
+        if isinstance(data, tuple) and len(data) == 2:
+            self.network_port.setText(str(int(data[1])))
+
+    def _selected_network_master(self) -> tuple[str, int]:
+        data = self.network_server.currentData()
+        text = self.network_server.currentText().strip()
+        if isinstance(data, tuple) and len(data) == 2:
+            known = by_host(str(data[0]), int(data[1]))
+            if known is not None and text in {known.label, f"{known.label} – {known.host}", known.host}:
+                return known.host, known.port
+        if " – " in text:
+            text = text.rsplit(" – ", 1)[1].strip()
+        if not text:
+            raise ValueError("Bitte einen BrandMeister-Master auswählen oder eingeben.")
+        port = int(self.network_port.text())
+        if not 1 <= port <= 65535:
+            raise ValueError("Der BrandMeister-Port muss zwischen 1 und 65535 liegen.")
+        return text, port
+
+    def _save_network_master(self) -> None:
+        store = BrandMeisterConfigStore(self.project_root / "config" / "brandmeister.local.json")
+        cfg = store.load()
+        host, port = self._selected_network_master()
+        data = cfg.to_dict()
+        data["host"] = host
+        data["port"] = port
+        store.save(type(cfg).from_dict(data))
+
     def _load_profile_and_system_info(self) -> None:
         try:
             cfg = BrandMeisterConfigStore(self.project_root / "config" / "brandmeister.local.json").load()
-            self.network_server.setText(cfg.host); self.network_callsign.setText(cfg.callsign)
-            self.network_dmr_id.setText(str(cfg.dmr_id)); self.network_port.setText(str(cfg.port))
+            known = by_host(cfg.host, cfg.port)
+            if known is not None:
+                index = next((i for i in range(self.network_server.count()) if self.network_server.itemData(i) == (known.host, known.port)), -1)
+                if index >= 0:
+                    self.network_server.setCurrentIndex(index)
+            else:
+                self.network_server.setEditText(cfg.host)
+            self.network_callsign.setText(cfg.callsign)
+            self.network_dmr_id.setText(str(cfg.dmr_id))
+            self.network_port.setText(str(cfg.port))
             self.network_location.setText(cfg.location or "—")
         except Exception as exc:
-            self.network_server.setText(f"Nicht verfügbar: {exc}")
+            self.network_server.setEditText(f"Nicht verfügbar: {exc}")
         try:
             info = self.contact_service.info()
             count = getattr(info, "record_count", 0)
@@ -596,6 +642,7 @@ class SettingsDialog(QDialog):
             if not bool(getattr(self.audio_service, "audio_test_armed", False)):
                 self.audio_service.set_audio_debug_wav_enabled(False)
             self.audio_service.save_settings()
+            self._save_network_master()
             self._save_hotkeys()
             preferences = self.preferences_store.load()
             self.preferences_store.save(OperatingPreferences(
