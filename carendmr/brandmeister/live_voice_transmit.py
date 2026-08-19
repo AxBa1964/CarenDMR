@@ -102,7 +102,8 @@ def execute_live_voice_once(
     """Sendet PCM fortlaufend. Nach Ende des Iterators folgen nur Pad/Terminator."""
     source_id = config.dmr_id
     stream_id = secrets.randbelow(0xFFFFFFFF) + 1
-    sequence = 0 if platform.system() == "Darwin" else secrets.randbelow(256)
+    reference_flow = platform.system() in {"Darwin", "Windows"}
+    sequence = 0 if reference_flow else secrets.randbelow(256)
     flco = 0x03 if call_type is DmrdCallType.PRIVATE else 0x00
     lc = bytes((flco, 0, 0)) + destination_id.to_bytes(3, 'big') + source_id.to_bytes(3, 'big')
     embedded = _encode_embedded_lc(lc)
@@ -223,13 +224,13 @@ def execute_live_voice_once(
             client.login()
             timing_mark('TX_LOGIN_FERTIG')
             authenticated = client.state is LoginState.CONNECTED
-            if authenticated and platform.system() == "Darwin":
+            if authenticated and reference_flow:
                 timing_mark(
-                    "TX_LOGIN_SETTLE_START_MACOS",
-                    "A/B-Test: 250 ms Ruhe nach frischem BrandMeister-TX-Login",
+                    "TX_LOGIN_SETTLE_START_REFERENZ",
+                    "Referenzablauf: 250 ms Ruhe nach frischem BrandMeister-TX-Login",
                 )
                 time.sleep(0.250)
-                timing_mark("TX_LOGIN_SETTLE_ENDE_MACOS")
+                timing_mark("TX_LOGIN_SETTLE_ENDE_REFERENZ")
         if not authenticated or client.transport is None:
             raise RuntimeError('BrandMeister-Anmeldung fehlgeschlagen.')
         tx_start = monotonic()
@@ -238,17 +239,17 @@ def execute_live_voice_once(
             "TX_STREAM_START",
             f"StreamID={stream_id:08X};Sequence={sequence};Src={source_id};"
             f"Dst={destination_id};TS={timeslot};CallType={call_type};"
-            f"SequencePolicy={'zero-darwin' if platform.system() == 'Darwin' else 'random-existing'}",
+            f"SequencePolicy={'zero-reference' if reference_flow else 'random-existing'}",
         )
         header = _packet(sequence=sequence, source_id=source_id, destination_id=destination_id,
                          repeater_id=source_id, timeslot=timeslot, call_type=call_type,
                          frame_class=DmrdFrameClass.DATA_SYNC, stream_id=stream_id,
                          payload=_encode_full_lc_burst(lc, 0x01),
                          data_type=DmrdDataType.VOICE_LC_HEADER.value)
-        droidstar_reference_timing = platform.system() == "Darwin"
+        droidstar_reference_timing = reference_flow
         if droidstar_reference_timing:
             timing_mark(
-                "TX_HEADER_MACOS_WARTET_AUF_PUFFER",
+                "TX_HEADER_REFERENZ_WARTET_AUF_PUFFER",
                 "DroidStar-Referenz: LC-Header erst nach fertigem AMBE-Prebuffer",
             )
         else:
@@ -372,7 +373,7 @@ def execute_live_voice_once(
             sequence = (sequence + 1) & 0xFF
             next_send = monotonic() + PACKET_INTERVAL_SECONDS
             timing_mark(
-                "TX_HEADER_MACOS_DROIDSTAR_REFERENZ",
+                "TX_HEADER_DROIDSTAR_REFERENZ",
                 f"SequenceNaechsterFrame={sequence};"
                 f"VoiceStartInMs={PACKET_INTERVAL_SECONDS * 1000.0:.1f}",
             )

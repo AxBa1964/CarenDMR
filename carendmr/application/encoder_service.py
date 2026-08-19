@@ -35,7 +35,7 @@ class EncoderService:
         die native MD380-Bridge auf einer Installation noch nicht gebaut ist.
         """
         if self.md380_available:
-            return Md380DynarmicEncoder(self.project_root)
+            return Md380DynarmicEncoder(self.project_root, input_gain_db=0.0)
         plugin_path = self.detect_plugin()
         if plugin_path is None:
             raise RuntimeError(

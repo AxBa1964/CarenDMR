@@ -1,0 +1,11 @@
+{
+  "release": "0.2.1.75",
+  "base_release": "0.2.1.74",
+  "type": "delta",
+  "changed_or_new_files": [
+    "README_0.2.1.75_DELTA.txt",
+    "carendmr/ui_qt/easy_window.py",
+    "carendmr/version.py",
+    "tests/test_easy_exit_02175.py"
+  ]
+}

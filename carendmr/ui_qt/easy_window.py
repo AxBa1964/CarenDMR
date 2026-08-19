@@ -143,6 +143,13 @@ class EasyWindow(QMainWindow):
         self.status_label.setAccessibleName("Funkstatus")
         layout.addWidget(self.status_label)
 
+        self.audio_level_label = QLabel()
+        self.audio_level_label.setObjectName("easyAudioLevelLabel")
+        self.audio_level_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.audio_level_label.setAccessibleName("Audiopegel")
+        layout.addWidget(self.audio_level_label)
+        self._refresh_audio_level_label()
+
         self.talkgroup_edit = QLineEdit(self._spaced_digits(self.preferences.talkgroup))
         self.talkgroup_edit.setObjectName("easyTalkgroupEdit")
         self.talkgroup_edit.setPlaceholderText("Talkgroup")
@@ -170,8 +177,19 @@ class EasyWindow(QMainWindow):
         self.ptt_button.clicked.connect(self._toggle_tx)
         layout.addWidget(self.ptt_button)
 
+        self.exit_button = EasyButton("Beenden")
+        self.exit_button.setObjectName("easyExitButton")
+        self.exit_button.setMinimumHeight(72)
+        self.exit_button.setAccessibleName("CarenDMR Easy beenden")
+        self.exit_button.setAccessibleDescription(
+            "Beendet CarenDMR. Eine aktive Funkverbindung wird vorher getrennt."
+        )
+        self.exit_button.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.exit_button.clicked.connect(self._exit_application)
+        layout.addWidget(self.exit_button)
+
         help_label = QLabel(
-            "Strg+T Timeslot 1/2 · Strg+R Gruppe/Privat · F4 Funkstatus"
+            "Strg+T Timeslot · Strg+R Gruppe/Privat · Strg+Plus/Minus RX · Alt+Plus/Minus TX · F4 Status"
         )
         help_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(help_label)
@@ -187,7 +205,8 @@ class EasyWindow(QMainWindow):
                 background-color: #202C3A;
             }
             QPushButton#easyConnectButton:focus,
-            QPushButton#easyPttButton:focus {
+            QPushButton#easyPttButton:focus,
+            QPushButton#easyExitButton:focus {
                 border: 5px solid #FFD54A;
                 padding: 4px 11px;
                 background-color: #344457;
@@ -195,7 +214,13 @@ class EasyWindow(QMainWindow):
         """)
         QWidget.setTabOrder(self.talkgroup_edit, self.connect_button)
         QWidget.setTabOrder(self.connect_button, self.ptt_button)
-        for control in (self.talkgroup_edit, self.connect_button, self.ptt_button):
+        QWidget.setTabOrder(self.ptt_button, self.exit_button)
+        for control in (
+            self.talkgroup_edit,
+            self.connect_button,
+            self.ptt_button,
+            self.exit_button,
+        ):
             control.installEventFilter(self)
         self._refresh_channel_label()
 
@@ -206,7 +231,7 @@ class EasyWindow(QMainWindow):
         Tastaturnavigation. Es werden nur TAB und Shift+TAB ohne weitere
         Modifikatortasten behandelt; alle anderen Tasten bleiben bei Qt.
         """
-        controls = (self.talkgroup_edit, self.connect_button, self.ptt_button)
+        controls = (self.talkgroup_edit, self.connect_button, self.ptt_button, self.exit_button)
         if watched in controls and event.type() == QEvent.Type.KeyPress:
             key = event.key()
             modifiers = event.modifiers()
@@ -240,11 +265,52 @@ class EasyWindow(QMainWindow):
         for key, handler in (
             ("Ctrl+T", self._toggle_timeslot),
             ("Ctrl+R", self._toggle_call_type),
+            ("Ctrl++", self._rx_volume_up),
+            ("Ctrl+-", self._rx_volume_down),
+            ("Alt++", self._tx_level_up),
+            ("Alt+-", self._tx_level_down),
             ("F4", self._announce_status),
         ):
             shortcut = QShortcut(QKeySequence(key), self)
             shortcut.activated.connect(handler)
             self._shortcuts.append(shortcut)
+
+    def _refresh_audio_level_label(self) -> None:
+        self.audio_level_label.setText(
+            f"RX {int(self.audio_send_service.output_volume_percent)} % · "
+            f"TX {int(self.audio_send_service.gain_percent)} %"
+        )
+
+    def _announce_audio_level(self, text: str, channel: str) -> None:
+        self._refresh_audio_level_label()
+        self.accessibility.announcer.announce(
+            self.audio_level_label, text, channel=channel
+        )
+
+    def _set_rx_volume(self, value: int) -> None:
+        value = max(0, min(200, int(value)))
+        self.audio_send_service.set_output_volume_percent(value)
+        self.receive_service.set_output_volume_percent(value)
+        self.audio_send_service.save_settings()
+        self._announce_audio_level(f"RX-Lautstärke {value} Prozent", "easy-rx-level")
+
+    def _rx_volume_up(self) -> None:
+        self._set_rx_volume(self.audio_send_service.output_volume_percent + 10)
+
+    def _rx_volume_down(self) -> None:
+        self._set_rx_volume(self.audio_send_service.output_volume_percent - 10)
+
+    def _set_tx_level(self, value: int) -> None:
+        value = max(0, min(100, int(value)))
+        self.audio_send_service.set_gain_percent(value)
+        self.audio_send_service.save_settings()
+        self._announce_audio_level(f"TX-Pegel {value} Prozent", "easy-tx-level")
+
+    def _tx_level_up(self) -> None:
+        self._set_tx_level(self.audio_send_service.gain_percent + 10)
+
+    def _tx_level_down(self) -> None:
+        self._set_tx_level(self.audio_send_service.gain_percent - 10)
 
     def _focus_talkgroup(self) -> None:
         self.talkgroup_edit.setFocus(Qt.FocusReason.ShortcutFocusReason)
@@ -581,6 +647,8 @@ class EasyWindow(QMainWindow):
             state in {RadioState.CONNECTED, RadioState.TRANSMITTING}
             and self._encoder_ready
         )
+        # Beenden bleibt in jedem Funkzustand verfügbar.
+        self.exit_button.setEnabled(True)
 
         if state is RadioState.DISCONNECTED:
             self.status_label.setText("Getrennt")
@@ -619,13 +687,30 @@ class EasyWindow(QMainWindow):
             if previous is not RadioState.ERROR:
                 self.accessibility.announce_radio_state(self.status_label, "ERROR")
 
+    def _exit_application(self) -> None:
+        """Beendet Easy jederzeit und stößt vorher ein sauberes Funkende an."""
+        self.status_label.setText("CarenDMR wird beendet …")
+        self.accessibility.announcer.announce(
+            self.status_label,
+            "CarenDMR wird beendet.",
+            channel="easy-exit",
+            force=True,
+        )
+        self._tx_pending = False
+        if self._tx_stop_event is not None:
+            self._tx_stop_event.set()
+        self.close()
+
     def closeEvent(self, event: QCloseEvent) -> None:
+        """Schließt Easy immer; aktive Funkstrecken werden vorher best-effort getrennt."""
         self._timer.stop()
+        self._tx_pending = False
         if self._tx_stop_event is not None:
             self._tx_stop_event.set()
         try:
             self.controller.disconnect(wait_timeout=3.0)
         except Exception:
+            # Fehler beim Trennen dürfen das Programmende niemals verhindern.
             pass
         event.accept()
 

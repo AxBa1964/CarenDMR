@@ -1,0 +1,20 @@
+{
+  "release": "0.2.1.73",
+  "base_release": "0.2.1.72",
+  "type": "delta",
+  "changed_or_new_files": [
+    "README_0.2.1.73_DELTA.txt",
+    "carendmr/application/__init__.py",
+    "carendmr/application/audio_send_service.py",
+    "carendmr/application/parrot_test_service.py",
+    "carendmr/application/qso_history_service.py",
+    "carendmr/application/qso_recording_service.py",
+    "carendmr/ui_qt/audio_cue.py",
+    "carendmr/ui_qt/history_widget.py",
+    "carendmr/ui_qt/main_window.py",
+    "carendmr/ui_qt/settings_dialog.py",
+    "carendmr/ui_qt/theme.py",
+    "carendmr/version.py",
+    "tests/test_release_02173.py"
+  ]
+}

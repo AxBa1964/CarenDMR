@@ -62,3 +62,9 @@ class AudioCuePlayer:
         beep = self._tone(ToneSpec(1_250.0, 0.075, 0.56))
         samples = np.concatenate((beep, self._silence(0.055), beep))
         self._play(samples)
+
+    def play_tx_warning(self) -> None:
+        """Kurzer, deutlich anderer Hinweis zehn Sekunden vor dem TX-Limit."""
+        low = self._tone(ToneSpec(880.0, 0.09, 0.52))
+        high = self._tone(ToneSpec(1_320.0, 0.09, 0.52))
+        self._play(np.concatenate((low, self._silence(0.045), high)))

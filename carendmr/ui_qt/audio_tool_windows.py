@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QMainWindow
 
 from carendmr.ui_qt.audio_benchmark_widget import AudioBenchmarkWidget
 from carendmr.ui_qt.audio_coach_widget import AudioCoachWidget
+from carendmr.ui_qt.audio_lab_widget import AudioLabWidget
 
 
 class AudioBenchmarkWindow(QMainWindow):
@@ -32,4 +33,13 @@ class AudioCoachWindow(QMainWindow):
             cancel_modulation_test=cancel_modulation_test,
             parent=self,
         )
+        self.setCentralWidget(self.widget)
+
+
+class AudioLabWindow(QMainWindow):
+    def __init__(self, service, parent=None) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("CarenDMR – Live-Audiolabor")
+        self.resize(1180, 760)
+        self.widget = AudioLabWidget(service, parent=self)
         self.setCentralWidget(self.widget)

@@ -29,7 +29,7 @@ class ParrotTestService:
 
 
     def start_live_hold_to_talk(self, stop_event: Event, *, level_callback: Callable[[float], None] | None = None):
-        return self.audio_service.start_live_capture(stop_event, max_duration_seconds=float(self.audio_service.tx_safety_limit_seconds), level_callback=level_callback)
+        return self.audio_service.start_live_capture(stop_event, max_duration_seconds=self.audio_service.effective_tx_capture_limit_seconds, level_callback=level_callback)
 
     def transmit_live_capture(self, capture, *, started_at: str, destination_id: int, timeslot: int, call_type: str, optimize: bool = True, rx_playback_gate: Event | None = None, tx_complete_callback: Callable[[], None] | None = None, existing_client=None):
         config=BrandMeisterConfigStore(self.project_root / "config" / "brandmeister.local.json").load()
@@ -62,7 +62,7 @@ class ParrotTestService:
         """Startet die Mikrofonaufnahme ohne vorher auf das Ende von RX zu warten."""
         return self.audio_service.capture_transmit_pcm_until(
             stop_event,
-            max_duration_seconds=float(self.audio_service.tx_safety_limit_seconds),
+            max_duration_seconds=self.audio_service.effective_tx_capture_limit_seconds,
             level_callback=level_callback,
             optimize=optimize,
         )

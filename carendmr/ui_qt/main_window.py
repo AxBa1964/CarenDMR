@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from carendmr.application import (
-    AudioSendService, ConnectionManager, EncoderService, EventService,
+    AudioSendService, ConnectionManager, EncoderService, EventService, LocalAudioLabService, QsoRecordingService,
     FavoriteService, ParrotTestService, RadioState, RadioStateMachine, ReceiveService, TalkgroupSearchService, TalkgroupCatalogService,
 )
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
@@ -42,7 +42,7 @@ from carendmr.ui_qt.audio_cue import AudioCuePlayer
 from carendmr.ui_qt.operating_indicators import LevelMeter, StatusIndicator
 from carendmr.ui_qt.talkgroup_search_widget import TalkgroupSearchWidget
 from carendmr.ui_qt.favorites_widget import FavoritesWidget
-from carendmr.ui_qt.audio_tool_windows import AudioBenchmarkWindow, AudioCoachWindow
+from carendmr.ui_qt.audio_tool_windows import AudioBenchmarkWindow, AudioCoachWindow, AudioLabWindow
 from carendmr.benchmark import AudioBenchmarkService
 from carendmr.audio import AudioDirection, TxAudioTunerSettings, TUNER_PRESETS
 from carendmr.ipc.channel_control import CarenDMRChannelServer
@@ -74,6 +74,11 @@ class MainWindow(QMainWindow):
             unmute_receive=self.receive_service.unmute_audio_output,
         )
         self.receive_service.set_output_factory(self.audio_send_service.create_pcm_output)
+        self.local_audio_lab_service = LocalAudioLabService(
+            self.project_root, self.audio_send_service, self.encoder_service
+        )
+        self.qso_recording_service = QsoRecordingService(self.project_root)
+        self.audio_send_service.set_tx_pcm_observer(self.qso_recording_service.add_tx)
         # Gespeicherte Audioeinstellungen müssen nicht nur im UI stehen, sondern
         # beim Start auch tatsächlich im RX-Dienst gelten.
         self.receive_service.set_output_volume_percent(self.audio_send_service.output_volume_percent)
@@ -101,12 +106,14 @@ class MainWindow(QMainWindow):
         self._tx_stopping = False
         self._tx_pending = False
         self._tx_elapsed_seconds = 0
+        self._tx_warning_played = False
         self._rx_level = 0.0
         self._mic_level = 0.0
         self._encoder_ready = False
         self._settings_dialog: SettingsDialog | None = None
         self._audio_benchmark_window: AudioBenchmarkWindow | None = None
         self._audio_coach_window: AudioCoachWindow | None = None
+        self._audio_lab_window: AudioLabWindow | None = None
         self._audio_tuner_dialog: QDialog | None = None
         self._qrz_window: QrzStationWindow | None = None
         self._qrz_profile = None
@@ -378,18 +385,24 @@ class MainWindow(QMainWindow):
             value.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             station_layout.addWidget(cap, row, column)
             if value is self.qso_status_label:
-                station_layout.addWidget(value, row, column + 1, 1, 3)
+                station_layout.addWidget(value, row, column + 1, 1, 2)
             else:
                 station_layout.addWidget(value, row, column + 1)
+
+        self.qso_mark_button = QPushButton("Als QSO markieren", station_card)
+        self.qso_mark_button.setAccessibleName("Aktuelle Station als QSO gesprochen markieren")
+        self.qso_mark_button.setEnabled(False)
+        self.qso_mark_button.clicked.connect(self._mark_current_station_worked)
+        station_layout.addWidget(self.qso_mark_button, 4, 3)
 
         recent_heading = QLabel("ZULETZT GEHÖRT")
         recent_heading.setObjectName("sectionTitle")
         station_layout.addWidget(recent_heading, 5, 0, 1, 4)
 
-        self.recent_station_table = QTableWidget(0, 4, station_card)
+        self.recent_station_table = QTableWidget(0, 5, station_card)
         self.recent_station_table.setObjectName("recentStations")
         self.recent_station_table.setHorizontalHeaderLabels(
-            ["Zeit", "Rufzeichen", "Name", "Land"]
+            ["Zeit", "Rufzeichen", "Name", "Land", "Letztes QSO"]
         )
         self.recent_station_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.recent_station_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -404,6 +417,7 @@ class MainWindow(QMainWindow):
         recent_header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
         recent_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         recent_header.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        recent_header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
         station_layout.addWidget(self.recent_station_table, 6, 0, 1, 4)
 
         self._refresh_recent_stations(force=True)
@@ -421,12 +435,12 @@ class MainWindow(QMainWindow):
 
         self.operation_gain_slider = QSlider(Qt.Orientation.Horizontal)
         self.operation_gain_slider.setRange(0, 100)
-        self.operation_gain_slider.setAccessibleName("Mic-Gain")
+        self.operation_gain_slider.setAccessibleName("TX-Pegel")
         self.operation_gain_slider.setAccessibleDescription("")
         self.operation_gain_value = QLabel("100 %")
         self.operation_gain_value.setObjectName("valueLabel")
         gain_row = QGridLayout()
-        gain_caption = QLabel("Mic-Gain")
+        gain_caption = QLabel("TX-Pegel")
         gain_caption.setObjectName("fieldCaption")
         gain_row.addWidget(gain_caption, 0, 0)
         gain_row.addWidget(self.operation_gain_value, 0, 1, alignment=Qt.AlignmentFlag.AlignRight)
@@ -471,6 +485,11 @@ class MainWindow(QMainWindow):
         self.audio_tuner_button.setAccessibleName("DMR Audio-Tuner öffnen")
         control_layout.addWidget(self.audio_tuner_button)
         self._build_audio_tuner_dialog()
+
+        self.record_button = QPushButton("Mitschnitt starten")
+        self.record_button.setAccessibleName("QSO-Mitschnitt starten")
+        self.record_button.clicked.connect(self._toggle_qso_recording)
+        control_layout.addWidget(self.record_button)
 
         self.ptt_button = QPushButton("TX")
         self.ptt_button.setObjectName("pttButton")
@@ -560,7 +579,8 @@ class MainWindow(QMainWindow):
         QWidget.setTabOrder(self.operation_gain_slider, self.operation_volume_slider)
         QWidget.setTabOrder(self.operation_volume_slider, self.operation_muted_check)
         QWidget.setTabOrder(self.operation_muted_check, self.operation_agc_check)
-        QWidget.setTabOrder(self.operation_agc_check, self.ptt_button)
+        QWidget.setTabOrder(self.operation_agc_check, self.record_button)
+        QWidget.setTabOrder(self.record_button, self.ptt_button)
 
 
     def _show_status(self, message: str) -> None:
@@ -607,12 +627,59 @@ class MainWindow(QMainWindow):
     def _history_worked_changed(self, source_id: int, worked: bool) -> None:
         """Synchronisiert eine Historienänderung sofort mit der Betriebsseite."""
         state = self.receive_service.state_store.get()
-        self._refresh_recent_stations()
+        self._refresh_recent_stations(force=True)
         call = state.current_call
         if call is not None and call.source_id == source_id:
-            self.qso_status_label.setText(
-                "Bereits gesprochen" if worked else "Noch nicht gesprochen"
-            )
+            self._update_current_qso_status(call)
+
+    @staticmethod
+    def _format_qso_time(value: str) -> str:
+        if not value:
+            return ""
+        try:
+            return datetime.fromisoformat(value).astimezone().strftime("%d.%m.%Y %H:%M")
+        except (TypeError, ValueError):
+            return value
+
+    def _update_current_qso_status(self, call) -> None:
+        if call is None:
+            self._update_current_qso_status(None)
+            self.qso_mark_button.setText("Als QSO markieren")
+            self.qso_mark_button.setEnabled(False)
+            return
+        worked_at = self.receive_service.history.last_worked_at(call.source_id)
+        if worked_at:
+            self.qso_status_label.setText(f"QSO: {self._format_qso_time(worked_at)}")
+            self.qso_mark_button.setText("Weiteres QSO markieren")
+        else:
+            self.qso_status_label.setText("QSO: noch keines")
+            self.qso_mark_button.setText("Als QSO markieren")
+        self.qso_mark_button.setEnabled(True)
+
+    def _mark_current_station_worked(self) -> None:
+        call = self.receive_service.state_store.get().current_call
+        if call is None:
+            self.statusBar().showMessage("Keine aktuelle Station zum Markieren.")
+            return
+        contact = call.contact
+        worked_at = self.receive_service.history.mark_worked(
+            call.source_id,
+            callsign=contact.callsign if contact else "",
+            name=contact.display_name if contact else "",
+            city=contact.city if contact else "",
+            state=contact.state if contact else "",
+            country=contact.country if contact else "",
+            talkgroup=call.talkgroup,
+            timeslot=call.timeslot,
+        )
+        self._update_current_qso_status(call)
+        self._refresh_recent_stations(force=True)
+        if hasattr(self, "history_widget"):
+            self.history_widget.refresh()
+        self.statusBar().showMessage(
+            f"{contact.callsign if contact and contact.callsign else call.source_id}: "
+            f"QSO {self._format_qso_time(worked_at)} gespeichert."
+        )
 
 
     def _tab_changed(self, index: int) -> None:
@@ -636,6 +703,9 @@ class MainWindow(QMainWindow):
         coach_action = QAction("Audio Coach …", self)
         coach_action.triggered.connect(self._open_audio_coach)
         program_menu.addAction(coach_action)
+        lab_action = QAction("Live-Audiolabor …", self)
+        lab_action.triggered.connect(self._open_audio_lab)
+        program_menu.addAction(lab_action)
         program_menu.addSeparator()
         tg_monitor_action = QAction("TG-Monitor starten", self)
         tg_monitor_action.triggered.connect(self._start_tg_monitor)
@@ -656,6 +726,7 @@ class MainWindow(QMainWindow):
             "settings": "Einstellungen",
             "audio_benchmark": "Audio-Benchmark",
             "audio_coach": "Audio Coach",
+            "audio_lab": "Live-Audiolabor",
             "audio_tuner": "Audio-Tuner",
             "qrz_station": (
                 self._qrz_window.windowTitle()
@@ -791,6 +862,17 @@ class MainWindow(QMainWindow):
         self._audio_coach_window.raise_()
         self._audio_coach_window.activateWindow()
 
+    def _open_audio_lab(self) -> None:
+        if self._audio_lab_window is None:
+            self._audio_lab_window = AudioLabWindow(
+                self.local_audio_lab_service,
+                parent=self,
+            )
+            self.window_geometry.register("audio_lab", self._audio_lab_window)
+        self._audio_lab_window.show()
+        self._audio_lab_window.raise_()
+        self._audio_lab_window.activateWindow()
+
     def _open_settings(self) -> None:
         if self._settings_dialog is not None and self._settings_dialog.isVisible():
             self._settings_dialog.raise_()
@@ -841,6 +923,7 @@ class MainWindow(QMainWindow):
         self.operation_gain_value.setText(f"{value} %")
         self.audio_send_service.set_gain_percent(value)
         self._save_operation_audio()
+        self.statusBar().showMessage(f"TX-Pegel {value} %")
 
     def _operation_volume_changed(self, value: int) -> None:
         self.operation_volume_value.setText(f"{value} %")
@@ -974,11 +1057,13 @@ class MainWindow(QMainWindow):
                 stamp = datetime.fromisoformat(entry.ended_at).astimezone().strftime("%H:%M")
             except (TypeError, ValueError):
                 stamp = "--:--"
+            worked_at = self.receive_service.history.last_worked_at(entry.source_id)
             values = (
                 stamp,
                 entry.callsign or f"DMR-ID {entry.source_id}",
                 entry.name or "–",
                 entry.country or "–",
+                self._format_qso_time(worked_at) if worked_at else "–",
             )
             for column, value in enumerate(values):
                 item = QTableWidgetItem(str(value))
@@ -1283,6 +1368,14 @@ class MainWindow(QMainWindow):
         spätere Favoriten synchron.
         """
         normalized = channel.normalized()
+        previous = self._current_dmr_channel
+        if (
+            previous is not None
+            and self.qso_recording_service.is_active
+            and (previous.target, previous.timeslot, previous.call_type)
+                != (normalized.target, normalized.timeslot, normalized.call_type)
+        ):
+            self._stop_qso_recording("Mitschnitt wegen Zielwechsel beendet")
         self._current_dmr_channel = normalized
         self.current_tg_label.setText(str(normalized.target))
         self.current_tg_name_label.setText(normalized.name or "")
@@ -1620,6 +1713,26 @@ class MainWindow(QMainWindow):
         if state is not RadioState.TRANSMITTING:
             self.mic_level_meter.reset()
 
+    def _toggle_qso_recording(self) -> None:
+        if self.qso_recording_service.is_active:
+            self._stop_qso_recording("Mitschnitt beendet")
+            return
+        path = self.qso_recording_service.start()
+        self.record_button.setText("Mitschnitt beenden")
+        self.record_button.setAccessibleName("QSO-Mitschnitt beenden")
+        self.statusBar().showMessage(f"Mitschnitt läuft: {path.name}")
+
+    def _stop_qso_recording(self, reason: str) -> None:
+        if not self.qso_recording_service.is_active:
+            return
+        path = self.qso_recording_service.stop()
+        self.record_button.setText("Mitschnitt starten")
+        self.record_button.setAccessibleName("QSO-Mitschnitt starten")
+        if path is not None:
+            self.statusBar().showMessage(f"{reason}: {path.name}")
+        else:
+            self.statusBar().showMessage(f"{reason}: keine Audiodaten aufgezeichnet")
+
     def _toggle_connection(self) -> None:
         state = self.radio_state.state
         if state in {RadioState.CONNECTED, RadioState.TRANSMITTING}:
@@ -1652,6 +1765,7 @@ class MainWindow(QMainWindow):
         Thread(target=worker, name="CarenDMR-Qt-Connect", daemon=True).start()
 
     def _disconnect(self) -> None:
+        self._stop_qso_recording("Mitschnitt wegen Trennen beendet")
         if self._tx_active:
             self._stop_tx()
         self.radio_state.synchronize(RadioState.DISCONNECTING)
@@ -1734,6 +1848,7 @@ class MainWindow(QMainWindow):
         self._tx_active = True
         self._tx_stopping = False
         self._tx_elapsed_seconds = 0
+        self._tx_warning_played = False
         self._tx_elapsed_timer.start()
         self.ptt_button.setText("TX")
         self.ptt_button.setProperty("visualState", "tx")
@@ -1772,9 +1887,27 @@ class MainWindow(QMainWindow):
             self._tx_elapsed_timer.stop()
             return
         self._tx_elapsed_seconds += 1
-        # Die Laufzeit steht direkt im großen TX-Knopf; dadurch kann dessen
-        # komplette Fläche bis nach unten genutzt werden.
-        self.ptt_button.setText(f"TX   {self._tx_elapsed_seconds} s")
+        limit = int(self.audio_send_service.tx_safety_limit_seconds)
+        remaining = limit - self._tx_elapsed_seconds if limit > 0 else None
+        if remaining is not None and 0 < remaining <= 10:
+            self.ptt_button.setText(f"TX   {self._tx_elapsed_seconds} s   ·   noch {remaining} s")
+            self.ptt_button.setProperty("visualState", "warning")
+            self.ptt_button.style().unpolish(self.ptt_button)
+            self.ptt_button.style().polish(self.ptt_button)
+            if not self._tx_warning_played:
+                self._tx_warning_played = True
+                self.statusBar().showMessage("TX-Zeitbegrenzung: noch 10 Sekunden")
+                try:
+                    Thread(
+                        target=self.audio_cues.play_tx_warning,
+                        name="CarenDMR-TX-Warnung",
+                        daemon=True,
+                    ).start()
+                except Exception:
+                    pass
+        else:
+            self.ptt_button.setText(f"TX   {self._tx_elapsed_seconds} s")
+
 
     def _stop_tx(self) -> None:
         if not self._tx_active:
@@ -1786,6 +1919,7 @@ class MainWindow(QMainWindow):
         # Hintergrund noch sauber auslaufen, aber Zähler und TX-Anzeige stoppen.
         self._tx_elapsed_timer.stop()
         self._tx_elapsed_seconds = 0
+        self._tx_warning_played = False
         self.ptt_button.setEnabled(False)
         self.ptt_button.setText("TX")
         self.ptt_button.setProperty("visualState", "pending")
@@ -1801,6 +1935,7 @@ class MainWindow(QMainWindow):
         self._tx_stop_event = None
         self._tx_elapsed_timer.stop()
         self._tx_elapsed_seconds = 0
+        self._tx_warning_played = False
         state = RadioState.CONNECTED if self.receive_service.is_running else RadioState.DISCONNECTED
         self.radio_state.synchronize(state)
         self.ptt_button.setText("TX")
@@ -1849,6 +1984,7 @@ class MainWindow(QMainWindow):
             source_id, talkgroup, timeslot, stream_id, samples,
             corrected_errors=corrected_errors,
         )
+        self.qso_recording_service.add_rx(samples)
 
     def _request_qrz_lookup(self, callsign: str | None) -> None:
         normalized = str(callsign or "").strip().upper()
@@ -2092,11 +2228,7 @@ class MainWindow(QMainWindow):
             self.country_label.setText(contact.country if contact and contact.country else "Nicht angegeben")
             self.target_label.setText(f"Talkgroup {call.talkgroup}, Timeslot {call.timeslot}")
             self.duration_label.setText(f"{call.elapsed_seconds:.0f} Sekunden")
-            self.qso_status_label.setText(
-                "Bereits gesprochen"
-                if self.receive_service.history.is_worked(call.source_id)
-                else "Noch nicht gesprochen"
-            )
+            self._update_current_qso_status(call)
         self._set_controls_for_state(self.radio_state.state)
         current_radio_state = self.radio_state.state
         previous_radio_state = self._last_focus_radio_state

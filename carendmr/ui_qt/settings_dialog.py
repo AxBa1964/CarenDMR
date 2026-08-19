@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSlider,
+    QSpinBox,
     QDoubleSpinBox,
     QVBoxLayout,
     QGridLayout,
@@ -103,10 +104,12 @@ class SettingsDialog(QDialog):
         audio_form.addRow("Wiedergabegerät:", self.output_combo)
         gain_row = QHBoxLayout()
         self.gain_slider = QSlider(Qt.Orientation.Horizontal); self.gain_slider.setRange(0, 100)
+        self.gain_slider.setAccessibleName("TX-Pegel")
+        self.gain_slider.setToolTip("100 % = unveränderte Referenzstrecke; kleinere Werte schwächen TX nur ab.")
         self.gain_value = QLabel("100 %"); self.gain_value.setMinimumWidth(58)
         self.gain_slider.valueChanged.connect(lambda v: self.gain_value.setText(f"{v} %"))
         gain_row.addWidget(self.gain_slider, 1); gain_row.addWidget(self.gain_value)
-        audio_form.addRow("Mic-Gain:", gain_row)
+        audio_form.addRow("TX-Pegel:", gain_row)
         volume_row = QHBoxLayout()
         self.volume_slider = QSlider(Qt.Orientation.Horizontal); self.volume_slider.setRange(0, 400)
         self.volume_value = QLabel("100 %"); self.volume_value.setMinimumWidth(58)
@@ -119,6 +122,13 @@ class SettingsDialog(QDialog):
         self.tx_speech_processing_check.setToolTip("Entfernt tieffrequentes Rumpeln und begrenzt nur einzelne Spitzen weich. Keine automatische Lautheitsanhebung.")
         audio_form.addRow("", self.muted_check); audio_form.addRow("", self.agc_check)
         audio_form.addRow("", self.tx_speech_processing_check)
+        self.tx_limit_spin = QSpinBox()
+        self.tx_limit_spin.setRange(0, 300)
+        self.tx_limit_spin.setSuffix(" s")
+        self.tx_limit_spin.setSpecialValueText("Unbegrenzt")
+        self.tx_limit_spin.setAccessibleName("TX-Zeitbegrenzung")
+        self.tx_limit_spin.setToolTip("0 = unbegrenzt. In den letzten 10 Sekunden warnt der TX-Button.")
+        audio_form.addRow("TX-Zeitbegrenzung:", self.tx_limit_spin)
         audio_root.addWidget(audio_box); audio_root.addStretch(1)
         self.tabs.addTab(audio_page, "Audio")
 
@@ -438,6 +448,7 @@ class SettingsDialog(QDialog):
         self.muted_check.setChecked(bool(self.audio_service.user_muted))
         self.agc_check.setChecked(bool(self.audio_service.agc_enabled))
         self.tx_speech_processing_check.setChecked(bool(self.audio_service.tx_speech_processing_enabled))
+        self.tx_limit_spin.setValue(int(self.audio_service.tx_safety_limit_seconds))
         self.audio_debug_check.setChecked(False)
         self._refresh_audio_test_status()
         self.diagnostics_check.setChecked(bool(initialize_diagnostics(self.project_root)))
@@ -638,6 +649,7 @@ class SettingsDialog(QDialog):
             self.audio_service.set_user_muted(self.muted_check.isChecked())
             self.audio_service.set_agc_enabled(self.agc_check.isChecked())
             self.audio_service.set_tx_speech_processing_enabled(self.tx_speech_processing_check.isChecked())
+            self.audio_service.set_tx_safety_limit_seconds(self.tx_limit_spin.value())
             # Der Audio-Test ist bewusst ein einmaliger, geführter Test und keine Daueraufnahme.
             if not bool(getattr(self.audio_service, "audio_test_armed", False)):
                 self.audio_service.set_audio_debug_wav_enabled(False)

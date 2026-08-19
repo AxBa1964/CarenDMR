@@ -111,7 +111,7 @@ def create_release(
     target_dir = release_dir or (project_root / "release")
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    archive_path = target_dir / f"CarenDMR_{version}.zip"
+    archive_path = target_dir / f"CarenDMR_Projekt_{version}.zip"
 
     if archive_path.exists():
         archive_path.unlink()

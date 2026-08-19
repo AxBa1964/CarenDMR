@@ -168,10 +168,11 @@ class BufferedPcmOutput:
         if chunk:
             values = struct.unpack(f"<{len(chunk) // 2}h", chunk)
             values = self._apply_agc(values)
-            # Fixed RX decoder compensation: measured AMBE/mbelib PCM is typically too low.
-            # User RX 100% therefore means x4 (+12.0 dB) overall; the existing 0..400%
-            # user range remains available, with PCM16 clipping protection below.
-            base_gain = 4.0
+            # 0.2.1.70: MD380 RX ist der produktive Referenzdecoder.
+            # RX 100 % bedeutet deshalb exakt Faktor 1.0. Es gibt keine feste
+            # Decoder-Kompensation mehr. Zulässige PCM16-Samples bleiben bei
+            # AGC aus und 100 % unverändert; nur echte Überläufe werden gekappt.
+            base_gain = 1.0
             user_factor = max(0.0, min(4.0, float(self._volume())))
             factor = base_gain * user_factor
             processed = tuple(self._limit_pcm16(v * factor) for v in values)

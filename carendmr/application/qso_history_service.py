@@ -188,6 +188,64 @@ class QsoHistoryService:
             )
             connection.commit()
 
+    def last_worked_at(self, source_id: int) -> str:
+        if source_id <= 0:
+            return ""
+        with self._lock, closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT MAX(worked_at) AS worked_at FROM qso_history "
+                "WHERE source_id = ? AND worked = 1",
+                (source_id,),
+            ).fetchone()
+        return str(row["worked_at"] or "")
+
+    def mark_worked(
+        self,
+        source_id: int,
+        *,
+        callsign: str = "",
+        name: str = "",
+        city: str = "",
+        state: str = "",
+        country: str = "",
+        talkgroup: int = 0,
+        timeslot: int = 2,
+    ) -> str:
+        """Markiert eine Station jetzt als gesprochen.
+
+        Falls sie noch nicht in der Empfangshistorie steht, wird ein kompakter
+        manueller Eintrag erzeugt. So funktioniert der Button auch während des
+        ersten laufenden QSO.
+        """
+        if source_id <= 0:
+            raise ValueError("Die DMR-ID muss größer als null sein.")
+        worked_at = datetime.now(timezone.utc).isoformat()
+        with self._lock, closing(self._connect()) as connection:
+            count = int(connection.execute(
+                "SELECT COUNT(*) AS count FROM qso_history WHERE source_id = ?",
+                (source_id,),
+            ).fetchone()["count"])
+            if count:
+                connection.execute(
+                    "UPDATE qso_history SET worked = 1, worked_at = ? WHERE source_id = ?",
+                    (worked_at, source_id),
+                )
+            else:
+                connection.execute(
+                    """
+                    INSERT INTO qso_history (
+                        started_at, ended_at, duration_seconds, source_id, callsign,
+                        name, city, state, country, talkgroup, timeslot, worked, worked_at
+                    ) VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                    """,
+                    (
+                        worked_at, worked_at, source_id, callsign, name, city, state,
+                        country, max(0, int(talkgroup)), int(timeslot), worked_at,
+                    ),
+                )
+            connection.commit()
+        return worked_at
+
     def is_worked(self, source_id: int) -> bool:
         if source_id <= 0:
             return False

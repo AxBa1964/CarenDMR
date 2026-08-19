@@ -1,0 +1,14 @@
+{
+  "release": "0.2.1.74",
+  "base_release": "0.2.1.73",
+  "type": "delta",
+  "changed_or_new_files": [
+    "README_0.2.1.74_DELTA.txt",
+    "carendmr/application/audio_send_service.py",
+    "carendmr/ui_qt/easy_window.py",
+    "carendmr/ui_qt/main_window.py",
+    "carendmr/ui_qt/settings_dialog.py",
+    "carendmr/version.py",
+    "tests/test_tx_level_easy_02174.py"
+  ]
+}

@@ -265,6 +265,7 @@ def build_stylesheet(tokens: ThemeTokens = TOKENS, metrics: DesignMetrics = METR
         QPushButton#pttButton {{ background-color: {t.surface_alt}; border-color: {t.border_strong}; font-size: 18px; font-weight: 800; }}
         QPushButton#pttButton[visualState="ready"] {{ background-color: {t.success_bg}; border-color: {t.success}; }}
         QPushButton#pttButton[visualState="pending"] {{ background-color: {t.warning_bg}; border-color: {t.warning}; }}
+        QPushButton#pttButton[visualState="warning"] {{ background-color: {t.warning_bg}; border: 3px solid {t.warning}; color: {t.text}; }}
         QPushButton#pttButton[visualState="tx"] {{ background-color: {t.danger_bg_active}; border-color: #FF9CA1; }}
 
         QLabel#connectionBadge {{

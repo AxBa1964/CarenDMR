@@ -9,6 +9,7 @@ from .information_manager import DispatchMeasurement, InformationDiagnostics, In
 from .encoder_service import EncoderService
 from .receive_service import ReceiveService
 from .qso_history_service import QsoHistoryService
+from .qso_recording_service import QsoRecordingService
 from .radio_state_machine import RadioState, RadioStateMachine, RadioStateSnapshot
 from .parrot_test_service import ParrotTestService
 from .transmit_history_service import TransmitHistoryService
@@ -18,6 +19,9 @@ from .state_store import ApplicationStateStore
 
 __all__ = [
     "AudioSendService", "MicrophoneDiagnostics", "ContactService", "FavoriteService", "ConnectionManager", "EncoderService", "CurrentCallService", "EventService", "InformationManager", "InformationDiagnostics", "DispatchMeasurement", "ReceiveService",
-    "ApplicationStateStore", "OperatingController", "QsoHistoryService", "ParrotTestService", "TransmitHistoryService",
+    "ApplicationStateStore", "OperatingController", "QsoHistoryService", "QsoRecordingService", "ParrotTestService", "TransmitHistoryService",
     "RadioState", "RadioStateMachine", "RadioStateSnapshot", "TalkgroupSearchService", "TalkgroupCatalogService",
+    "LocalAudioLabService",
+    "AudioLabRun",
 ]
+from .local_audio_lab_service import LocalAudioLabService, AudioLabRun

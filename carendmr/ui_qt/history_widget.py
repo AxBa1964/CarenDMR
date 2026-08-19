@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Callable
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtGui import QColor, QKeyEvent
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFormLayout,
@@ -199,6 +199,9 @@ class QsoHistoryWidget(QWidget):
                     Qt.ItemDataRole.AccessibleDescriptionRole,
                     f"Spalte {column + 1} von {len(self._column_headers)}",
                 )
+                if summary.worked:
+                    item.setBackground(QColor(220, 242, 220))
+                    item.setForeground(QColor(24, 48, 24))
                 self.table.setItem(row, column, item)
             if summary.source_id == selected_source:
                 restore_row = row
@@ -252,7 +255,11 @@ class QsoHistoryWidget(QWidget):
         )
         self.count_label.setText(str(summary.heard_count))
         self.duration_label.setText(self._format_duration(summary.total_duration_seconds))
-        self.worked_label.setText("QSO bestätigt" if summary.worked else "Bisher nur gehört")
+        self.worked_label.setText(
+            f"Gesprochen · letztes QSO {self._format_timestamp(summary.worked_at)}"
+            if summary.worked and summary.worked_at else
+            ("Gesprochen" if summary.worked else "Bisher nur gehört")
+        )
         self.worked_button.setText("QSO zurücknehmen" if summary.worked else "QSO bestätigen")
         self.worked_button.setEnabled(True)
 

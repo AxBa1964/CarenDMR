@@ -9,6 +9,7 @@ from .base import (
     VocoderUnavailableError,
 )
 from .native import NativeMbeReceiveVocoder
+from .md380_dynarmic import Md380DynarmicReceiveVocoder
 
 
 def extract_ambe_codewords(*args, **kwargs):
@@ -21,6 +22,7 @@ __all__ = [
     "AMBE_CODEWORD_SIZE",
     "PCM_SAMPLES_PER_CODEWORD",
     "NativeMbeReceiveVocoder",
+    "Md380DynarmicReceiveVocoder",
     "PcmFrame",
     "ReceiveVocoder",
     "VocoderDecodeError",

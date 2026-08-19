@@ -15,6 +15,7 @@ from carendmr.brandmeister.listen import (
 )
 from carendmr.domain import (ConnectionState, EventLevel, ReceiveStatistics, InformationCategory, InformationPriority)
 from carendmr.diagnostics.tx_rx_timing import mark as timing_mark
+from carendmr.vocoder import Md380DynarmicReceiveVocoder
 
 from .contact_service import ContactService
 from .current_call_service import CurrentCallService
@@ -415,6 +416,7 @@ class ReceiveService:
                 output_level_callback=self._on_output_level,
                 decoded_pcm_callback=self._decoded_pcm_callback,
                 audio_debug_dir=(self._audio_debug_dir_provider if self._audio_debug_dir_provider is not None else (self.project_root / "logs" / "audio_lab")) if self._audio_debug_enabled else None,
+                decoder_factory=lambda: Md380DynarmicReceiveVocoder(self.project_root),
             )
             if self._output_factory is not None:
                 listen_kwargs["output_factory"] = self._output_factory

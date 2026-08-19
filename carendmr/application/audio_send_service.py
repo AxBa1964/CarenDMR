@@ -58,6 +58,40 @@ class _SpeechBandDecimator16kTo8k:
         return filtered[::2].astype(np.float32, copy=False)
 
 
+class _NeutralDecimator16kTo8k:
+    """Neutraler, zustandsbehafteter 16->8-kHz-Resampler für den Referenz-TX.
+
+    Der Filter ist bewusst kein Sprachformungsfilter. Er dient ausschließlich
+    dem notwendigen Anti-Aliasing vor der Halbierung der Samplerate.
+    """
+    _TAPS = 41
+
+    def __init__(self) -> None:
+        import numpy as np
+        from scipy.signal import firwin
+        self._coefficients = firwin(
+            self._TAPS,
+            0.5,
+            window=("kaiser", 5.0),
+        ).astype(np.float32)
+        self._history = np.zeros(self._TAPS - 1, dtype=np.float32)
+        self._phase = 0
+
+    def process(self, samples):
+        import numpy as np
+        mono = np.asarray(samples, dtype=np.float32).reshape(-1)
+        if not mono.size:
+            return np.empty(0, dtype=np.float32)
+        combined = np.concatenate((self._history, mono))
+        filtered = np.convolve(combined, self._coefficients, mode="valid")
+        self._history = combined[-(self._TAPS - 1):].copy()
+
+        # Kontinuierliche 2:1-Dezimation über Blockgrenzen.
+        out = filtered[self._phase::2]
+        self._phase = (self._phase + len(filtered)) & 1
+        return out.astype(np.float32, copy=False)
+
+
 class _AudioTestPreRoll:
     """Kurzzeitiger Mikrofon-Ringpuffer für den geführten Audio-Test."""
 
@@ -136,7 +170,8 @@ class LivePcmCapture:
             self.ambe_frames_path = self.audio_lab_dir / "04_ambe_frames.bin"
         self._speech_processor = StreamingTxSpeechProcessor(sample_rate=service.SAMPLE_RATE, enabled=service.tx_speech_processing_enabled)
         self._audio_tuner = StreamingTxAudioTuner(service.tx_audio_tuner_settings, sample_rate=service.SAMPLE_RATE)
-        self._resampler = _SpeechBandDecimator16kTo8k()
+        self._resampler = _NeutralDecimator16kTo8k()
+        self._tx_path_name = "DroidStar-Referenz"
         if self._one_shot_audio_test:
             self._write_test_metadata()
         self.thread=Thread(target=self._run, name="CarenDMR-Live-Audio", daemon=True)
@@ -171,6 +206,13 @@ class LivePcmCapture:
             "sample_rate_device_native_hz": native_rate,
             "resampling_active": native_rate != int(self.service.SAMPLE_RATE),
             "audio_engine": "Audio Engine V2",
+            "tx_path": "DroidStar-Referenz",
+            "software_mic_gain_applied": True,
+            "speech_processing_applied": False,
+            "tx_audio_tuner_applied": False,
+            "md380_input_gain_db": 0.0,
+            "tx_level_percent": int(self.service.gain_percent),
+            "tx_level_factor": round(self.service.gain_percent / 100.0, 3),
             "sample_rate_ambe_hz": 8000,
             "channels": int(self.service.CHANNELS),
             "microphone": {
@@ -191,7 +233,7 @@ class LivePcmCapture:
             if service._selected_input is None: raise RuntimeError("Es wurde kein Mikrofon gefunden.")
             factor=service._gain_percent/100.0
             def report(level: float)->None:
-                if self.level_callback is not None: self.level_callback(max(0.0,min(100.0,float(level)*factor)))
+                if self.level_callback is not None: self.level_callback(max(0.0,min(100.0,float(level))))
             probe_blocks: list[np.ndarray] = []
             probe_samples = 0
             probe_limit = int(service.SAMPLE_RATE * 1.5)
@@ -200,25 +242,47 @@ class LivePcmCapture:
             signal_released = True
 
             def process_mono(mono: np.ndarray) -> None:
-                input_pcm=np.clip(np.rint(np.clip(mono,-1.0,1.0)*32767.0),-32768,32767).astype(np.int16)
+                # 0.2.1.72 produktiver B-Pfad:
+                # Mikrofon roh -> neutral 16->8 kHz -> MD380.
+                # Kein digitaler Mic-Gain, kein Sprachprozessor, kein Tuner/EQ.
+                input_pcm = np.clip(
+                    np.rint(np.clip(mono, -1.0, 1.0) * 32767.0),
+                    -32768, 32767
+                ).astype(np.int16)
                 if self._collect_debug:
                     self._input_pcm_16k.extend(int(v) for v in input_pcm)
-                mono=np.clip(mono*factor,-1.0,1.0)
-                gain_pcm=np.clip(np.rint(mono*32767.0),-32768,32767).astype(np.int16)
+
+                # 0.2.1.74: wirksamer, ausschließlich abschwächender TX-Pegel.
+                # 100 % = Faktor 1.0 und damit exakt die 9/10-Referenzstrecke.
+                # Es gibt bewusst keine Verstärkung oberhalb des Rohsignals.
+                tx_factor = max(0.0, min(1.0, service.gain_percent / 100.0))
+                tx_mono = mono * tx_factor
+                tx_pcm = np.clip(
+                    np.rint(np.clip(tx_mono, -1.0, 1.0) * 32767.0),
+                    -32768, 32767
+                ).astype(np.int16)
                 if self._collect_debug:
-                    self._gain_pcm_16k.extend(int(v) for v in gain_pcm)
-                processed = self._speech_processor.process(mono)
-                processed = self._audio_tuner.process(processed)
-                if self._collect_debug:
-                    processed_pcm=np.clip(np.rint(processed*32767.0),-32768,32767).astype(np.int16)
-                    self._processed_pcm_16k.extend(int(v) for v in processed_pcm)
-                down=self._resampler.process(processed)
-                pcm=np.clip(np.rint(down*32767.0),-32768,32767).astype(np.int16)
-                chunk=tuple(int(v) for v in pcm)
+                    self._gain_pcm_16k.extend(int(v) for v in tx_pcm)
+                    self._processed_pcm_16k.extend(int(v) for v in tx_pcm)
+
+                down = self._resampler.process(tx_mono)
+                pcm = np.clip(
+                    np.rint(np.clip(down, -1.0, 1.0) * 32767.0),
+                    -32768, 32767
+                ).astype(np.int16)
+                chunk = tuple(int(v) for v in pcm)
                 if self._collect_debug:
                     self._ambe_pcm_8k.extend(chunk)
-                self.sample_count += len(chunk); self.queue.put(chunk)
-                self.queue_puts += 1; self.queue_max_chunks=max(self.queue_max_chunks,self.queue.qsize())
+                observer = getattr(service, "_tx_pcm_observer", None)
+                if observer is not None:
+                    try:
+                        observer(chunk)
+                    except Exception:
+                        pass
+                self.sample_count += len(chunk)
+                self.queue.put(chunk)
+                self.queue_puts += 1
+                self.queue_max_chunks = max(self.queue_max_chunks, self.queue.qsize())
 
             def on_block(block)->None:
                 nonlocal probe_samples, signal_released
@@ -287,8 +351,8 @@ class LivePcmCapture:
                 except Exception as error:
                     timing_mark("TX_AUDIO_DEBUG_FEHLER", str(error))
             if self._one_shot_audio_test:
-                timing_mark("TX_SPRACHAUFBEREITUNG", json.dumps(self._speech_processor.diagnostics(), ensure_ascii=False))
-                timing_mark("TX_AUDIO_TUNER", json.dumps(self._audio_tuner.diagnostics(), ensure_ascii=False))
+                timing_mark("TX_SPRACHAUFBEREITUNG", '{"aktiv_im_tx": false, "pfad": "DroidStar-Referenz"}')
+                timing_mark("TX_AUDIO_TUNER", '{"aktiv_im_tx": false, "pfad": "DroidStar-Referenz"}')
                 timing_mark("AUDIO_TEST_TX_ABGESCHLOSSEN", f"Ordner={self.audio_lab_dir}")
             service._unmute_receive(); self.queue.put(self._END)
 
@@ -335,7 +399,7 @@ class LivePcmCapture:
         gain_db = -120.0 if gain_factor <= 1e-12 else 20.0 * math.log10(gain_factor)
         timing_mark(
             "TX_PEGELPFAD",
-            f"MicGain={self.service.gain_percent}%;Faktor={gain_factor:.3f};GainDb={gain_db:.2f};Bericht={level_path}",
+            f"TX_Pegel={self.service.gain_percent}%;Faktor={self.service.gain_percent / 100.0:.3f};ImTX=JA;Pfad=DroidStar-Referenz;Bericht={level_path}",
         )
 
     def chunks(self)->Iterator[tuple[int,...]]:
@@ -353,7 +417,10 @@ class LivePcmCapture:
     @property
     def duration_seconds(self)->float: return self.sample_count/8000.0
     @property
-    def safety_limit_reached(self)->bool: return self.duration_seconds >= self.max_duration_seconds-0.05
+    def safety_limit_reached(self)->bool:
+        if int(getattr(self.service, 'tx_safety_limit_seconds', 0)) == 0:
+            return False
+        return self.duration_seconds >= self.max_duration_seconds - 0.05
 
 
 @dataclass(frozen=True, slots=True)
@@ -375,7 +442,7 @@ class AudioSendService:
     MIN_GAIN_PERCENT = 0
     MAX_GAIN_PERCENT = 100
     MAX_OUTPUT_VOLUME_PERCENT = 400
-    MIN_TX_SAFETY_LIMIT_SECONDS = 5
+    MIN_TX_SAFETY_LIMIT_SECONDS = 0
     MAX_TX_SAFETY_LIMIT_SECONDS = 300
 
     def __init__(
@@ -414,6 +481,7 @@ class AudioSendService:
         self._audio_test_waiting_for_rx = False
         self._audio_test_rx_samples: list[int] = []
         self._audio_test_expected_rx_samples = 0
+        self._tx_pcm_observer = None
 
     def _load_settings(self) -> dict[str, object]:
         try:
@@ -442,9 +510,10 @@ class AudioSendService:
         limit = int(round(float(value)))
         if not cls.MIN_TX_SAFETY_LIMIT_SECONDS <= limit <= cls.MAX_TX_SAFETY_LIMIT_SECONDS:
             raise ValueError(
-                f"Das TX-Sicherheitslimit muss zwischen "
+                f"Die TX-Zeitbegrenzung muss zwischen "
                 f"{cls.MIN_TX_SAFETY_LIMIT_SECONDS} und "
-                f"{cls.MAX_TX_SAFETY_LIMIT_SECONDS} Sekunden liegen."
+                f"{cls.MAX_TX_SAFETY_LIMIT_SECONDS} Sekunden liegen. "
+                "0 bedeutet unbegrenzt."
             )
         return limit
 
@@ -753,10 +822,10 @@ class AudioSendService:
         optimize: bool = True,
     ) -> tuple[tuple[int, ...], float, bool, OptimizerDiagnostics | None]:
         """Nimmt beim Gedrückthalten auf und endet beim Loslassen oder Limit."""
-        if not self.MIN_TX_SAFETY_LIMIT_SECONDS <= max_duration_seconds <= self.MAX_TX_SAFETY_LIMIT_SECONDS:
+        if not 0 < max_duration_seconds <= 86400.0:
             raise ValueError(
-                f"Das TX-Sicherheitslimit muss zwischen {self.MIN_TX_SAFETY_LIMIT_SECONDS} "
-                f"und {self.MAX_TX_SAFETY_LIMIT_SECONDS} Sekunden liegen."
+                "Die interne maximale TX-Aufnahmedauer muss zwischen mehr als 0 "
+                "und 86400 Sekunden liegen."
             )
         if self._selected_input is None:
             self.microphones()
@@ -802,6 +871,17 @@ class AudioSendService:
             return pcm, duration, hit_limit, diagnostics
         finally:
             self._unmute_receive()
+
+    def set_tx_pcm_observer(self, callback) -> None:
+        """Optionaler Beobachter für produktive 8-kHz-TX-PCM-Blöcke."""
+        self._tx_pcm_observer = callback
+
+    @property
+    def effective_tx_capture_limit_seconds(self) -> float:
+        # 0 ist auf Anwendungsebene unbegrenzt. Das Audio-Backend benötigt
+        # intern dennoch eine positive Obergrenze; 24 h ist nur ein technischer
+        # Wächter und kein Bedienlimit.
+        return 86400.0 if self._tx_safety_limit_seconds == 0 else float(self._tx_safety_limit_seconds)
 
     def start_live_capture(self, stop_event: Event, *, max_duration_seconds: float, level_callback: Callable[[float], None] | None = None) -> LivePcmCapture:
         one_shot = self._audio_test_armed
