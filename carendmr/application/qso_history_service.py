@@ -57,6 +57,14 @@ class QsoHistoryService:
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_qso_history_source_id ON qso_history(source_id)"
             )
+            connection.execute(
+                """CREATE TABLE IF NOT EXISTS qrz_logbook (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    source_id INTEGER NOT NULL, callsign TEXT NOT NULL,
+                    qso_at TEXT NOT NULL, logid TEXT NOT NULL, logged_at TEXT NOT NULL,
+                    UNIQUE(callsign, qso_at)
+                )"""
+            )
             connection.commit()
 
     def subscribe_added(self, callback) -> None:
@@ -245,6 +253,23 @@ class QsoHistoryService:
                 )
             connection.commit()
         return worked_at
+
+    def record_qrz_log(self, source_id: int, callsign: str, qso_at: str, logid: str) -> None:
+        logged_at = datetime.now(timezone.utc).isoformat()
+        with self._lock, closing(self._connect()) as connection:
+            connection.execute(
+                "INSERT OR REPLACE INTO qrz_logbook (source_id, callsign, qso_at, logid, logged_at) VALUES (?, ?, ?, ?, ?)",
+                (int(source_id), callsign.strip().upper(), qso_at, str(logid), logged_at),
+            )
+            connection.commit()
+
+    def qrz_logid(self, callsign: str, qso_at: str) -> str:
+        with self._lock, closing(self._connect()) as connection:
+            row = connection.execute(
+                "SELECT logid FROM qrz_logbook WHERE callsign = ? AND qso_at = ?",
+                (callsign.strip().upper(), qso_at),
+            ).fetchone()
+        return str(row["logid"] if row else "")
 
     def is_worked(self, source_id: int) -> bool:
         if source_id <= 0:

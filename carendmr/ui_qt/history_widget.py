@@ -58,6 +58,8 @@ class QsoHistoryWidget(QWidget):
         service: QsoHistoryService,
         status_callback: Callable[[str], None] | None = None,
         worked_changed_callback: Callable[[int, bool], None] | None = None,
+        qrz_log_callback: Callable[[QsoHistorySummary], None] | None = None,
+        qrz_status_callback: Callable[[QsoHistorySummary], str] | None = None,
         parent: QWidget | None = None,
         accessibility: AccessibilityManager | None = None,
     ) -> None:
@@ -65,6 +67,8 @@ class QsoHistoryWidget(QWidget):
         self.service = service
         self.status_callback = status_callback or (lambda _message: None)
         self.worked_changed_callback = worked_changed_callback or (lambda _source_id, _worked: None)
+        self.qrz_log_callback = qrz_log_callback or (lambda _summary: None)
+        self.qrz_status_callback = qrz_status_callback or (lambda _summary: "")
         self.accessibility = accessibility or AccessibilityManager()
         self._rows: list[QsoHistorySummary] = []
         self._selected_source_id: int | None = None
@@ -145,12 +149,23 @@ class QsoHistoryWidget(QWidget):
         self.worked_button.setEnabled(False)
         self.worked_button.clicked.connect(self.toggle_worked)
         detail_form.addRow(self.worked_button)
+
+        self.qrz_status_label = QLabel("–")
+        self.qrz_status_label.setWordWrap(True)
+        self.qrz_status_label.setAccessibleName("QRZ Logbook Status")
+        detail_form.addRow("QRZ.com:", self.qrz_status_label)
+        self.qrz_log_button = QPushButton("Bei QRZ loggen")
+        self.qrz_log_button.setAccessibleName("Ausgewähltes QSO bei QRZ.com loggen")
+        self.qrz_log_button.setEnabled(False)
+        self.qrz_log_button.clicked.connect(self._log_selected_to_qrz)
+        detail_form.addRow(self.qrz_log_button)
         content.addWidget(detail_box, 1)
         root.addLayout(content, 1)
 
         QWidget.setTabOrder(self.search_edit, self.refresh_button)
         QWidget.setTabOrder(self.refresh_button, self.table)
         QWidget.setTabOrder(self.table, self.worked_button)
+        QWidget.setTabOrder(self.worked_button, self.qrz_log_button)
         self.table.tab_backward_target = self.refresh_button
         self.table.tab_forward_target = self.worked_button
 
@@ -242,6 +257,8 @@ class QsoHistoryWidget(QWidget):
                 label.setText("–")
             self.worked_button.setText("QSO bestätigen")
             self.worked_button.setEnabled(False)
+            self.qrz_status_label.setText("–")
+            self.qrz_log_button.setEnabled(False)
             return
         location = " / ".join(
             part for part in (summary.city, summary.state, summary.country) if part
@@ -262,6 +279,19 @@ class QsoHistoryWidget(QWidget):
         )
         self.worked_button.setText("QSO zurücknehmen" if summary.worked else "QSO bestätigen")
         self.worked_button.setEnabled(True)
+        qrz_status = self.qrz_status_callback(summary) if summary.worked else ""
+        self.qrz_status_label.setText(qrz_status or ("Bereit zum Loggen" if summary.worked else "QSO noch nicht bestätigt"))
+        self.qrz_log_button.setEnabled(bool(summary.worked and summary.worked_at and summary.callsign and not qrz_status.startswith("Gespeichert")))
+
+    def _log_selected_to_qrz(self) -> None:
+        row = self.table.currentRow()
+        if not (0 <= row < len(self._rows)):
+            return
+        summary = self._rows[row]
+        if not summary.worked or not summary.worked_at:
+            self.status_callback("QRZ: QSO zuerst bestätigen.")
+            return
+        self.qrz_log_callback(summary)
 
     def toggle_worked(self) -> None:
         row = self.table.currentRow()

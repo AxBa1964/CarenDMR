@@ -1,0 +1,16 @@
+{
+  "release": "0.2.1.76",
+  "base_release": "0.2.1.75",
+  "type": "delta",
+  "changed_or_new_files": [
+    "README_0.2.1.76_DELTA.txt",
+    "carendmr/application/qso_history_service.py",
+    "carendmr/qrz/__init__.py",
+    "carendmr/qrz/logbook.py",
+    "carendmr/ui_qt/main_window.py",
+    "carendmr/ui_qt/settings_dialog.py",
+    "carendmr/version.py",
+    "config/qrz_logbook.example.json",
+    "tests/test_qrz_logbook_02176.py"
+  ]
+}

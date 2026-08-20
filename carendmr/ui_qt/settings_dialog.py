@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QMessageBox,
     QPushButton,
     QSlider,
@@ -42,6 +43,7 @@ from carendmr.application import ContactService, EncoderService
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.brandmeister.config import BrandMeisterConfigStore
 from carendmr.brandmeister.masters import MASTERS, by_host
+from carendmr.qrz import QrzLogbookConfig
 
 
 class SettingsDialog(QDialog):
@@ -177,7 +179,19 @@ class SettingsDialog(QDialog):
         self.qso_status_label = QLabel("Lokale SQLite-Historie")
         qso_form.addRow("Pfad:", self.qso_path_label)
         qso_form.addRow("Status:", self.qso_status_label)
-        data_root.addWidget(contacts_box); data_root.addWidget(qso_box); data_root.addStretch(1)
+        qrz_box = QGroupBox("QRZ.com Logbook")
+        qrz_form = QFormLayout(qrz_box)
+        self.qrz_log_enabled = QCheckBox("QRZ.com Logbook verwenden")
+        self.qrz_log_api_key = QLineEdit()
+        self.qrz_log_api_key.setEchoMode(QLineEdit.EchoMode.Password)
+        self.qrz_log_api_key.setAccessibleName("QRZ.com API Access Key")
+        self.qrz_log_api_key.setPlaceholderText("API Access Key des QRZ-Logbuchs")
+        qrz_note = QLabel("QSO-Upload erfolgt nur manuell. Standard: 70cm / DMR; keine erfundene Frequenz. Der Key bleibt ausschließlich in config/qrz_logbook.local.json.")
+        qrz_note.setWordWrap(True)
+        qrz_form.addRow("", self.qrz_log_enabled)
+        qrz_form.addRow("API Access Key:", self.qrz_log_api_key)
+        qrz_form.addRow("", qrz_note)
+        data_root.addWidget(contacts_box); data_root.addWidget(qso_box); data_root.addWidget(qrz_box); data_root.addStretch(1)
         self.tabs.addTab(data_page, "Datenbanken")
 
         # Codec / Decoder
@@ -454,6 +468,9 @@ class SettingsDialog(QDialog):
         self.diagnostics_check.setChecked(bool(initialize_diagnostics(self.project_root)))
         preferences = self.preferences_store.load()
         self.ptt_lead_in_spin.setValue(preferences.screenreader_ptt_lead_in_seconds)
+        qrz_cfg = QrzLogbookConfig.load(self.project_root / "config" / "qrz_logbook.local.json")
+        self.qrz_log_enabled.setChecked(qrz_cfg.enabled)
+        self.qrz_log_api_key.setText(qrz_cfg.api_key)
 
 
     def _refresh_audio_test_status(self) -> None:
@@ -669,6 +686,10 @@ class SettingsDialog(QDialog):
             self.receive_service.set_user_muted(self.audio_service.user_muted)
             self.receive_service.set_agc_enabled(self.audio_service.agc_enabled)
             set_diagnostics_enabled(self.diagnostics_check.isChecked())
+            QrzLogbookConfig(
+                enabled=self.qrz_log_enabled.isChecked(),
+                api_key=self.qrz_log_api_key.text().strip(),
+            ).save(self.project_root / "config" / "qrz_logbook.local.json")
 
             self.status_label.setText("Einstellungen wurden gespeichert und übernommen.")
             self.settings_applied.emit()

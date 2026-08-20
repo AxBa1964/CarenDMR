@@ -10,7 +10,7 @@ import json
 import queue
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Event, Thread
 
@@ -46,9 +46,10 @@ from carendmr.ui_qt.audio_tool_windows import AudioBenchmarkWindow, AudioCoachWi
 from carendmr.benchmark import AudioBenchmarkService
 from carendmr.audio import AudioDirection, TxAudioTunerSettings, TUNER_PRESETS
 from carendmr.ipc.channel_control import CarenDMRChannelServer
-from carendmr.qrz import QrzLookupService, QrzNotFound, QrzServiceError
+from carendmr.qrz import QrzLookupService, QrzNotFound, QrzServiceError, QrzLogbookService, QrzLogbookError
 from carendmr.ui_qt.qrz_window import QrzStationWindow
 from carendmr.ui_qt.window_geometry import WindowGeometryManager
+from carendmr.brandmeister.config import BrandMeisterConfigStore
 from carendmr.tg_monitor.instance_control import is_tg_monitor_running, send_tg_monitor_command
 
 
@@ -121,6 +122,8 @@ class MainWindow(QMainWindow):
         self._qrz_lookup_callsign = ""
         self._qrz_lookup_pending = False
         self.qrz_service = QrzLookupService(self.project_root / "config" / "qrz.local.json")
+        self.qrz_logbook_service = QrzLogbookService(self.project_root / "config" / "qrz_logbook.local.json")
+        self._qrz_log_pending = False
         self._recent_station_signature: tuple[int, ...] = ()
         self.hotkey_manager = HotkeyManager(self.project_root / "config" / "hotkeys.local.json")
         self.favorite_service = FavoriteService(self.project_root / "config" / "favorites.local.json")
@@ -547,6 +550,8 @@ class MainWindow(QMainWindow):
             self.receive_service.history,
             self._show_status,
             self._history_worked_changed,
+            self._log_history_qso_to_qrz,
+            self._history_qrz_status,
             self.tabs,
             self.accessibility,
         )
@@ -643,7 +648,7 @@ class MainWindow(QMainWindow):
 
     def _update_current_qso_status(self, call) -> None:
         if call is None:
-            self._update_current_qso_status(None)
+            self.qso_status_label.setText("Keine Station aktiv")
             self.qso_mark_button.setText("Als QSO markieren")
             self.qso_mark_button.setEnabled(False)
             return
@@ -680,6 +685,83 @@ class MainWindow(QMainWindow):
             f"{contact.callsign if contact and contact.callsign else call.source_id}: "
             f"QSO {self._format_qso_time(worked_at)} gespeichert."
         )
+
+
+    def _history_qrz_status(self, summary) -> str:
+        if not summary.worked_at or not summary.callsign:
+            return ""
+        logid = self.receive_service.history.qrz_logid(summary.callsign, summary.worked_at)
+        return f"Gespeichert · LOGID {logid}" if logid else ""
+
+    def _log_history_qso_to_qrz(self, summary) -> None:
+        if self._qrz_log_pending:
+            self.statusBar().showMessage("QRZ: Eine Übertragung läuft bereits.")
+            return
+        if not self.qrz_logbook_service.configured:
+            QMessageBox.information(
+                self, "QRZ.com Logbook",
+                "QRZ.com Logbook ist noch nicht aktiviert oder der API Access Key fehlt. "
+                "Bitte zuerst die Einstellungen öffnen."
+            )
+            return
+        if not summary.worked or not summary.worked_at or not summary.callsign:
+            self.statusBar().showMessage("QRZ: Nur bestätigte QSOs mit Rufzeichen können geloggt werden.")
+            return
+        try:
+            qso_at = datetime.fromisoformat(summary.worked_at)
+            bm_cfg = BrandMeisterConfigStore(
+                self.project_root / "config" / "brandmeister.local.json"
+            ).load()
+            station_callsign = bm_cfg.callsign
+        except Exception as error:
+            QMessageBox.warning(
+                self, "QRZ.com Logbook",
+                f"QSO-Daten konnten nicht vorbereitet werden: {error}"
+            )
+            return
+        callsign = summary.callsign.strip().upper()
+        existing = self.receive_service.history.qrz_logid(callsign, summary.worked_at)
+        if existing:
+            QMessageBox.information(
+                self, "QRZ.com Logbook",
+                f"Dieses QSO wurde bereits übertragen. QRZ LOGID {existing}."
+            )
+            self.history_widget.refresh()
+            return
+        answer = QMessageBox.question(
+            self, "QSO bei QRZ.com loggen",
+            f"{callsign} · {qso_at.astimezone(timezone.utc).strftime('%d.%m.%Y %H:%M UTC')} · 70cm · DMR\n"
+            f"BrandMeister TG {summary.last_talkgroup} · TS{summary.last_timeslot}\n\n"
+            "Jetzt an QRZ.com senden?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        self._qrz_log_pending = True
+        self.history_widget.qrz_log_button.setEnabled(False)
+        self.statusBar().showMessage(f"QRZ: {callsign} wird übertragen …")
+        source_id = summary.source_id
+        worked_at = summary.worked_at
+        tg = summary.last_talkgroup
+        ts = summary.last_timeslot
+
+        def worker() -> None:
+            try:
+                result = self.qrz_logbook_service.insert_dmr_qso(
+                    callsign=callsign,
+                    station_callsign=station_callsign,
+                    qso_at=qso_at,
+                    talkgroup=tg,
+                    timeslot=ts,
+                )
+                self._updates.put(
+                    ("qrz_log_ok", (source_id, callsign, worked_at, result.logid))
+                )
+            except QrzLogbookError as error:
+                self._updates.put(("qrz_log_error", str(error)))
+
+        Thread(target=worker, name="CarenDMR-QRZ-Logbook", daemon=True).start()
 
 
     def _tab_changed(self, index: int) -> None:
@@ -2133,6 +2215,20 @@ class MainWindow(QMainWindow):
                         self._qrz_profile = None
                         self._qrz_own_profile = None
                         self.qrz_button.setVisible(False)
+                elif kind == "qrz_log_ok":
+                    source_id, callsign, qso_at, logid = value
+                    self._qrz_log_pending = False
+                    self.receive_service.history.record_qrz_log(source_id, callsign, qso_at, logid)
+                    self.statusBar().showMessage(f"QRZ: {callsign} gespeichert · LOGID {logid}")
+                    QMessageBox.information(self, "QRZ.com Logbook", f"QSO mit {callsign} wurde gespeichert.\nQRZ LOGID {logid}")
+                    if hasattr(self, "history_widget"):
+                        self.history_widget.refresh()
+                elif kind == "qrz_log_error":
+                    self._qrz_log_pending = False
+                    QMessageBox.warning(self, "QRZ.com Logbook", str(value))
+                    self.statusBar().showMessage(f"QRZ-Logging fehlgeschlagen: {value}")
+                    if hasattr(self, "history_widget"):
+                        self.history_widget.refresh()
                 elif kind == "benchmark_connection_lost":
                     if self.audio_benchmark_service.connection_lost():
                         attempts = self.audio_benchmark_service.state.reconnect_attempts

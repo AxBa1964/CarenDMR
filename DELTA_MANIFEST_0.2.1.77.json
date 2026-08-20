@@ -1,0 +1,12 @@
+{
+  "release": "0.2.1.77",
+  "base_release": "0.2.1.76",
+  "type": "delta",
+  "changed_or_new_files": [
+    "README_0.2.1.77_DELTA.txt",
+    "carendmr/ui_qt/history_widget.py",
+    "carendmr/ui_qt/main_window.py",
+    "carendmr/version.py",
+    "tests/test_qrz_history_02177.py"
+  ]
+}
