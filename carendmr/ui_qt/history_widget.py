@@ -60,6 +60,8 @@ class QsoHistoryWidget(QWidget):
         worked_changed_callback: Callable[[int, bool], None] | None = None,
         qrz_log_callback: Callable[[QsoHistorySummary], None] | None = None,
         qrz_status_callback: Callable[[QsoHistorySummary], str] | None = None,
+        adif_udp_callback: Callable[[QsoHistorySummary], None] | None = None,
+        sync_callback: Callable[[], None] | None = None,
         parent: QWidget | None = None,
         accessibility: AccessibilityManager | None = None,
     ) -> None:
@@ -69,6 +71,8 @@ class QsoHistoryWidget(QWidget):
         self.worked_changed_callback = worked_changed_callback or (lambda _source_id, _worked: None)
         self.qrz_log_callback = qrz_log_callback or (lambda _summary: None)
         self.qrz_status_callback = qrz_status_callback or (lambda _summary: "")
+        self.adif_udp_callback = adif_udp_callback or (lambda _summary: None)
+        self.sync_callback = sync_callback or (lambda: None)
         self.accessibility = accessibility or AccessibilityManager()
         self._rows: list[QsoHistorySummary] = []
         self._selected_source_id: int | None = None
@@ -86,10 +90,14 @@ class QsoHistoryWidget(QWidget):
         self.search_edit.textChanged.connect(self.refresh)
         self.refresh_button = QPushButton("Aktualisieren")
         self.refresh_button.clicked.connect(self.refresh)
+        self.sync_button = QPushButton("Synchronisieren")
+        self.sync_button.setAccessibleName("QSO-Daten zwischen Rechnern synchronisieren")
+        self.sync_button.clicked.connect(self.sync_callback)
         self.summary_label = QLabel("Noch keine Historieneinträge")
         controls.addWidget(QLabel("Suche:"))
         controls.addWidget(self.search_edit, 1)
         controls.addWidget(self.refresh_button)
+        controls.addWidget(self.sync_button)
         controls.addWidget(self.summary_label)
         root.addLayout(controls)
 
@@ -159,14 +167,21 @@ class QsoHistoryWidget(QWidget):
         self.qrz_log_button.setEnabled(False)
         self.qrz_log_button.clicked.connect(self._log_selected_to_qrz)
         detail_form.addRow(self.qrz_log_button)
+        self.adif_udp_button = QPushButton("Per ADIF-UDP senden")
+        self.adif_udp_button.setAccessibleName("Ausgewähltes QSO per ADIF UDP an Logbuch senden")
+        self.adif_udp_button.setEnabled(False)
+        self.adif_udp_button.clicked.connect(self._send_selected_adif_udp)
+        detail_form.addRow("Logbuch:", self.adif_udp_button)
         content.addWidget(detail_box, 1)
         root.addLayout(content, 1)
 
         QWidget.setTabOrder(self.search_edit, self.refresh_button)
-        QWidget.setTabOrder(self.refresh_button, self.table)
+        QWidget.setTabOrder(self.refresh_button, self.sync_button)
+        QWidget.setTabOrder(self.sync_button, self.table)
         QWidget.setTabOrder(self.table, self.worked_button)
         QWidget.setTabOrder(self.worked_button, self.qrz_log_button)
-        self.table.tab_backward_target = self.refresh_button
+        QWidget.setTabOrder(self.qrz_log_button, self.adif_udp_button)
+        self.table.tab_backward_target = self.sync_button
         self.table.tab_forward_target = self.worked_button
 
     @staticmethod
@@ -227,8 +242,15 @@ class QsoHistoryWidget(QWidget):
         )
         if restore_row >= 0:
             self.table.selectRow(restore_row)
+            # selectRow() löst bei unveränderter Auswahl nicht zuverlässig
+            # itemSelectionChanged aus. Deshalb die Detailansicht immer aus
+            # dem frisch geladenen Summary synchronisieren.
+            self._selected_source_id = self._rows[restore_row].source_id
+            self._show_summary(self._rows[restore_row])
         elif self._rows:
             self.table.selectRow(0)
+            self._selected_source_id = self._rows[0].source_id
+            self._show_summary(self._rows[0])
         else:
             self._selected_source_id = None
             self._show_summary(None)
@@ -259,6 +281,7 @@ class QsoHistoryWidget(QWidget):
             self.worked_button.setEnabled(False)
             self.qrz_status_label.setText("–")
             self.qrz_log_button.setEnabled(False)
+            self.adif_udp_button.setEnabled(False)
             return
         location = " / ".join(
             part for part in (summary.city, summary.state, summary.country) if part
@@ -282,6 +305,17 @@ class QsoHistoryWidget(QWidget):
         qrz_status = self.qrz_status_callback(summary) if summary.worked else ""
         self.qrz_status_label.setText(qrz_status or ("Bereit zum Loggen" if summary.worked else "QSO noch nicht bestätigt"))
         self.qrz_log_button.setEnabled(bool(summary.worked and summary.worked_at and summary.callsign and not qrz_status.startswith("Gespeichert")))
+        self.adif_udp_button.setEnabled(bool(summary.worked and summary.worked_at and summary.callsign))
+
+    def _send_selected_adif_udp(self) -> None:
+        row = self.table.currentRow()
+        if not (0 <= row < len(self._rows)):
+            return
+        summary = self._rows[row]
+        if not summary.worked or not summary.worked_at:
+            self.status_callback("ADIF-UDP: QSO zuerst bestätigen.")
+            return
+        self.adif_udp_callback(summary)
 
     def _log_selected_to_qrz(self) -> None:
         row = self.table.currentRow()

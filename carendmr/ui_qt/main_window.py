@@ -47,6 +47,7 @@ from carendmr.benchmark import AudioBenchmarkService
 from carendmr.audio import AudioDirection, TxAudioTunerSettings, TUNER_PRESETS
 from carendmr.ipc.channel_control import CarenDMRChannelServer
 from carendmr.qrz import QrzLookupService, QrzNotFound, QrzServiceError, QrzLogbookService, QrzLogbookError
+from carendmr.adif_udp import AdifUdpService, AdifUdpError
 from carendmr.ui_qt.qrz_window import QrzStationWindow
 from carendmr.ui_qt.window_geometry import WindowGeometryManager
 from carendmr.brandmeister.config import BrandMeisterConfigStore
@@ -124,6 +125,7 @@ class MainWindow(QMainWindow):
         self.qrz_service = QrzLookupService(self.project_root / "config" / "qrz.local.json")
         self.qrz_logbook_service = QrzLogbookService(self.project_root / "config" / "qrz_logbook.local.json")
         self._qrz_log_pending = False
+        self.adif_udp_service = AdifUdpService(self.project_root / "config" / "adif_udp.local.json")
         self._recent_station_signature: tuple[int, ...] = ()
         self.hotkey_manager = HotkeyManager(self.project_root / "config" / "hotkeys.local.json")
         self.favorite_service = FavoriteService(self.project_root / "config" / "favorites.local.json")
@@ -552,6 +554,8 @@ class MainWindow(QMainWindow):
             self._history_worked_changed,
             self._log_history_qso_to_qrz,
             self._history_qrz_status,
+            self._send_history_qso_adif_udp,
+            self._sync_qso_history,
             self.tabs,
             self.accessibility,
         )
@@ -629,6 +633,17 @@ class MainWindow(QMainWindow):
             self.connection_label, state.name, force=force
         )
 
+    def _sync_qso_history(self) -> None:
+        try:
+            message = self.receive_service.history.sync_now()
+            if hasattr(self, "history_widget"):
+                self.history_widget.refresh()
+            self._refresh_recent_stations(force=True)
+            self._show_status(message)
+        except Exception as exc:
+            QMessageBox.critical(self, "QSO-Synchronisation", str(exc))
+            self._show_status(f"QSO-Synchronisation fehlgeschlagen: {exc}")
+
     def _history_worked_changed(self, source_id: int, worked: bool) -> None:
         """Synchronisiert eine Historienänderung sofort mit der Betriebsseite."""
         state = self.receive_service.state_store.get()
@@ -686,6 +701,54 @@ class MainWindow(QMainWindow):
             f"QSO {self._format_qso_time(worked_at)} gespeichert."
         )
 
+
+
+    def _send_history_qso_adif_udp(self, summary) -> None:
+        if not self.adif_udp_service.configured:
+            QMessageBox.information(
+                self, "ADIF-UDP",
+                "ADIF-UDP ist noch nicht aktiviert. Bitte zuerst unter Einstellungen → Datenbanken Adresse und Port festlegen."
+            )
+            return
+        if not summary.worked or not summary.worked_at or not summary.callsign:
+            self.statusBar().showMessage("ADIF-UDP: Nur bestätigte QSOs mit Rufzeichen können gesendet werden.")
+            return
+        try:
+            qso_at = datetime.fromisoformat(summary.worked_at)
+            bm_cfg = BrandMeisterConfigStore(
+                self.project_root / "config" / "brandmeister.local.json"
+            ).load()
+            cfg = self.adif_udp_service.config
+        except Exception as error:
+            QMessageBox.warning(self, "ADIF-UDP", f"QSO-Daten konnten nicht vorbereitet werden: {error}")
+            return
+        callsign = summary.callsign.strip().upper()
+        answer = QMessageBox.question(
+            self, "QSO per ADIF-UDP senden",
+            f"{callsign} · {qso_at.astimezone(timezone.utc).strftime('%d.%m.%Y %H:%M UTC')} · 70cm · DMR\n"
+            f"BrandMeister TG {summary.last_talkgroup} · TS{summary.last_timeslot}\n"
+            f"Empfänger: {cfg.host}:{cfg.port}\n\nJetzt senden?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            host, port, _size = self.adif_udp_service.send_qso(
+                callsign=callsign, station_callsign=bm_cfg.callsign, qso_at=qso_at,
+                talkgroup=summary.last_talkgroup, timeslot=summary.last_timeslot,
+                name=summary.name, country=summary.country,
+            )
+        except AdifUdpError as error:
+            QMessageBox.warning(self, "ADIF-UDP", str(error))
+            self.statusBar().showMessage(f"ADIF-UDP fehlgeschlagen: {error}")
+            return
+        self.statusBar().showMessage(f"ADIF-UDP: {callsign} an {host}:{port} gesendet.")
+        QMessageBox.information(
+            self, "ADIF-UDP",
+            f"QSO mit {callsign} wurde an {host}:{port} gesendet.\n"
+            "UDP bestätigt nur das lokale Senden; ob das Logbuch den Datensatz übernommen hat, zeigt das Empfängerprogramm."
+        )
 
     def _history_qrz_status(self, summary) -> str:
         if not summary.worked_at or not summary.callsign:

@@ -43,7 +43,7 @@ class DesignMetrics:
 
     action_control_height: int = 50
     status_control_height: int = 40
-    connection_control_width: int = 150
+    connection_control_width: int = 220
     button_min_width: int = 118
     card_radius: int = 9
     focus_width: int = 3

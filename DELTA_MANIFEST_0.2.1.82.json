@@ -1,0 +1,18 @@
+{
+  "version": "0.2.1.82",
+  "base": "0.2.1.81",
+  "purpose": "QSO-Synchronisation zwischen mehreren Rechnern über gemeinsamen Cloud-Ordner",
+  "files": [
+    "carendmr/qso_sync.py",
+    "carendmr/application/qso_history_service.py",
+    "carendmr/ui_qt/settings_dialog.py",
+    "carendmr/ui_qt/history_widget.py",
+    "carendmr/ui_qt/main_window.py",
+    "carendmr/version.py",
+    "config/qso_sync.example.json",
+    "tests/test_qso_sync_02182.py",
+    "CHANGELOG.md",
+    "README_0.2.1.82_DELTA.txt",
+    "DELTA_MANIFEST_0.2.1.82.json"
+  ]
+}

@@ -1879,3 +1879,9 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - WASAPI-USB-Eingänge werden bei mehrkanaligen Endpunkten nativ geöffnet; CarenDMR wählt anschließend den tatsächlich signalführenden Kanal für den gemeinsamen Mono-Pfad.
 - Der geführte Modulationstest erkennt einen geöffneten, aber stummen Eingang innerhalb der ersten 1,5 Sekunden und sendet dann keine Sprachframes.
 - Manifest-Dateien werden bei kurzfristigen Windows-/OneDrive-Sperren mehrfach atomar geschrieben; Messdaten bleiben bei einer Sperre erhalten.
+
+## 0.2.1.82
+- QSO-Synchronisation über gemeinsamen Ordner ohne geteilte aktive SQLite-Datei.
+- Pro Rechner eigene atomare JSON-Snapshots für konfliktärmeren OneDrive/Dropbox/iCloud-Abgleich.
+- Synchronisiert Historie, Gesprochen/Nur-gehört-Status inklusive Rücknahme und QRZ-LOGID.
+- Manueller Synchronisieren-Button in der QSO-Historie und Konfiguration unter Datenbanken.

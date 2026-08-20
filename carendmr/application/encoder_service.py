@@ -88,6 +88,34 @@ class EncoderService:
         self.settings.save_plugin_path(plugin_path)
         return diagnostics
 
+    def configured_diagnostics(self) -> EncoderDiagnostics:
+        """Liefert eine passive Diagnose ohne den nativen MD380-JIT zu starten.
+
+        Das Einstellungsfenster kann während des laufenden Funkbetriebs geöffnet
+        werden. Ein zweites Initialisieren/Probecodieren der Dynarmic-Bridge im
+        selben Prozess kann den nativen JIT abbrechen. Daher wird hier nur die
+        konfigurierte Verfügbarkeit beschrieben; die aktive Funktionsprüfung
+        bleibt verify_configured() für den Verbindungs-/Startpfad vorbehalten.
+        """
+        if self.md380_available:
+            return EncoderDiagnostics(
+                backend="MD380/Dynarmic",
+                plugin_path=str(self.md380_bridge_path),
+                ready=True,
+                encoded_bytes=0,
+                message=(
+                    "Native TX-Bridge vorhanden. Keine erneute JIT-Probecodierung "
+                    "im Einstellungsfenster; die Funktionsprüfung erfolgt im Funkpfad."
+                ),
+            )
+
+        plugin_path = self.configured_plugin_path
+        if plugin_path is None:
+            raise RuntimeError(
+                "Weder MD380-Dynarmic-Bridge noch ein DroidStar-Vocoder-Plugin ist verfügbar."
+            )
+        return verify_plugin(self.project_root, plugin_path)
+
     def verify_configured(self) -> EncoderDiagnostics:
         if self.md380_available:
             encoder = self.create_transmit_encoder()

@@ -1,0 +1,11 @@
+{
+  "version": "0.2.1.83",
+  "base": "0.2.1.82",
+  "purpose": "Settings UI: eigener Reiter Logbuch & Sync",
+  "files": [
+    "carendmr/ui_qt/settings_dialog.py",
+    "carendmr/version.py",
+    "README_0.2.1.83_DELTA.txt",
+    "DELTA_MANIFEST_0.2.1.83.json"
+  ]
+}

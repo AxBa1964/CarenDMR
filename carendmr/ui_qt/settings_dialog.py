@@ -44,6 +44,8 @@ from carendmr.application.operating_preferences import OperatingPreferences, Ope
 from carendmr.brandmeister.config import BrandMeisterConfigStore
 from carendmr.brandmeister.masters import MASTERS, by_host
 from carendmr.qrz import QrzLogbookConfig
+from carendmr.adif_udp import AdifUdpConfig
+from carendmr.qso_sync import QsoSyncConfig
 
 
 class SettingsDialog(QDialog):
@@ -179,6 +181,22 @@ class SettingsDialog(QDialog):
         self.qso_status_label = QLabel("Lokale SQLite-Historie")
         qso_form.addRow("Pfad:", self.qso_path_label)
         qso_form.addRow("Status:", self.qso_status_label)
+        sync_box = QGroupBox("QSO-Synchronisation zwischen Rechnern")
+        sync_form = QFormLayout(sync_box)
+        self.qso_sync_enabled = QCheckBox("QSO-Historie und Logstatus über gemeinsamen Ordner synchronisieren")
+        self.qso_sync_folder = QLineEdit()
+        self.qso_sync_folder.setAccessibleName("Gemeinsamer Ordner für QSO Synchronisation")
+        self.qso_sync_folder.setPlaceholderText(r"Zum Beispiel OneDrive\CarenDMR\Sync")
+        sync_folder_row = QHBoxLayout()
+        sync_folder_row.addWidget(self.qso_sync_folder, 1)
+        self.qso_sync_browse = QPushButton("Ordner wählen …")
+        self.qso_sync_browse.clicked.connect(self._choose_qso_sync_folder)
+        sync_folder_row.addWidget(self.qso_sync_browse)
+        sync_note = QLabel("Jeder Rechner behält seine eigene SQLite-Datenbank. Im gemeinsamen Ordner werden nur atomare JSON-Snapshots ausgetauscht. CarenDMR darf dadurch auch auf Windows und macOS mit unterschiedlichen lokalen Datenpfaden arbeiten.")
+        sync_note.setWordWrap(True)
+        sync_form.addRow("", self.qso_sync_enabled)
+        sync_form.addRow("Gemeinsamer Ordner:", sync_folder_row)
+        sync_form.addRow("", sync_note)
         qrz_box = QGroupBox("QRZ.com Logbook")
         qrz_form = QFormLayout(qrz_box)
         self.qrz_log_enabled = QCheckBox("QRZ.com Logbook verwenden")
@@ -191,8 +209,31 @@ class SettingsDialog(QDialog):
         qrz_form.addRow("", self.qrz_log_enabled)
         qrz_form.addRow("API Access Key:", self.qrz_log_api_key)
         qrz_form.addRow("", qrz_note)
-        data_root.addWidget(contacts_box); data_root.addWidget(qso_box); data_root.addWidget(qrz_box); data_root.addStretch(1)
+
+        udp_box = QGroupBox("ADIF-UDP / Logbuch-Weitergabe")
+        udp_form = QFormLayout(udp_box)
+        self.adif_udp_enabled = QCheckBox("Bestätigte QSOs per UDP an ein Logbuch senden")
+        self.adif_udp_host = QLineEdit()
+        self.adif_udp_host.setAccessibleName("ADIF UDP Empfängeradresse")
+        self.adif_udp_port = QSpinBox()
+        self.adif_udp_port.setRange(1, 65535)
+        self.adif_udp_port.setAccessibleName("ADIF UDP Empfängerport")
+        udp_note = QLabel("WSJT-X-kompatibles 'Logged ADIF'. Für Ham Radio Deluxe typischerweise 127.0.0.1 und Port 2237. Gesendet wird nur manuell aus der QSO-Historie.")
+        udp_note.setWordWrap(True)
+        udp_form.addRow("", self.adif_udp_enabled)
+        udp_form.addRow("Adresse:", self.adif_udp_host)
+        udp_form.addRow("Port:", self.adif_udp_port)
+        udp_form.addRow("", udp_note)
+        data_root.addWidget(contacts_box); data_root.addWidget(qso_box); data_root.addStretch(1)
         self.tabs.addTab(data_page, "Datenbanken")
+
+        # Logbuch & Sync
+        logbook_page = QWidget(); logbook_root = QVBoxLayout(logbook_page)
+        logbook_root.addWidget(sync_box)
+        logbook_root.addWidget(qrz_box)
+        logbook_root.addWidget(udp_box)
+        logbook_root.addStretch(1)
+        self.tabs.addTab(logbook_page, "Logbuch && Sync")
 
         # Codec / Decoder
         codec_page = QWidget(); codec_root = QVBoxLayout(codec_page)
@@ -390,9 +431,12 @@ class SettingsDialog(QDialog):
     def _verify_encoder_plugin(self) -> None:
         try:
             if self.encoder_service.md380_available:
-                diag = self.encoder_service.verify_configured()
+                # Einstellungen dürfen den nativen Dynarmic-JIT nicht ein zweites
+                # Mal initialisieren/probecodieren. Das kann während laufendem
+                # Funkbetrieb einen nativen Assertion-Abbruch auslösen.
+                diag = self.encoder_service.configured_diagnostics()
                 self._show_encoder_diagnostics(diag)
-                self.status_label.setText("Native MD380/Dynarmic-TX-Bridge ist bereit.")
+                self.status_label.setText("Native MD380/Dynarmic-TX-Bridge ist vorhanden.")
                 return
 
             plugin = self.encoder_service.detect_plugin()
@@ -471,7 +515,20 @@ class SettingsDialog(QDialog):
         qrz_cfg = QrzLogbookConfig.load(self.project_root / "config" / "qrz_logbook.local.json")
         self.qrz_log_enabled.setChecked(qrz_cfg.enabled)
         self.qrz_log_api_key.setText(qrz_cfg.api_key)
+        udp_cfg = AdifUdpConfig.load(self.project_root / "config" / "adif_udp.local.json")
+        self.adif_udp_enabled.setChecked(udp_cfg.enabled)
+        self.adif_udp_host.setText(udp_cfg.host)
+        self.adif_udp_port.setValue(udp_cfg.port)
+        sync_cfg = QsoSyncConfig.load(self.project_root / "config" / "qso_sync.local.json")
+        self.qso_sync_enabled.setChecked(sync_cfg.enabled)
+        self.qso_sync_folder.setText(sync_cfg.folder)
 
+
+    def _choose_qso_sync_folder(self) -> None:
+        start = self.qso_sync_folder.text().strip() or str(Path.home())
+        folder = QFileDialog.getExistingDirectory(self, "Gemeinsamen QSO-Sync-Ordner wählen", start)
+        if folder:
+            self.qso_sync_folder.setText(folder)
 
     def _refresh_audio_test_status(self) -> None:
         armed = bool(getattr(self.audio_service, "audio_test_armed", False))
@@ -690,6 +747,20 @@ class SettingsDialog(QDialog):
                 enabled=self.qrz_log_enabled.isChecked(),
                 api_key=self.qrz_log_api_key.text().strip(),
             ).save(self.project_root / "config" / "qrz_logbook.local.json")
+            AdifUdpConfig(
+                enabled=self.adif_udp_enabled.isChecked(),
+                host=self.adif_udp_host.text().strip() or "127.0.0.1",
+                port=self.adif_udp_port.value(),
+            ).save(self.project_root / "config" / "adif_udp.local.json")
+            sync_folder = self.qso_sync_folder.text().strip()
+            if self.qso_sync_enabled.isChecked() and not sync_folder:
+                raise ValueError("Bitte einen gemeinsamen Ordner für die QSO-Synchronisation auswählen.")
+            QsoSyncConfig(
+                enabled=self.qso_sync_enabled.isChecked(),
+                folder=sync_folder,
+            ).save(self.project_root / "config" / "qso_sync.local.json")
+            if self.qso_sync_enabled.isChecked():
+                self.receive_service.history.sync_now()
 
             self.status_label.setText("Einstellungen wurden gespeichert und übernommen.")
             self.settings_applied.emit()
