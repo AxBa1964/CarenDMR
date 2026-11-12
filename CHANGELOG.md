@@ -1,3 +1,12 @@
+## 0.2.1.85 – OperatingController asynchron (Refactoring Schritt 2)
+
+- `OperatingController` bietet jetzt `connect_async`, `disconnect_async`, `start_ptt` und `stop_ptt`. Oberflächen brauchen für Verbinden, Trennen und Senden keine eigenen Hintergrund-Threads mehr; Ergebnisse kommen über `on_done`/`on_error`.
+- Ungültige Ziele und PTT ohne Verbindung werden sofort beim Aufruf abgewiesen; eine zweite gleichzeitige Sendung wird verhindert.
+- Trennen beendet eine laufende Sendung zuerst.
+- Beim Zielwechsel wird das kurze STOPPING/DISCONNECTED der alten Sitzung nicht mehr als Bedienzustand gemeldet.
+- Wiederholtes Verbinden auf dasselbe, bereits laufende Ziel bleibt nicht mehr im Zustand „Verbindung wird hergestellt“ stehen.
+- Hauptfenster unverändert; die Easy-Oberfläche nutzt die bestehenden synchronen Methoden wie bisher.
+
 ## 0.2.1.84 – Gemeinsamer Funkkern (Refactoring Schritt 1)
 
 - Neu: `carendmr/bootstrap.py` mit `build_radio_core()`. Der Funkkern (Ereignisse, Empfang, Encoder, Audio, Parrot, `ConnectionManager`, `OperatingController`) wird an genau einer Stelle zusammengesetzt.
