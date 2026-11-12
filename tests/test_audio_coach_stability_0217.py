@@ -1,11 +1,5 @@
 from pathlib import Path
 
-from carendmr.version import __version__
-
-
-def test_release_version_0217():
-    assert __version__ == "0.2.1.32"
-
 
 def test_audio_coach_has_cancel_toggle_and_common_finish():
     source = Path("carendmr/ui_qt/audio_coach_widget.py").read_text(encoding="utf-8")

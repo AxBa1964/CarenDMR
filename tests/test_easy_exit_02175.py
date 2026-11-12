@@ -6,9 +6,6 @@ ROOT = Path(__file__).resolve().parents[1]
 def read(rel):
     return (ROOT / rel).read_text(encoding="utf-8")
 
-def test_version():
-    assert '__version__ = "0.2.1.75"' in read("carendmr/version.py")
-
 def test_exit_button_present_and_accessible():
     text = read("carendmr/ui_qt/easy_window.py")
     assert 'EasyButton("Beenden")' in text

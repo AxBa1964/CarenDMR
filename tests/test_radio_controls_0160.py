@@ -12,12 +12,11 @@ def test_segmented_radio_controls_are_plain_buttons_with_internal_selection():
     assert source.count('setObjectName("segmentButton")') >= 4
 
 
-def test_tx_counter_reserves_space_and_only_contains_a_value_during_tx():
+def test_tx_counter_is_shown_in_ptt_button_during_tx():
+    """Seit dem Layout-Umbau zeigt der PTT-Knopf selbst die Sendesekunden."""
     source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
-    assert 'self.tx_seconds_label.setFixedHeight(34)' in source
-    assert 'self.tx_seconds_label.setVisible(True)' in source
-    assert 'self.tx_seconds_label.setText("0")' in source
-    assert 'self.tx_seconds_label.clear()' in source
+    assert "tx_seconds_label" not in source
+    assert 'self.ptt_button.setText(f"TX   {self._tx_elapsed_seconds} s' in source
 
 
 def test_ptt_lead_in_is_configurable_and_persisted():

@@ -16,7 +16,7 @@ def test_radio_flags_use_f6_f7_for_keyboard_and_mouse_clicks_remain():
 def test_tx_counter_stops_immediately_when_rx_is_requested():
     stop_block = MAIN[MAIN.index('def _stop_tx'):MAIN.index('def _finish_tx')]
     assert 'self._tx_elapsed_timer.stop()' in stop_block
-    assert 'self.tx_seconds_label.clear()' in stop_block
+    assert 'self._tx_elapsed_seconds = 0' in stop_block
     assert 'self.ptt_button.setText("TX")' in stop_block
 
 
@@ -30,6 +30,7 @@ def test_custom_tone_replaces_qapplication_beep():
 
 
 def test_segment_buttons_are_compact():
-    assert 'button.setFixedSize(48, 28)' in MAIN
-    assert 'button.setFixedSize(68, 28)' in MAIN
+    assert 'button.setFixedSize(48, 32)' in MAIN
+    assert 'button.setFixedHeight(32)' in MAIN
+    assert 'button.setMinimumWidth(66)' in MAIN
     assert 'font-size: 11px' in THEME

@@ -1,12 +1,13 @@
 from pathlib import Path
 
 
-def test_connection_manager_pauses_rx_instead_of_disconnect_for_tx():
+def test_connection_manager_uses_fresh_session_for_tx():
+    """Aktuelles Design: RX-Session vor TX schließen, TX meldet sich frisch an."""
     source = Path("carendmr/application/connection_manager.py").read_text(encoding="utf-8")
+    assert "Vor TX wird die RX-BrandMeister-Session vollständig geschlossen" in source
     live = source[source.index("def run_parrot_hold_to_talk"):]
-    assert "pause_for_tx()" in live
-    assert "resume_after_tx()" in live
-    assert "existing_client=session_client" in live
+    assert "existing_client=None" in live
+    assert "pause_for_tx()" not in live
 
 
 def test_receive_service_exposes_same_logged_in_session():

@@ -25,7 +25,7 @@ def test_tx_button_keeps_tx_label_and_uses_ready_and_tx_states():
 def test_tx_counter_is_only_started_in_actual_tx_and_cleared_on_stop():
     begin = MAIN[MAIN.index("def _begin_tx"):MAIN.index("def _cancel_pending_tx")]
     stop = MAIN[MAIN.index("def _stop_tx"):MAIN.index("def _finish_tx")]
-    assert 'self.tx_seconds_label.setText("0")' in begin
+    assert 'self._tx_elapsed_seconds = 0' in begin
     assert 'self._tx_elapsed_timer.start()' in begin
     assert 'self._tx_elapsed_timer.stop()' in stop
-    assert 'self.tx_seconds_label.clear()' in stop
+    assert 'self._tx_elapsed_seconds = 0' in stop

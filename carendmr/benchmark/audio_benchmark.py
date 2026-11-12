@@ -13,6 +13,7 @@ import statistics
 import shutil
 import re
 import threading
+from contextlib import closing
 from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime, timezone
 from pathlib import Path
@@ -597,7 +598,7 @@ class AudioBenchmarkService:
 
     def _init_db(self) -> None:
         cols = ",\n".join(f"{f.name} {self._sqlite_type(f.name)}" for f in fields(BenchmarkCase))
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db, db:
             db.execute(f"CREATE TABLE IF NOT EXISTS cases (id INTEGER PRIMARY KEY AUTOINCREMENT, {cols})")
             db.execute("CREATE INDEX IF NOT EXISTS idx_cases_target ON cases(talkgroup,timeslot)")
             db.execute("CREATE INDEX IF NOT EXISTS idx_cases_callsign ON cases(callsign)")
@@ -613,17 +614,17 @@ class AudioBenchmarkService:
     def _insert_case(self, case: BenchmarkCase) -> None:
         data=asdict(case); names=list(data); placeholders=",".join("?" for _ in names)
         values=[int(data[n]) if n=="accepted" else data[n] for n in names]
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db, db:
             db.execute(f"INSERT INTO cases ({','.join(names)}) VALUES ({placeholders})", values)
 
     def _load_cases(self, tg: int, ts: int) -> list[BenchmarkCase]:
         names=[f.name for f in fields(BenchmarkCase)]
-        with sqlite3.connect(self.db_path) as db:
+        with closing(sqlite3.connect(self.db_path)) as db, db:
             rows=db.execute(f"SELECT {','.join(names)} FROM cases WHERE talkgroup=? AND timeslot=? ORDER BY id",(tg,ts)).fetchall()
         return [BenchmarkCase(**{n:(bool(v) if n=="accepted" else v) for n,v in zip(names,row)}) for row in rows]
 
     def _delete_cases_for_target(self, tg: int, ts: int) -> None:
-        with sqlite3.connect(self.db_path) as db: db.execute("DELETE FROM cases WHERE talkgroup=? AND timeslot=?",(tg,ts))
+        with closing(sqlite3.connect(self.db_path)) as db, db: db.execute("DELETE FROM cases WHERE talkgroup=? AND timeslot=?",(tg,ts))
 
     def _load_state_and_migrate(self) -> BenchmarkState:
         if not self.state_path.exists(): return BenchmarkState()

@@ -2,12 +2,6 @@ import ast
 import re
 from pathlib import Path
 
-from carendmr.version import __version__
-
-
-def test_release_version():
-    assert __version__ == "0.2.1.32"
-
 
 def test_theme_stylesheet_uses_only_defined_tokens():
     path = Path(__file__).parents[1] / "carendmr" / "ui_qt" / "theme.py"

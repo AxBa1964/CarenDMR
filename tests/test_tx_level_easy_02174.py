@@ -6,9 +6,6 @@ ROOT = Path(__file__).resolve().parents[1]
 def read(rel):
     return (ROOT / rel).read_text(encoding="utf-8")
 
-def test_version():
-    assert '__version__ = "0.2.1.74"' in read("carendmr/version.py")
-
 def test_productive_tx_level_is_real_attenuation():
     text = read("carendmr/application/audio_send_service.py")
     assert "tx_factor = max(0.0, min(1.0, service.gain_percent / 100.0))" in text

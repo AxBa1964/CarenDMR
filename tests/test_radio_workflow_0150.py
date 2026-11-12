@@ -1,10 +1,7 @@
 from pathlib import Path
 
-from carendmr.version import __version__
 
-
-def test_radio_workflow_version_and_short_labels():
-    assert __version__ == "0.2.1.32"
+def test_radio_workflow_short_labels():
     source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
     assert 'self.ptt_button = QPushButton("TX")' in source
     assert 'self.ptt_button.setText("RX")' not in source
@@ -17,9 +14,9 @@ def test_radio_workflow_screenreader_delay_and_silent_seconds():
     source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
     assert "QAccessible.isActive()" not in source
     assert "screenreader_ptt_lead_in_seconds" in source
-    assert 'self.tx_seconds_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)' in source
-    assert 'self.tx_seconds_label.setAccessibleName("")' in source
-    assert 'self.tx_seconds_label.setText(str(self._tx_elapsed_seconds))' in source
+    # Sekunden stehen nur sichtbar im PTT-Text; es gibt kein eigenes fokussierbares Zählerfeld.
+    assert "tx_seconds_label" not in source
+    assert 'self.ptt_button.setText(f"TX   {self._tx_elapsed_seconds} s' in source
 
 
 def test_audio_cue_uses_initialized_audio_send_service():

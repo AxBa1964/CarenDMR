@@ -20,4 +20,5 @@ def test_saved_rx_audio_state_is_applied_at_startup():
     main = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
     assert "self.receive_service.set_output_volume_percent(self.audio_send_service.output_volume_percent)" in main
     assert "self.receive_service.set_user_muted(self.audio_send_service.user_muted)" in main
-    assert "self.receive_service.set_agc_enabled(self.audio_send_service.agc_enabled)" in main
+    # Seit 0.2.1.45 startet die RX-AGC bewusst ausgeschaltet (Diagnose).
+    assert "self.receive_service.set_agc_enabled(False)" in main

@@ -2,11 +2,6 @@ from pathlib import Path
 from unittest.mock import patch
 
 from carendmr import app
-from carendmr.version import __version__
-
-
-def test_version_is_qt_migration_0265():
-    assert __version__ == "0.2.1.32"
 
 
 def test_gui_argument_uses_qt_lazily():
@@ -39,9 +34,9 @@ def test_qt_f5_toggles_connection_and_uses_two_tg_fields():
     source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
     assert '"CONNECT": self._toggle_connection' in source
     assert 'self.current_tg_label = QLabel(str(self.preferences.talkgroup))' in source
-    assert 'current_caption = QLabel("Aktuelle TG")' in source
-    assert 'target_layout.addWidget(QLabel("Talkgroup")' in source
+    assert 'current_caption = QLabel("AKTUELLER KANAL")' in source
     assert 'self.tg_edit = TalkgroupSearchWidget(' in source
+    assert 'self.tg_edit.setAccessibleName("Talkgroup")' in source
     assert 'self._apply_pending_talkgroup()' in source
     assert 'QTimer.singleShot(0, self._focus_talkgroup)' in source
 

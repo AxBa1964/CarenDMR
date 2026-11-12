@@ -71,7 +71,7 @@ enthalten.
 ## 5. Tests
 
 ```powershell
-python -m unittest discover -s tests -v
+python -m pytest tests
 python main.py
 ```
 
@@ -94,7 +94,7 @@ git pull --ff-only
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 powershell -ExecutionPolicy Bypass -File .\native\build_windows.ps1
-python -m unittest discover -s tests -v
+python -m pytest tests
 ```
 
 `git pull` nur bei sauberem Arbeitsbaum ausführen.

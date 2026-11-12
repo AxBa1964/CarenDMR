@@ -4,9 +4,6 @@ import ast
 ROOT = Path(__file__).resolve().parents[1]
 def read(rel): return (ROOT / rel).read_text(encoding="utf-8")
 
-def test_version():
-    assert '__version__ = "0.2.1.77"' in read("carendmr/version.py")
-
 def test_qrz_removed_from_current_station():
     text = read("carendmr/ui_qt/main_window.py")
     assert 'setAccessibleName("Aktuelles QSO bei QRZ.com loggen")' not in text

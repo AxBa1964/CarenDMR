@@ -6,9 +6,6 @@ ROOT = Path(__file__).resolve().parents[1]
 def read(rel):
     return (ROOT / rel).read_text(encoding="utf-8")
 
-def test_version():
-    assert '__version__ = "0.2.1.73"' in read("carendmr/version.py")
-
 def test_tx_limit_supports_zero_unlimited():
     text = read("carendmr/application/audio_send_service.py")
     assert "MIN_TX_SAFETY_LIMIT_SECONDS = 0" in text

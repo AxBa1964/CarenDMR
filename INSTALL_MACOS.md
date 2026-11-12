@@ -50,7 +50,7 @@ ignoriertes Build-Artefakt.
 ## 5. Tests
 
 ```bash
-python -m unittest discover -s tests -v
+python -m pytest tests
 python main.py
 ```
 
@@ -64,7 +64,7 @@ git status
 git pull --ff-only
 python -m pip install -r requirements.txt
 make -C native check
-python -m unittest discover -s tests -v
+python -m pytest tests
 ```
 
 `git pull` nur bei sauberem Arbeitsbaum ausführen.

@@ -24,7 +24,7 @@ Die Installationsanleitungen liegen in:
 Tests:
 
 ```text
-python -m unittest discover -s tests -v
+python -m pytest tests
 ```
 
 Nativer Empfangsdecoder:

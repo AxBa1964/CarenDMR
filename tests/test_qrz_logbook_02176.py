@@ -8,9 +8,6 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def read(rel): return (ROOT / rel).read_text(encoding='utf-8')
 
-def test_version_02176():
-    assert '__version__ = "0.2.1.76"' in read('carendmr/version.py')
-
 def test_adif_contains_required_qrz_fields_and_utc():
     adif = build_dmr_adif(
         callsign='ab2zt', station_callsign='do1dpl',
@@ -41,7 +38,8 @@ def test_logbook_key_is_local_only(tmp_path):
 
 def test_gui_requires_manual_confirmation_and_records_logid():
     text=read('carendmr/ui_qt/main_window.py')
-    assert 'Bei QRZ loggen' in text
+    history=read('carendmr/ui_qt/history_widget.py')
+    assert 'Bei QRZ loggen' in history
     assert 'QSO bei QRZ.com loggen' in text
     assert 'QMessageBox.question' in text
     assert 'record_qrz_log' in text

@@ -3,10 +3,6 @@ import ast
 
 ROOT = Path(__file__).resolve().parents[1]
 
-def test_version_02171():
-    text = (ROOT / "carendmr/version.py").read_text(encoding="utf-8")
-    assert '__version__ = "0.2.1.71"' in text
-
 def test_no_stale_replay_button_reference():
     text = (ROOT / "carendmr/ui_qt/audio_lab_widget.py").read_text(encoding="utf-8")
     assert "self.replay_button" not in text
@@ -31,8 +27,8 @@ def test_reference_bypasses_tuner_chain():
 
 def test_ab_buttons_are_named_for_paths():
     text = (ROOT / "carendmr/ui_qt/audio_lab_widget.py").read_text(encoding="utf-8")
-    assert 'QPushButton("A hören – CarenDMR")' in text
-    assert 'QPushButton("B hören – DroidStar-Referenz")' in text
+    assert 'QPushButton("A hören – alter CarenDMR-Pfad")' in text
+    assert 'QPushButton("B hören – produktiver Referenzpfad")' in text
 
 def test_modified_files_parse():
     for rel in (

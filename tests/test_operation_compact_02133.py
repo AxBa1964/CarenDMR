@@ -13,8 +13,8 @@ class OperationCompact02134Tests(unittest.TestCase):
     def test_recent_three_stations_are_a_real_table(self):
         source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
         self.assertIn('QLabel("ZULETZT GEHÖRT")', source)
-        self.assertIn("self.recent_station_table = QTableWidget(0, 4, station_card)", source)
-        self.assertIn('["Zeit", "Rufzeichen", "Name", "Land"]', source)
+        self.assertIn("self.recent_station_table = QTableWidget(0, 5, station_card)", source)
+        self.assertIn('["Zeit", "Rufzeichen", "Name", "Land", "Letztes QSO"]', source)
         self.assertIn("self.receive_service.history.list_recent(limit=20)", source)
         self.assertIn("if len(unique) == 3:", source)
 

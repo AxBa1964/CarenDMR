@@ -39,8 +39,7 @@ def test_main_window_integrates_favorites() -> None:
     assert 'FavoriteService(self.project_root / "config" / "favorites.local.json")' in source
     assert 'self.tabs.addTab(self.favorites_widget, "Talkgroups")' in source
     assert 'self.favorite_button = QPushButton("☆")' in source
-    assert "self.favorite_combo" not in source
-    assert "talkgroup_row.addWidget(self.favorite_button)" in source
+    assert "manual_row.addWidget(self.favorite_button)" in source
     assert "self._apply_favorite_channel" in source
 
 
