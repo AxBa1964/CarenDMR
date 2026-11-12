@@ -1,3 +1,10 @@
+## 0.2.1.84 – Gemeinsamer Funkkern (Refactoring Schritt 1)
+
+- Neu: `carendmr/bootstrap.py` mit `build_radio_core()`. Der Funkkern (Ereignisse, Empfang, Encoder, Audio, Parrot, `ConnectionManager`, `OperatingController`) wird an genau einer Stelle zusammengesetzt.
+- Hauptfenster und Easy-Oberfläche übernehmen diesen Kern, statt ihn jeweils selbst zu verdrahten. Funk-, Audio- und TX-Verhalten unverändert; RX-AGC startet weiterhin diagnosehalber ausgeschaltet.
+- Testsuite: `pytest` ist Standard (ein Teil der Tests wird von `unittest discover` nicht gefunden), veraltete Tests auf den aktuellen Stand gebracht, Versions-Pin-Tests durch einen Formattest ersetzt.
+- Audio-Benchmark schließt seine SQLite-Verbindungen jetzt zuverlässig (unter Windows blieb die Datenbankdatei sonst gesperrt).
+
 ## 0.2.1.64 – RX-Grundpegel +12 dB
 
 ## 0.2.1.68

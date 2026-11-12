@@ -25,9 +25,10 @@ from PySide6.QtWidgets import (
 )
 
 from carendmr.application import (
-    AudioSendService, ConnectionManager, EncoderService, EventService, LocalAudioLabService, QsoRecordingService,
-    FavoriteService, ParrotTestService, RadioState, RadioStateMachine, ReceiveService, TalkgroupSearchService, TalkgroupCatalogService,
+    LocalAudioLabService, QsoRecordingService,
+    FavoriteService, RadioState, RadioStateMachine, TalkgroupSearchService, TalkgroupCatalogService,
 )
+from carendmr.bootstrap import RadioCore, build_radio_core
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.domain import ApplicationState, ConnectionState, DmrChannel
 from carendmr.version import __version__
@@ -55,7 +56,7 @@ from carendmr.tg_monitor.instance_control import is_tg_monitor_running, send_tg_
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, project_root: Path) -> None:
+    def __init__(self, project_root: Path, core: RadioCore | None = None) -> None:
         super().__init__()
         self.project_root = Path(project_root)
         timing_log = initialize_tx_rx_timing(self.project_root)
@@ -63,44 +64,26 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(f"CarenDMR {__version__} – Funkgerät auf dem Desktop")
         self.resize(980, 720)
 
-        self.events = EventService()
+        # Funkkern (Empfang, Audio, Encoder, Parrot, ConnectionManager) kommt
+        # aus dem gemeinsamen Startpunkt und ist identisch zur Easy-Oberfläche.
+        self.radio_core = core or build_radio_core(self.project_root)
+        self.events = self.radio_core.events
+        self.receive_service = self.radio_core.receive_service
+        self.encoder_service = self.radio_core.encoder_service
+        self.audio_send_service = self.radio_core.audio_send_service
+        self.parrot_service = self.radio_core.parrot_service
+        self.connection_manager = self.radio_core.connection_manager
+        # build_radio_core() hat die RX-AGC bereits diagnosehalber ausgeschaltet.
+        timing_mark("RX_AGC_DIAGNOSE", "Beim Programmstart ausgeschaltet")
         self.preferences_store = OperatingPreferencesStore(self.project_root / "config" / "operating.local.json")
         self.preferences = self.preferences_store.load()
         self._selected_timeslot = self.preferences.timeslot
         self._selected_call_type = self.preferences.call_type
-        self.receive_service = ReceiveService(self.project_root, events=self.events)
-        self.encoder_service = EncoderService(self.project_root)
-        self.audio_send_service = AudioSendService(
-            self.project_root,
-            mute_receive=self.receive_service.mute_audio_output,
-            unmute_receive=self.receive_service.unmute_audio_output,
-        )
-        self.receive_service.set_output_factory(self.audio_send_service.create_pcm_output)
         self.local_audio_lab_service = LocalAudioLabService(
             self.project_root, self.audio_send_service, self.encoder_service
         )
         self.qso_recording_service = QsoRecordingService(self.project_root)
         self.audio_send_service.set_tx_pcm_observer(self.qso_recording_service.add_tx)
-        # Gespeicherte Audioeinstellungen müssen nicht nur im UI stehen, sondern
-        # beim Start auch tatsächlich im RX-Dienst gelten.
-        self.receive_service.set_output_volume_percent(self.audio_send_service.output_volume_percent)
-        self.receive_service.set_user_muted(self.audio_send_service.user_muted)
-        # 0.2.1.45 Diagnose: RX-AGC startet bewusst AUS, um den beobachteten
-        # leisen/hochregelnden Gesprächsanfang eindeutig gegenprüfen zu können.
-        # Der Benutzer kann AGC während der Sitzung weiterhin manuell einschalten.
-        self.audio_send_service.set_agc_enabled(False)
-        self.receive_service.set_agc_enabled(False)
-        timing_mark("RX_AGC_DIAGNOSE", "Beim Programmstart ausgeschaltet")
-        self.receive_service.set_audio_debug_enabled(self.audio_send_service.audio_debug_wav_enabled)
-        self.receive_service.set_audio_debug_dir_provider(lambda: self.audio_send_service.audio_test_session_dir)
-        self.parrot_service = ParrotTestService(
-            self.project_root,
-            audio_service=self.audio_send_service,
-            encoder_service=self.encoder_service,
-        )
-        self.connection_manager = ConnectionManager(
-            self.receive_service, self.parrot_service, events=self.events
-        )
         self.radio_state = RadioStateMachine()
         self._updates: queue.SimpleQueue[tuple[str, object]] = queue.SimpleQueue()
         self._tx_stop_event: Event | None = None
