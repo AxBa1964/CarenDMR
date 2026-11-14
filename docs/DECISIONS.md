@@ -143,3 +143,43 @@ keinen Retry, keine Wiederholung und keinen öffentlichen Fallback.
 **Grund:** Automatisierte Diagnosen dürfen unbeteiligte Funkteilnehmer nicht
 belasten. Ein privater Echo-Dienst bietet eine klar begrenzte technische
 Abnahmefläche und lässt sich vollständig fail-closed verriegeln.
+
+## ADR-0018 – Gemeinsamer Startpunkt für alle Oberflächen
+
+**Status:** beschlossen
+**Version:** 0.2.1.84 / 0.2.1.87
+
+Funkkern und Desktop-Zusatzdienste werden ausschließlich in
+`carendmr/bootstrap.py` erzeugt und verdrahtet (`build_radio_core`,
+`build_desktop_services`). Oberflächen erhalten fertige Objekte.
+
+**Grund:** Vorher bauten Hauptfenster und Easy-Oberfläche den Funkkern jeweils
+selbst. Doppelte Verdrahtung kann unbemerkt auseinanderlaufen; ein einziger
+Startpunkt hält den Funkpfad in allen Oberflächen identisch und ist
+Voraussetzung für weitere Oberflächen (Hardwarebedienung, Android).
+
+## ADR-0019 – Ein Bedienpfad über den OperatingController
+
+**Status:** beschlossen
+**Version:** 0.2.1.85 / 0.2.1.86
+
+Jede Oberfläche verbindet, trennt und sendet über den `OperatingController`.
+Dessen `RadioStateMachine` ist die einzige Quelle für den Bedienzustand.
+Oberflächen starten für den Funkablauf keine eigenen Threads.
+
+**Grund:** Das Hauptfenster führte zuvor eine eigene Zustandsmaschine und eigene
+Threads parallel zum Controller der Easy-Oberfläche. Ein gemeinsamer Pfad
+verhindert abweichendes Verhalten bei TX, Trennen und Zielwechsel.
+
+## ADR-0020 – Tkinter-Oberfläche entfernt
+
+**Status:** beschlossen
+**Version:** 0.2.1.87
+
+Die Tkinter-Oberfläche (`carendmr/ui`, Startoption `--gui-tk`) wurde entfernt.
+Qt-Hauptfenster und Easy-Oberfläche sind die unterstützten Oberflächen.
+
+**Grund:** Die Qt-Oberfläche hat den Funktionsumfang vollständig übernommen;
+die Tk-Rückfallebene wurde nicht mehr gepflegt und band rund 2.500 Zeilen Code
+sowie eigene Tests.
+

@@ -8,7 +8,6 @@ import numpy as np
 
 from carendmr.application.audio_send_service import AudioSendService
 from carendmr.audio import AudioDevice
-from carendmr.ui.main_window import MainWindow
 
 
 class StreamingBackend:
@@ -26,10 +25,6 @@ class StreamingBackend:
 
 
 class AudioCalibration02462Tests(unittest.TestCase):
-    def test_talkgroup_must_not_be_empty(self):
-        self.assertFalse(MainWindow._validate_talkgroup_input(""))
-        self.assertTrue(MainWindow._validate_talkgroup_input("91"))
-
     def test_microphone_test_writes_wav_only_with_debug_flag(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -56,12 +51,6 @@ class AudioCalibration02462Tests(unittest.TestCase):
             self.assertEqual(100, service.set_gain_percent(100))
             with self.assertRaises(ValueError):
                 service.set_gain_percent(101)
-
-    def test_ui_retains_peak_after_test(self):
-        source = (Path(__file__).parents[1] / "carendmr" / "ui" / "main_window.py").read_text(encoding="utf-8")
-        self.assertIn('self.microphone_level_var.set(float(self.microphone_peak_var.get()))', source)
-        self.assertIn('self.microphone_test_button.configure(text="Test stoppen")', source)
-        self.assertIn('from_=0, to=100', source)
 
 
 if __name__ == "__main__":

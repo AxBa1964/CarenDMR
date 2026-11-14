@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from carendmr.qrz.service import QrzConfig, QrzNotFound, parse_callsign_profile
+from _ui_sources import main_window_source
 
 
 SAMPLE_XML = b"""<?xml version="1.0"?>
@@ -67,7 +68,7 @@ class Qrz02146Tests(unittest.TestCase):
         self.assertIn("*.local.json", source)
 
     def test_main_window_only_shows_qrz_button_after_found_profile(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn('self.qrz_button = QPushButton("QRZ.com", station_card)', source)
         self.assertIn("setRetainSizeWhenHidden(True)", source)
         self.assertIn("self.qrz_button.setVisible(profile is not None)", source)

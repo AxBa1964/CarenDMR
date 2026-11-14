@@ -1,5 +1,6 @@
 from pathlib import Path
 import unittest
+from _ui_sources import main_window_source
 
 
 class TGMonitorIntegration02144Tests(unittest.TestCase):
@@ -14,13 +15,13 @@ class TGMonitorIntegration02144Tests(unittest.TestCase):
         self.assertIn("if not socket.waitForReadyRead(timeout_ms):", source)
 
     def test_main_menu_can_start_tg_monitor(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn('QAction("TG-Monitor starten", self)', source)
         self.assertIn("subprocess.Popen(", source)
         self.assertIn("[sys.executable, str(script)]", source)
 
     def test_main_window_checks_for_existing_monitor(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn("if is_tg_monitor_running():", source)
         self.assertIn("Der TG-Monitor läuft bereits.", source)
 

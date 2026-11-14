@@ -5,7 +5,6 @@ from threading import Event
 
 from carendmr.application.audio_send_service import AudioSendService
 from carendmr.audio import AudioDevice
-from carendmr.ui.main_window import MainWindow
 
 
 class MonitorBackend:
@@ -34,13 +33,6 @@ class MonitorBackend:
 
 
 class AudioCalibration02461Tests(unittest.TestCase):
-    def test_talkgroup_validation_accepts_only_digits(self):
-        self.assertFalse(MainWindow._validate_talkgroup_input(""))
-        self.assertTrue(MainWindow._validate_talkgroup_input("9990"))
-        self.assertFalse(MainWindow._validate_talkgroup_input("ABC"))
-        self.assertFalse(MainWindow._validate_talkgroup_input("91 "))
-        self.assertFalse(MainWindow._validate_talkgroup_input("123456789"))
-
     def test_local_monitor_applies_current_gain_without_network(self):
         backend = MonitorBackend()
         with tempfile.TemporaryDirectory() as directory:
@@ -50,13 +42,6 @@ class AudioCalibration02461Tests(unittest.TestCase):
             service.monitor_microphone_until(Event(), level_callback=levels.append)
         self.assertTrue(backend.called)
         self.assertEqual([10.0, 20.0], levels)
-
-    def test_ui_exposes_local_microphone_test(self):
-        source = (Path(__file__).parents[1] / "carendmr" / "ui" / "main_window.py").read_text(encoding="utf-8")
-        self.assertIn('text="Mikrofon testen (10 s)"', source)
-        self.assertIn('Lokaler Mikrofontest läuft – keine Funkübertragung.', source)
-        self.assertIn('validatecommand=talkgroup_vcmd', source)
-        self.assertIn('self._force_stop_transmit(reason="Reiterwechsel")', source)
 
 
 if __name__ == "__main__":

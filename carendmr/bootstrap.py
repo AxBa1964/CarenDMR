@@ -13,15 +13,25 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from carendmr.accessibility.hotkeys import HotkeyManager
+from carendmr.adif_udp import AdifUdpService
 from carendmr.application import (
     AudioSendService,
     ConnectionManager,
     EncoderService,
     EventService,
+    FavoriteService,
+    LocalAudioLabService,
     OperatingController,
     ParrotTestService,
+    QsoRecordingService,
     ReceiveService,
+    TalkgroupCatalogService,
+    TalkgroupSearchService,
 )
+from carendmr.application.station_settings_service import StationSettingsService
+from carendmr.benchmark import AudioBenchmarkService
+from carendmr.qrz import QrzLogbookService, QrzLookupService
 
 
 @dataclass(frozen=True)
@@ -82,4 +92,51 @@ def build_radio_core(project_root: Path, *, audio_backend=None) -> RadioCore:
         parrot_service=parrot_service,
         connection_manager=connection_manager,
         controller=controller,
+    )
+
+
+@dataclass(frozen=True)
+class DesktopServices:
+    """Zusatzdienste der Desktop-Oberfläche rund um den Funkkern.
+
+    QRZ, Logbuch, ADIF, Favoriten, Talkgroup-Verzeichnis, Hotkeys, Mitschnitt,
+    Audio-Labor und Benchmark werden hier statt im Hauptfenster erzeugt.
+    """
+
+    station_settings: StationSettingsService
+    local_audio_lab: LocalAudioLabService
+    qso_recording: QsoRecordingService
+    qrz_lookup: QrzLookupService
+    qrz_logbook: QrzLogbookService
+    adif_udp: AdifUdpService
+    hotkeys: HotkeyManager
+    favorites: FavoriteService
+    talkgroup_search: TalkgroupSearchService
+    talkgroup_catalog: TalkgroupCatalogService
+    audio_benchmark: AudioBenchmarkService
+
+
+def build_desktop_services(core: RadioCore) -> DesktopServices:
+    """Setzt die Desktop-Zusatzdienste für einen bestehenden Funkkern zusammen."""
+    root = core.project_root
+    config = root / "config"
+    local_audio_lab = LocalAudioLabService(root, core.audio_send_service, core.encoder_service)
+    qso_recording = QsoRecordingService(root)
+    # Gesendetes Audio landet auch im QSO-Mitschnitt.
+    core.audio_send_service.set_tx_pcm_observer(qso_recording.add_tx)
+    favorites = FavoriteService(config / "favorites.local.json")
+    talkgroup_search = TalkgroupSearchService(config / "talkgroups.json")
+    talkgroup_search.set_favorites(favorites.favorites)
+    return DesktopServices(
+        station_settings=StationSettingsService(root),
+        local_audio_lab=local_audio_lab,
+        qso_recording=qso_recording,
+        qrz_lookup=QrzLookupService(config / "qrz.local.json"),
+        qrz_logbook=QrzLogbookService(config / "qrz_logbook.local.json"),
+        adif_udp=AdifUdpService(config / "adif_udp.local.json"),
+        hotkeys=HotkeyManager(config / "hotkeys.local.json"),
+        favorites=favorites,
+        talkgroup_search=talkgroup_search,
+        talkgroup_catalog=TalkgroupCatalogService(config / "talkgroups.json"),
+        audio_benchmark=AudioBenchmarkService(root, contact_lookup=core.receive_service.contacts.lookup),
     )

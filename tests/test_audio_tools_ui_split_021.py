@@ -1,8 +1,9 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 
 def test_main_window_uses_separate_audio_tool_windows():
-    source = Path('carendmr/ui_qt/main_window.py').read_text(encoding='utf-8')
+    source = main_window_source()
     assert 'self.tabs.addTab(self.audio_benchmark_widget, "Audio-Benchmark")' not in source
     assert 'AudioBenchmarkWindow' in source
     assert 'AudioCoachWindow' in source

@@ -6,9 +6,10 @@ from threading import Event
 from carendmr.application.operating_controller import OperatingController
 from carendmr.application.radio_state_machine import RadioState
 from carendmr.domain.models import ApplicationState, ConnectionState
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
-MAIN = (ROOT / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
+MAIN = main_window_source()
 WAIT = 2.0
 
 

@@ -1,8 +1,9 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 
 def test_layout_v1_keeps_existing_controls_and_dark_theme():
-    source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
+    source = main_window_source()
     for token in (
         'self.tg_edit = TalkgroupSearchWidget(',
         'self.ts1_radio = QPushButton("TS1")',
@@ -18,7 +19,7 @@ def test_layout_v1_keeps_existing_controls_and_dark_theme():
 
 def test_layout_uses_central_theme():
     root = Path(__file__).parents[1]
-    source = (root / 'carendmr' / 'ui_qt' / 'main_window.py').read_text(encoding='utf-8')
+    source = main_window_source()
     theme = (root / 'carendmr' / 'ui_qt' / 'theme.py').read_text(encoding='utf-8')
     assert 'from carendmr.ui_qt.theme import apply_theme' in source
     assert 'QFrame#headerCard, QFrame#card' in theme

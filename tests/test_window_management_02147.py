@@ -1,5 +1,6 @@
 from pathlib import Path
 import unittest
+from _ui_sources import main_window_source
 
 
 class WindowManagement02147Tests(unittest.TestCase):
@@ -11,18 +12,18 @@ class WindowManagement02147Tests(unittest.TestCase):
         self.assertIn("ensure_visible", source)
 
     def test_main_menu_contains_window_management(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn('self.menuBar().addMenu("Fenster")', source)
         self.assertIn('"Alle Fenster nach vorne"', source)
         self.assertIn('"Alle Zusatzfenster schließen"', source)
         self.assertIn('"Fensterpositionen zurücksetzen"', source)
 
     def test_qrz_uses_shared_geometry_key(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn('self.window_geometry.register("qrz_station", self._qrz_window)', source)
 
     def test_other_auxiliary_windows_are_registered(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         for key in ("settings", "audio_benchmark", "audio_coach", "audio_tuner"):
             self.assertIn(f'self.window_geometry.register("{key}"', source)
 
@@ -35,7 +36,7 @@ class WindowManagement02147Tests(unittest.TestCase):
         self.assertIn("send_tg_monitor_command", control)
 
     def test_main_window_can_activate_external_monitor(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn('send_tg_monitor_command("activate")', source)
         self.assertIn('send_tg_monitor_command("close")', source)
 

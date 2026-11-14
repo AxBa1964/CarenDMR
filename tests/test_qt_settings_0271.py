@@ -1,4 +1,5 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 
 def test_settings_contains_hotkey_management():
@@ -9,7 +10,7 @@ def test_settings_contains_hotkey_management():
 
 
 def test_operation_contains_restored_information():
-    source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
+    source = main_window_source()
     for label in ("Ort / Region", "Land", "Empfang", "Letztes Ereignis"):
         assert label in source
     assert "_reload_hotkeys" in source

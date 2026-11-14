@@ -3,6 +3,7 @@ from pathlib import Path
 import ast
 
 from carendmr.qrz.logbook import build_dmr_adif, QrzLogbookConfig
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,7 +38,7 @@ def test_logbook_key_is_local_only(tmp_path):
     assert '*.local.json' in read('.gitignore')
 
 def test_gui_requires_manual_confirmation_and_records_logid():
-    text=read('carendmr/ui_qt/main_window.py')
+    text=main_window_source()
     history=read('carendmr/ui_qt/history_widget.py')
     assert 'Bei QRZ loggen' in history
     assert 'QSO bei QRZ.com loggen' in text
@@ -53,7 +54,7 @@ def test_settings_have_logbook_activation_and_key():
     assert 'qrz_logbook.local.json' in text
 
 def test_qso_none_path_has_no_recursion_regression():
-    text=read('carendmr/ui_qt/main_window.py')
+    text=main_window_source()
     start=text.index('    def _update_current_qso_status')
     end=text.index('    def _mark_current_station_worked', start)
     method=text[start:end]

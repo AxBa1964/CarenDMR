@@ -1,8 +1,9 @@
 from pathlib import Path
 
 from carendmr.accessibility.hotkeys import DEFAULT_HOTKEYS, REQUIRED_HOTKEYS, HotkeyManager
+from _ui_sources import main_window_source
 
-MAIN = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+MAIN = main_window_source()
 SETTINGS = Path("carendmr/ui_qt/settings_dialog.py").read_text(encoding="utf-8")
 
 

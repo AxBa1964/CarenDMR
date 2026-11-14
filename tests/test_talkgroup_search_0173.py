@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from carendmr.application import TalkgroupSearchService
+from _ui_sources import main_window_source
 
 
 def _service(tmp_path: Path) -> TalkgroupSearchService:
@@ -42,7 +43,7 @@ def test_invalid_catalog_entries_are_skipped(tmp_path: Path) -> None:
 
 
 def test_main_window_uses_live_talkgroup_search() -> None:
-    source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    source = main_window_source()
     assert "TalkgroupSearchWidget" in source
     assert 'setPlaceholderText("Talkgroup nach Nummer oder Name suchen")' in source
     assert "channel_selected.connect(self._apply_selected_channel)" in source

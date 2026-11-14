@@ -3,6 +3,7 @@ from pathlib import Path
 
 from carendmr.application import FavoriteService
 from carendmr.domain import DmrChannel, FavoriteChannel
+from _ui_sources import main_window_source
 
 
 def test_favorite_uses_custom_name_and_keeps_standard_name() -> None:
@@ -35,8 +36,10 @@ def test_json_export_and_import_avoids_duplicates(tmp_path: Path) -> None:
 
 
 def test_main_window_integrates_favorites() -> None:
-    source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
-    assert 'FavoriteService(self.project_root / "config" / "favorites.local.json")' in source
+    source = main_window_source()
+    bootstrap = Path("carendmr/bootstrap.py").read_text(encoding="utf-8")
+    assert 'FavoriteService(config / "favorites.local.json")' in bootstrap
+    assert "self.favorite_service = self.services.favorites" in source
     assert 'self.tabs.addTab(self.favorites_widget, "Talkgroups")' in source
     assert 'self.favorite_button = QPushButton("☆")' in source
     assert "manual_row.addWidget(self.favorite_button)" in source

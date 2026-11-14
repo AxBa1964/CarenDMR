@@ -1,7 +1,8 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
-MAIN = (ROOT / "carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+MAIN = main_window_source()
 
 
 def test_radio_flag_descriptions_are_short_and_not_duplicated():

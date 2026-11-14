@@ -1,5 +1,6 @@
 from pathlib import Path
 import unittest
+from _ui_sources import main_window_source
 
 class FavoriteDragDrop02137Tests(unittest.TestCase):
     def test_only_favorites_are_draggable_and_order_is_persisted(self):
@@ -15,7 +16,7 @@ class FavoriteDragDrop02137Tests(unittest.TestCase):
         self.assertIn("favorite_for(c).position if favorite_for(c) is not None else 999999", source)
 
     def test_tx_is_visibly_taller_downwards(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn("self.ptt_button.setMinimumHeight(150)", source)
         self.assertIn("self.ptt_button.setMaximumHeight(150)", source)
         self.assertIn('self.ptt_button.setText(f"TX   {self._tx_elapsed_seconds} s")', source)

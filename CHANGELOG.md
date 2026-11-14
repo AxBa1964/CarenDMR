@@ -1,3 +1,15 @@
+# Changelog
+
+## 0.2.1.87 – Architektur-Umbau abgeschlossen (Refactoring Schritte 4–6)
+
+- Desktop-Zusatzdienste (QRZ-Abfrage, QRZ-Logbook, ADIF-UDP, Hotkeys, Favoriten, Talkgroup-Verzeichnis, QSO-Mitschnitt, Audio-Labor, Benchmark) entstehen in `bootstrap.py` (`build_desktop_services`) statt im Hauptfenster.
+- Neu: `StationSettingsService` (BrandMeister-Stationseinstellungen) und `diagnostics_service` (Timing-Log, Diagnoseschalter). Hauptfenster und Einstellungsdialog greifen nicht mehr direkt auf BrandMeister-Konfiguration und Diagnosemodul zu.
+- `main_window.py` von rund 2.450 auf rund 1.000 Zeilen verkleinert: Funkbetrieb, Kanalwahl/Favoriten, Audio, Logbuch/QRZ und Fensterverwaltung liegen unverändert in eigenen Modulen (`main_window_*.py`).
+- Tkinter-Oberfläche (`carendmr/ui`, `--gui-tk`) und zugehörige Tests entfernt; Tests mit gemischtem Inhalt behalten ihre nicht-Tk-Teile.
+- Quelltext-Tests lesen das Hauptfenster über `tests/_ui_sources.py`; neue Strukturtests sichern die Aufteilung ab.
+- Dokumentation aktualisiert: `docs/ARCHITECTURE.md`, `ROADMAP.md`, `RELEASE_INFO.md`, ADR-0018 bis ADR-0020; Changelog-Überschriften vereinheitlicht.
+- Funk-, Audio- und TX-Verhalten unverändert.
+
 ## 0.2.1.86 – Hauptfenster über OperatingController (Refactoring Schritt 3)
 
 - Das Hauptfenster verbindet, trennt und sendet jetzt über den `OperatingController` (`connect_async`, `disconnect_async`, `start_ptt`, `stop_ptt`) – genau wie die Easy-Oberfläche.
@@ -22,14 +34,13 @@
 - Testsuite: `pytest` ist Standard (ein Teil der Tests wird von `unittest discover` nicht gefunden), veraltete Tests auf den aktuellen Stand gebracht, Versions-Pin-Tests durch einen Formattest ersetzt.
 - Audio-Benchmark schließt seine SQLite-Verbindungen jetzt zuverlässig (unter Windows blieb die Datenbankdatei sonst gesperrt).
 
-## 0.2.1.64 – RX-Grundpegel +12 dB
-
 ## 0.2.1.68
 
 - macOS/Windows MD380-Dynarmic-Build wieder reproduzierbar: der benötigte `native/md380_dynarmic_build/CMakeLists.txt`-Wrapper gehört jetzt zum Projekt.
 - `.gitignore` ignoriert nur noch die erzeugten `out*`-Verzeichnisse statt des gesamten CMake-Wrapperordners.
 - Das macOS-Buildskript prüft den Wrapper vor dem Build und meldet ein unvollständiges Projektpaket ausdrücklich.
 
+## 0.2.1.64 – RX-Grundpegel +12 dB
 
 - Fester RX-Grundgain Faktor 4 (+12 dB) nach AGC bzw. vor der PCM16-Ausgabe.
 - RX 100 % ergibt damit Faktor 4 gegenüber dem rohen AMBE/mbelib-PCM.
@@ -58,8 +69,6 @@
 - Easy: transienter Status „Verbindung getrennt“ während des Aufbaus wird nicht mehr angekündigt.
 - Easy: Verbinden/PTT reagieren zusätzlich zuverlässig auf Enter.
 - Funkkern unverändert.
-
-# Changelog
 
 ## 0.2.1.56 – Easy-Oberfläche Stufe 1
 
@@ -475,7 +484,6 @@
 - DEPLOY auf den aktuellen Entwicklungs- und Offline-Hörtest reduziert.
 - Keine Änderung am Funk- oder Audiopfad.
 
-
 ## 0.2.1.12 – AMBE Codec Lab
 
 - Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
@@ -555,8 +563,6 @@
 - Die gewählte Fensterdauer und TX-Dauer werden in `logs/tx_rx_timing.log` protokolliert.
 - Keine Änderungen an GUI, Audio Coach oder allgemeiner Funkarchitektur.
 
-# Changelog
-
 ## 0.2.1.12 – AMBE Codec Lab
 
 - Neuer Offline-Test `tools/ambe_codec_lab.py`: kein BrandMeister, kein TX und kein Parrot erforderlich.
@@ -597,8 +603,6 @@
 - Persistenz unter `comparisons/` und `latest_comparison.json`.
 - Keine automatische Änderung produktiver Audioeinstellungen.
 
-# Änderungsverlauf
-
 ## 0.1.9.4 – Benannte Audio-Referenzen
 
 - bestehende TG91-Benchmarkdaten werden beim ersten Start einmalig nach `data/audio_benchmarks/references/TG91_Global/` migriert
@@ -608,8 +612,6 @@
 - Metadaten werden nach jeder Analyse mit Stationen, gültigen QSOs und Sprachzeit aktualisiert
 - keine Messdaten werden verworfen oder neu berechnet
 
-# Änderungsprotokoll
-
 ## 0.1.9.3
 
 - Referenz-Engine mit SQLite-Persistenz eingeführt.
@@ -618,8 +620,6 @@
 - Neue direkt einstellungsrelevante Kennzahlen: aktive Sprachlautheit, Bass, Sprachmitten, Präsenz, Höhen, Sprechpausen und Pegelstabilität.
 - Referenzreife, gültige Sprachzeit, QSO-Anzahl und Qualitätsindex werden live angezeigt.
 - Rohfälle liegen in `data/audio_benchmarks/benchmark.db`; `reference.json` enthält die aktuelle TG-Referenz.
-
-# Changelog
 
 ## 0.2.1.12 – AMBE Codec Lab
 
@@ -647,14 +647,13 @@
 - RX-Ereignisse, PCM-Daten und Benchmark-Anzeige verwenden dadurch wieder denselben Datenstrom.
 - Regressionstest gegen eine erneute Trennung von Widget und RX-Service ergänzt.
 
-
 ## 0.1.9.3
 
 - Audio-Benchmark erkennt wiederholte Voice-Aktivitätsmeldungen desselben Streams korrekt und zerlegt einen Sprechdurchgang nicht mehr in Einzelpakete.
 - Aktuelle Station, laufende Sprechdauer und Analysewarteschlange werden live angezeigt.
 - Fremde oder verspätete Stream-Ende-Ereignisse können den aktiven Testfall nicht mehr beenden.
 
-# 0.1.9.1.2 – RX-Initialisierung für den ersten Parrot-Test
+## 0.1.9.1.2 – RX-Initialisierung für den ersten Parrot-Test
 
 - RX-Ausgabe, Decoder, Jitterpuffer und Audio-Queue werden vor dem ersten TX vollständig initialisiert.
 - Vor jeder Parrot-Rückantwort wird der RX-Streamzustand deterministisch zurückgesetzt.
@@ -662,13 +661,13 @@
 - Neue Timeline-Marken dokumentieren RX-Initialisierung, RX-Bereitschaft und Streamstart.
 - Regressionstests sichern den ersten Parrot-Empfang nach Programmstart ab.
 
-# 0.1.9.1.1 – Parrot-Vorbereitung auf TS2 korrigiert
+## 0.1.9.1.1 – Parrot-Vorbereitung auf TS2 korrigiert
 
 - „Parrot vorbereiten“ setzt nun TG 9990, TS2 und Privatruf.
 - Der Audio-Assistent verwendet dieselbe zentrale Parrot-Vorbereitung.
 - Regressionstest verhindert eine erneute Umstellung auf TS1.
 
-# 0.1.9.1.1 – DMR Audio-Tuner V1
+## 0.1.9.1.1 – DMR Audio-Tuner V1
 
 - Ausklappbarer Live-Audio-Tuner direkt auf der Betriebsseite.
 - Profile Neutral, Klar, DX, Warm und Eigene.
@@ -679,7 +678,7 @@
 - „Audio-Assistent“ startet den passiven geführten Audio-Test und bereitet Parrot vor.
 - Neutral bleibt die unveränderte Referenz für A/B-Vergleiche.
 
-# 0.1.9.1.1 – Audioqualität
+## 0.1.9.1.1 – Audioqualität
 
 - Dezente, zustandsbehaftete DMR-Sprachaufbereitung im Live-TX-Pfad.
 - 100-Hz-Hochpass gegen Gleichanteile und tieffrequentes Rumpeln.
@@ -735,7 +734,6 @@
 - Ursache: `loopback_errors` wurde in der lokalen Funktion `drain()` verändert, aber nicht als `nonlocal` deklariert.
 - Codec-Loopback, normaler TX und Parrot-Test können wieder starten.
 
-
 ## 0.1.8.4 – Audio Pipeline Analyzer
 
 - Codec-Loopback ergänzt: jedes gesendete AMBE-Codewort wird lokal sofort wieder dekodiert.
@@ -753,7 +751,7 @@
 - Der Mikrofon-Ringpuffer bleibt bis PTT ausschließlich im RAM.
 - Ressourcen werden bei Abbruch und Programmende kontrolliert beendet; halb initialisierte WAV-Schreiber werden vermieden.
 
-# 0.1.8.0 – Audio-Labor und Qualitätsdiagnose
+## 0.1.8.0 – Audio-Labor und Qualitätsdiagnose
 
 - TX-Messpunkte: Mikrofon roh, nach Mic-Gain, vor AMBE und AMBE-Rohframes.
 - RX-Messpunkte: nach AMBE-Decoder und nach RX-Gain/AGC direkt vor Lautsprecher.
@@ -761,7 +759,7 @@
 - Analyse als JSON und HTML; Wellenform, Spektrum und Spektrogramm bei installiertem Matplotlib.
 - Getrennte Sitzungsordner unter logs/audio_lab.
 
-# CarenDMR 0.1.8.0 – Talkgroup-Metadaten und Favoritenbedienung
+## CarenDMR 0.1.8.0 – Talkgroup-Metadaten und Favoritenbedienung
 
 - Im Dialog **DMR-Kanal bearbeiten** kann der Favoritenstatus direkt gesetzt oder entfernt werden.
 - Schaltflächen sind deutsch beschriftet und kompakter dimensioniert.
@@ -771,7 +769,7 @@
 - Textsuche berücksichtigt zusätzlich Land und Sprache.
 - Die Sprachangabe ist ausdrücklich eine abgeleitete, wahrscheinliche Betriebssprache; persönliche Favoritendaten bleiben unverändert.
 
-# CarenDMR 0.1.7.4.2 – Weltweites Talkgroup-Verzeichnis
+## CarenDMR 0.1.7.4.2 – Weltweites Talkgroup-Verzeichnis
 
 - Reiter **Favoriten** heißt jetzt **Talkgroups** und zeigt die vollständige gemeinsame Kanalliste.
 - Favoriten sind Sterne innerhalb dieser Gesamtliste, keine separate Datenquelle.
@@ -780,7 +778,7 @@
 - Persönliche Namen, Notizen, TS, Rufart und Reihenfolge bleiben lokal erhalten.
 - Die Betriebssuche und der Reiter Talkgroups verwenden exakt dieselbe Datenbasis.
 
-# CarenDMR 0.1.7.4.2 – Einheitliche DMR-Kanalquelle
+## CarenDMR 0.1.7.4.2 – Einheitliche DMR-Kanalquelle
 
 - Talkgroup-Suche und Favoriten verwenden nun dieselbe zusammengeführte Kanalliste.
 - Favoriten sind Metadaten eines DMR-Kanals statt einer getrennten Auswahlwelt.
@@ -791,7 +789,7 @@
 - Der kleine Stern steht direkt links vor dem Talkgroup-Suchfeld.
 - Favoriten-Reiter, Drag-and-drop, Tastatursortierung sowie Import/Export bleiben erhalten.
 
-# CarenDMR 0.1.7.4.2 – DMR-Kanal-Favoriten
+## CarenDMR 0.1.7.4.2 – DMR-Kanal-Favoriten
 
 - Favoriten-Combobox und Stern direkt im Bereich „DMR-Kanal“.
 - Der aktuelle Kanal kann mit vorbelegtem Standardnamen als Favorit gespeichert und persönlich umbenannt werden.
@@ -803,14 +801,14 @@
 - Persönliche Namen und Notizen bleiben getrennt vom offiziellen Talkgroup-Verzeichnis.
 - Persistenz in `config/favorites.local.json`.
 
-# CarenDMR 0.1.7.3.8 – Gespeicherten Talkgroup-Namen wiederherstellen
+## CarenDMR 0.1.7.3.8 – Gespeicherten Talkgroup-Namen wiederherstellen
 
 - Beim Programmstart wird der Name der zuletzt gespeicherten bekannten Talkgroup erneut aus dem lokalen Verzeichnis aufgelöst.
 - TG, Timeslot, Rufart und Name werden über den zentralen DMR-Kanalpfad gemeinsam wiederhergestellt.
 - Unbekannte TGs und private DMR-IDs bleiben ohne erfundenen Namen.
 - Regressionstest sichert den Neustart mit bekanntem Talkgroup-Namen ab.
 
-# CarenDMR 0.1.7.3.8 – Zentrale DMR-Kanalübernahme
+## CarenDMR 0.1.7.3.8 – Zentrale DMR-Kanalübernahme
 
 - Talkgroup-Name bleibt nach Enter-Übernahme aus der Suchliste sichtbar.
 - Suchtextänderungen verändern den Namen der bereits übernommenen aktuellen TG nicht mehr.
@@ -819,7 +817,7 @@
 - Laufende Statusaktualisierungen lösen den bekannten Talkgroup-Namen erneut auf.
 - Regressionstests sichern den Fehler dauerhaft ab.
 
-# CarenDMR 0.1.7.3.6 – Talkgroup-Name bei aktueller TG
+## CarenDMR 0.1.7.3.6 – Talkgroup-Name bei aktueller TG
 
 - Der bekannte Name des aktuell gewählten DMR-Kanals steht jetzt direkt unter „Aktuelle TG“.
 - Die bisherige Namenszeile unter dem Suchfeld wurde entfernt.
@@ -827,7 +825,7 @@
 - Bei unbekannter TG bleibt die Namenszeile leer.
 - Funklogik, Suche, Enter-Verhalten und Pflicht-Hotkeys bleiben unverändert.
 
-# CarenDMR 0.1.7.3.4 – Enter-Shortcut-Konflikt behoben
+## CarenDMR 0.1.7.3.4 – Enter-Shortcut-Konflikt behoben
 
 - Globale Return-/Enter-Shortcuts im Hauptfenster entfernt.
 - Enter erreicht dadurch wieder die lokale Talkgroup-Suche und übernimmt den markierten Treffer.
@@ -835,8 +833,7 @@
 - Buttons verwenden ihr natives Qt-Tastaturverhalten; Pflicht-Hotkeys F5, F6, F7 und Space bleiben unverändert.
 - Regressionstest verhindert eine erneute globale Bindung von Return/Enter.
 
-# CarenDMR 0.1.7.3.4 – Talkgroup-Suche Enter-Übernahme zuverlässig
-
+## CarenDMR 0.1.7.3.4 – Talkgroup-Suche Enter-Übernahme zuverlässig
 
 - Enter wird bereits auf der allgemeinen Qt-Event-Ebene abgefangen und übernimmt den markierten Treffer zuverlässig.
 - Die markierte Trefferzeile wird unabhängig vom Fokuszustand des Popups intern nachgeführt.
@@ -851,7 +848,7 @@
 - Escape schließt die Liste, erhält den Suchtext und lässt den Fokus im Talkgroup-Feld.
 - Keine automatische Verbindung; F5 bleibt der bewusste Verbindungsbefehl.
 
-# CarenDMR 0.1.7.2 – DMR-Kanal V1
+## CarenDMR 0.1.7.2 – DMR-Kanal V1
 
 - Bereich „Funkziel“ auf der Betriebsseite in „DMR-Kanal“ umbenannt.
 - Eingabefeld fachlich einheitlich als „Talkgroup“ bezeichnet.
@@ -859,7 +856,7 @@
 - Modell ist bereits für Namen, Land und Beschreibung des späteren TG-Verzeichnisses vorbereitet.
 - Keine Änderung an Funklogik, Hotkeys, Fokusfolge oder Verbindungsvorgang.
 
-# CarenDMR 0.1.7.1 – Betriebsanzeigen V1
+## CarenDMR 0.1.7.1 – Betriebsanzeigen V1
 
 - Nicht klickbare LED-/Displayanzeige für Getrennt, Verbindet, Empfang, Senden und Fehler.
 - Sichtbares MIC-/TX-Pegelmeter mit Peak-Hold.
@@ -868,7 +865,7 @@
 - Der AMBE-Bereitschaftstext wurde von der Betriebsseite entfernt; Codec-Prüfung bleibt unter Einstellungen → Codec / Decoder.
 - Hotkeys, Tab-Reihenfolge, PTT-Vorlauf, AudioCue und Funklogik bleiben unverändert.
 
-# CarenDMR 0.1.6.8 – TS/RA Keyboard Workflow Final
+## CarenDMR 0.1.6.8 – TS/RA Keyboard Workflow Final
 
 - Timeslot und Rufart bleiben sichtbar und per Maus bedienbar.
 - Beide Statusgruppen sind aus der Tab-Reihenfolge entfernt.
@@ -877,7 +874,7 @@
 - F6/F7 beziehungsweise die individuell belegten Tasten erzeugen genau eine kurze Fachansage.
 - Verbinden, PTT, Timeslot und Rufart sind Pflicht-Hotkeys und können nicht gelöscht werden.
 
-# CarenDMR 0.1.6.7 – AudioCue Initialisierungsfix
+## CarenDMR 0.1.6.7 – AudioCue Initialisierungsfix
 
 - Startabsturz behoben: `AudioCuePlayer` verwendet den bereits initialisierten `AudioSendService`.
 - Keine Installationsänderung erforderlich.
@@ -885,7 +882,7 @@
 
 ---
 
-# CarenDMR 0.1.6.6 – Field-Test Audio & Accessibility Final
+## CarenDMR 0.1.6.6 – Field-Test Audio & Accessibility Final
 
 - Programmstart setzt den Fokus direkt auf „Neue Talkgroup“.
 - Timeslot und Rufart haben kurze Accessibility-Namen ohne zusätzliche Hilfetexte.
@@ -895,8 +892,7 @@
 - Nach sicher beendetem TX erklingen zwei kurze lokale End-Beeps.
 - Quittungstöne werden über das gewählte Wiedergabegerät abgespielt und gelangen nicht in den Mikrofon-/Sendepfad.
 
-# CarenDMR 0.1.6.6 – Accessibility Field-Test Polish
-
+## CarenDMR 0.1.6.6 – Accessibility Field-Test Polish
 
 ## Accessibility Field-Test Polish
 
@@ -910,7 +906,6 @@
 
 - Der getrennte Initialzustand mit der historischen Default-TG 91 überschreibt nicht mehr die aus `config/operating.local.json` geladene letzte Talkgroup.
 - TG, Timeslot und Rufart erscheinen nach einem Neustart wieder exakt wie vor dem Beenden.
-
 
 - Letzte Talkgroup, Timeslot und Rufart werden dauerhaft gespeichert und beim Start geladen.
 - F6/F7 sowie Mausklicks speichern TS und Rufart unmittelbar.
@@ -926,7 +921,7 @@
 - eigener lokaler 880-Hz-Funkton statt Windows-Systemton
 - tatsächlicher TX startet erst nach vollständig abgespieltem Startton
 
-# CarenDMR 0.1.6.1 – Radio Controls Polish
+## CarenDMR 0.1.6.1 – Radio Controls Polish
 
 - TS1/TS2 und Gruppe/Privat sind jetzt normale, nicht checkbare Segment-Schaltflächen. Dadurch meldet der Screenreader keine Checkbox-/Kontrollkästchen-Rolle mehr.
 - CarenDMR verwaltet die Auswahl intern und kennzeichnet den aktiven Segment-Schalter nur optisch sowie mit einem kurzen fachlichen AccessibleName.
@@ -937,7 +932,7 @@
 - Bei aktivem nativen Accessibility-System ertönt nach dem eingestellten PTT-Vorlauf ein kurzer lokaler Signalton. Erst 150 ms danach werden Mikrofon und DMR-TX gestartet; der Ton gelangt nicht in den Sendepfad.
 - Funkkern, F5/F6/F7, Space, Audio, QSO-Historie und bestehende Konfiguration bleiben unverändert.
 
-# CarenDMR 0.1.5.0 – Radio Workflow
+## CarenDMR 0.1.5.0 – Radio Workflow
 
 - PTT-Bedienung auf kurze Funkbegriffe umgestellt: `TX` im Empfang und `RX` während einer laufenden Sendung.
 - Bei aktivem nativen Accessibility-System wartet CarenDMR 1,2 Sekunden, bevor Mikrofon und DMR-TX tatsächlich starten. Dadurch kann Narrator/VoiceOver die kurze `RX`-Ansage beenden, bevor die Aussendung beginnt.
@@ -947,7 +942,7 @@
 - Zweiter Druck während des Screenreader-Vorlaufs bricht den noch nicht gestarteten TX sauber ab.
 - Funkkern, Verbindung, Hotkeys, Tab-Reihenfolge, Einstellungen und QSO-Historie bleiben unverändert.
 
-# CarenDMR 0.1.3.5 – Funkorientierte Accessibility
+## CarenDMR 0.1.3.5 – Funkorientierte Accessibility
 
 - Eigene Ansagen während der TG-Eingabe vollständig entfernt.
 - Keine zusätzlichen Accessibility-Ereignisse mehr für einzelne Ziffern oder Backspace.
@@ -955,7 +950,7 @@
 - Beim Verbinden wird der tatsächlich im Feld stehende Wert genau einmal ziffernweise als neue Talkgroup bestätigt.
 - Funklogik, Layout, Hotkeys und Tab-Reihenfolge unverändert.
 
-# CarenDMR 0.1.3.2 – Accessibility-Ereigniskette bereinigt
+## CarenDMR 0.1.3.2 – Accessibility-Ereigniskette bereinigt
 
 - Verbindungsbutton bleibt während Aufbau/Trennung fokussierbar; kein Zwischenfokus auf Mic-Gain.
 - Keine gesprochenen Übergangsmeldungen für CONNECTING/DISCONNECTING.
@@ -963,7 +958,7 @@
 - Startkontext-Timer wird beim Verbindungsaufbau gestoppt, damit keine verspätete Vollansage dazwischenfunkt.
 - Wiederholte State-Updates erzeugen keine zusätzlichen Ansagen.
 
-# CarenDMR 0.1.3.1.1 – Accessibility Workflow Fix
+## CarenDMR 0.1.3.1.1 – Accessibility Workflow Fix
 
 - Native Qt-Ankündigungen über QAccessibleAnnouncementEvent.
 - Nach erfolgreichem F5-Verbinden springt der Fokus auf PTT.
@@ -977,14 +972,14 @@
 - Keine eigene Desktop-TTS; Narrator, NVDA, JAWS und VoiceOver bleiben für die Sprachausgabe zuständig.
 - Keine Änderung an Funklogik, Hotkeys, Tab-Reihenfolge oder sichtbarem Layout.
 
-# CarenDMR 0.1.2.1 – Design-System-Fix
+## CarenDMR 0.1.2.1 – Design-System-Fix
 
 - Initialisierungsfehler im Hotkey-Reiter beim Öffnen der Einstellungen behoben.
 - Native Fokusrechtecke direkt um Reitertexte entfernt; gelber Fokus bleibt um das vollständige Bedienelement.
 - Statusanzeige und Verbindungsbutton semantisch getrennt: Status flacher, Aktion höher, beide bündig und gleich breit.
 - Keine Änderung an Funklogik, Hotkeys, Tab-Reihenfolge oder QSO-Historie.
 
-# CarenDMR 0.1.1 – Theme Engine & Accessibility
+## CarenDMR 0.1.1 – Theme Engine & Accessibility
 
 - Alle Qt-Farben und Grundstile zentral in `carendmr/ui_qt/theme.py`.
 - Dark Theme anwendungsweit auf Hauptfenster, Historie, Einstellungen und Dialoge angewendet.
@@ -993,7 +988,7 @@
 - Gelber, deutlich sichtbarer Fokusrahmen für Tastaturbedienung.
 - Bestehendes Layout, Tab-Reihenfolge, Hotkeys und Fachlogik unverändert.
 
-# CarenDMR 0.0.28.3 – Qt-Einstellungen Bedienkorrekturen
+## CarenDMR 0.0.28.3 – Qt-Einstellungen Bedienkorrekturen
 
 - Betriebsseite wieder für normale Fenstergröße verdichtet.
 - Mic-Gain und RX-Lautstärke stehen kompakt nebeneinander; Stumm und AGC bleiben direkt erreichbar.
@@ -1002,14 +997,14 @@
 - Vocoder-Plugins ohne klassische Dateiendung werden angezeigt und im Pluginordner automatisch erkannt.
 - Keine Änderungen an Funkbetrieb, QSO-Historie oder Bedienlogik.
 
-# CarenDMR 0.0.28.1
+## CarenDMR 0.0.28.1
 
 - Rekursion in der Tab-Behandlung der QSO-Historie behoben.
 - Tab verlässt die Tabelle jetzt über feste Fokusziele; Shift+Tab kehrt stabil zurück.
 - QSO-Status der aktuellen Station auf der Betriebsseite ergänzt.
 - Änderungen an „Gesprochen“ werden sofort zwischen Historie und Betrieb synchronisiert.
 
-# CarenDMR 0.0.28.0
+## CarenDMR 0.0.28.0
 
 - QSO-Historie als zweiter Qt-Hauptreiter portiert.
 - Vorhandene SQLite-Daten werden unverändert genutzt.
@@ -1017,8 +1012,6 @@
 - Tabellenbedienung mit Pfeiltasten sowie sauberem Tab-Ausstieg.
 - F8 Betrieb, F9 Historie und F11 QSO bestätigen angebunden.
 - Funkbetrieb und Einstellungen unverändert.
-
-# Changelog
 
 ## 0.2.1.12 – AMBE Codec Lab
 
@@ -1077,7 +1070,7 @@
 - Nach jeder Umschaltung folgt der Tabfokus weiterhin dem ausgewählten Wert.
 - Keine weiteren Funktions- oder Layoutänderungen.
 
-# CarenDMR 0.0.26.4 – Qt-Betrieb Stable Baseline
+## CarenDMR 0.0.26.4 – Qt-Betrieb Stable Baseline
 
 - Enter aktiviert den aktuell fokussierten Button.
 - Leertaste aktiviert einen fokussierten Button statt global PTT auszulösen.
@@ -1085,7 +1078,7 @@
 - Enter-Sonderbehandlung im TG-Eingabefeld entfernt.
 - Keine weiteren Funktions- oder Layoutänderungen.
 
-# CarenDMR 0.0.26.3 – F5-Verbindung und Talkgroup-Übernahme
+## CarenDMR 0.0.26.3 – F5-Verbindung und Talkgroup-Übernahme
 
 - F5 toggelt Verbinden und Trennen.
 - Beim Verbinden wird eine eingetragene neue Talkgroup zuerst übernommen.
@@ -1093,7 +1086,7 @@
 - Enter übernimmt die neue Talkgroup und fokussiert „Verbinden“.
 - Timeslot 1 und 2 sind echte Radiobuttons; F6 schaltet sichtbar um.
 
-# CarenDMR 0.0.26.3 – Qt-Betrieb: Hotkeys und Zustände
+## CarenDMR 0.0.26.3 – Qt-Betrieb: Hotkeys und Zustände
 
 - F5 setzt den Fokus in das Feld **Neue Talkgroup**.
 - Zwei-Felder-Bedienung: aktuelle TG als Anzeige, neue TG als leeres Eingabefeld.
@@ -1104,7 +1097,7 @@
 
 ---
 
-# CarenDMR 0.0.26.0 – Qt-Migration, Stufe 1: funktionaler Betrieb
+## CarenDMR 0.0.26.0 – Qt-Migration, Stufe 1: funktionaler Betrieb
 
 - Neuaufbau auf Basis der stabilen 0.0.25.2.
 - Funktionaler Qt-Betrieb statt Accessibility-Mock.
@@ -1114,7 +1107,7 @@
 - Keine eigene TTS und keine Screenreader-Sonderlogik in dieser Stufe.
 - 279 Tests und 20 Untertests bestanden.
 
-# 0.0.25.2
+## 0.0.25.2
 
 - TTS- und Fokus-Engine V2 mit dauerhaftem Windows-SAPI-Prozess.
 - Fokusmeldungen werden als vollständige atomare Sätze ausgegeben.
@@ -1122,20 +1115,19 @@
 - Geschlossener Tab-Kreis im Betrieb: Neue TG → Timeslot → Rufart → Connect → Neue TG.
 - Keine Änderungen an DMR-, Audio-, Verbindungs- oder State-Machine-Kern.
 
-# 0.0.25.1.2
+## 0.0.25.1.2
 
 - Talkgroup-Bedienung stabilisiert: aktuelle TG als Anzeige, separates leeres Feld „Neue TG“.
 - Neue TG wird nur bei Eingabe übernommen; leer verwendet weiterhin die aktuelle TG.
 - Fokusansagen für Timeslot und Rufart werden als vollständige, atomare Meldungen ausgegeben.
 - Tab-Reihenfolge, Enter-Connect und verzögerte RX-Freigabe bleiben unverändert.
 
-
 - Talkgroup wird beim Fokus vollständig markiert.
 - Fokusansagen für Timeslot und Rufart werden als vollständige Meldungen ausgegeben.
 - CONNECT ist per Enter und Ziffernblock-Enter auslösbar.
 - Keine weiteren Workflow- oder DMR-Änderungen.
 
-# 0.0.25.1
+## 0.0.25.1
 
 - Workflow V1 für Trennen, Einstellen und Verbinden.
 - Talkgroup nach Disconnect vollständig markiert.
@@ -1145,7 +1137,7 @@
 - Disconnect-TTS wird vollständig beendet, bevor der Fokus auf Talkgroup gesetzt wird.
 - TTS-Warteschlange wird bei Zustandswechseln bereinigt.
 
-# 0.0.25.0
+## 0.0.25.0
 
 - Zentrales `carendmr/ui/design_system.py` eingeführt.
 - Vier visuelle Elementklassen: Information, Eingabe, Auswahl und Aktion.
@@ -1158,7 +1150,7 @@
 - Serveradresse wird nur bei tatsächlicher Verbindung angezeigt.
 - Design-System-Regeln in `docs/DesignSystem.md` dokumentiert.
 
-# 0.0.24.6.5
+## 0.0.24.6.5
 
 - Zentrale `RadioStateMachine` mit den Zuständen `DISCONNECTED`, `CONNECTING`, `CONNECTED`, `TRANSMITTING`, `DISCONNECTING` und `ERROR`.
 - PTT-Freigabe, CONNECT/DISCONNECT und Editierbarkeit von TG, TS und Rufart werden nur noch aus diesem Zustand abgeleitet.
@@ -1167,7 +1159,7 @@
 - Technische RX-Zustände können die State Machine nach Thread-Ende oder Fehler wieder an die Realität angleichen.
 - Regressionstests für erlaubte und verbotene Zustandswechsel ergänzt.
 
-# 0.0.24.6.4
+## 0.0.24.6.4
 
 - TG-Wechsel-Schaltfläche aus dem Betriebsbereich entfernt.
 - Talkgroup, Timeslot und Rufart sind nur im getrennten Zustand editierbar.
@@ -1176,7 +1168,7 @@
 - Interne BrandMeister-RX-Wiederanmeldungen nach TX bleiben sprachlich stumm.
 - Talkgroups werden durch Caren Assist überall ziffernweise gesprochen.
 
-# 0.0.24.6.3
+## 0.0.24.6.3
 
 - Fokusumrandung deutlich verstärkt.
 - PTT global und unabhängig von Reiter/Fokus sicher beendet.
@@ -1185,8 +1177,6 @@
 - ConnectionManager bereinigt stale RX-Zustände vor Connect.
 - Verbindungsfehler werden in GUI und Ereignislog abgefangen.
 - Regressionstests für Fokus, PTT und stale RX ergänzt.
-
-# Changelog
 
 ## 0.2.1.12 – AMBE Codec Lab
 
@@ -1223,7 +1213,6 @@
 - Talkgroup-Eingabe auf Ziffern begrenzt.
 - Reiterwechsel beendet eine laufende PTT sicher.
 
-
 ## 0.0.24.5
 Qualitätssprint für kurze Sprachmeldungen, vereinfachten F2-Ablauf und zuverlässige Connect-/Disconnect-Audiofolge.
 
@@ -1236,7 +1225,7 @@ Qualitätssprint für kurze Sprachmeldungen, vereinfachten F2-Ablauf und zuverl�
 
 Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurierbaren Bedienfunktionen, Fokusansagen und Kontext-Hilfe.
 
-# 0.0.24.3.2 – Audio Manager V1
+## 0.0.24.3.2 – Audio Manager V1
 
 - Funk-Audio und Caren Assist werden erstmals koordiniert.
 - Vor TX spricht Caren Assist kurz „Senden“; die Mikrofonaufnahme startet erst nach Ende der Ansage plus 150 ms Reserve.
@@ -1246,7 +1235,7 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Veraltete TTS-Warteschlangeneinträge werden vor TX/RX-Ansagen verworfen.
 - DMR-, AMBE- und TX-Timingkern bleiben unverändert.
 
-# 0.0.24.3.1 – Caren Assist V1 und letzter Betriebszustand
+## 0.0.24.3.1 – Caren Assist V1 und letzter Betriebszustand
 
 - Erste abschaltbare, lokale Sprachausgabe für wichtige Betriebszustände.
 - TTS läuft über eine eigene Queue und blockiert weder GUI noch DMR-Kern.
@@ -1264,8 +1253,6 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Queue-Tiefe, Maximalwert und Warnschwellen bei 5, 20 und 50 Millisekunden.
 - Betrieb, QSO-Historie und Einstellungen setzen ihren Bedienkontext automatisch.
 - DMR-, Audio- und TX/RX-Kern unverändert.
-
-# Changelog
 
 ## 0.2.1.12 – AMBE Codec Lab
 
@@ -1326,8 +1313,6 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Verhindert Aliasanteile oberhalb des AMBE-Sprachbands.
 - PCM-Framebildung, AMBE-Encoder, DMR-Paketierung und TX/RX-Timing bleiben unverändert.
 - TX- und Parrot-RX-Diagnose-WAVs bleiben aktiv.
-
-# Changelog
 
 ## 0.2.1.12 – AMBE Codec Lab
 
@@ -1420,8 +1405,6 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - UI-Regressionstests für alle drei Hauptbereiche ergänzt.
 - DMR-Kern und Funkbetrieb unverändert.
 
-# Änderungsprotokoll
-
 ## 0.0.22.4 – Neue kompakte Einstellungen
 
 - Einstellungsbereich vollständig in das dunkle CarenDMR-Kartenlayout überführt.
@@ -1490,8 +1473,6 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Zeigt Decoder-Aufrufe, erzeugte PCM-Samples und Übergaben an die Audioausgabe.
 - Gibt alle fünf Sekunden sowie beim Beenden eine kompakte Empfangsstatistik aus.
 - Keine Änderung am BrandMeister-Protokoll, Aktivierungsruf oder Decoderverfahren.
-
-# Changelog
 
 ## 0.2.1.12 – AMBE Codec Lab
 
@@ -1566,7 +1547,6 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Fest verriegelter Parrot-Sprachtest: DMR-ID 9990, Privatruf, Timeslot 2.
 - Fünf Sekunden Mikrofonaufnahme, PCM→AMBE, einmalige DMRD-Übertragung und Echoempfang.
 - Harte Sendegrenze zehn Sekunden; keine freie Zielwahl und keine Gruppenrufe.
-
 
 ## 0.0.19.1 – DroidStar-Plugin-ABI unter Windows korrigiert
 
@@ -1801,12 +1781,11 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Lokales Standardprofil bleibt ohne Parameter unverändert.
 - 62 automatisierte Tests erfolgreich.
 
-# 0.0.7.1
+## 0.0.7.1
 
 - RPTC-Koordinatenformat bytegenau an DroidStar angepasst.
 - Regressionstest für das nicht-personale Koordinatenformat ergänzt.
 - Lokale Konfigurationsdateien werden nicht im Update-Paket ausgeliefert.
-
 
 ## 0.0.7 – BrandMeister-Login
 
@@ -1855,7 +1834,6 @@ Bedienungs- und Hotkey-Framework V1 mit geführtem Talkgroup-Wechsel, konfigurie
 - Der Test verändert `config/brandmeister.local.json` nicht und übernimmt daraus nur Zugangsdaten und Rufzeichen.
 - Referenzprofil mit nicht-personalen Testwerten für Beschreibung, URL,
   Software-/Package-ID und Koordinaten ergänzt.
-
 
 ## 0.0.19.5
 - Test2 als Referenzimplementierung integriert (tools/brandmeister_dynamic_receiver.py).

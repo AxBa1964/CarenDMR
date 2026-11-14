@@ -1,5 +1,6 @@
 from pathlib import Path
 import ast
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,7 +19,7 @@ def test_100_percent_preserves_reference_path():
     assert "min(1.0" in text
 
 def test_desktop_labels_are_tx_level():
-    text = read("carendmr/ui_qt/main_window.py")
+    text = main_window_source()
     assert 'setAccessibleName("TX-Pegel")' in text
     assert 'gain_caption = QLabel("TX-Pegel")' in text
     settings = read("carendmr/ui_qt/settings_dialog.py")

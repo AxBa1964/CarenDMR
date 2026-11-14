@@ -1,8 +1,9 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 
 def test_saved_channel_is_restored_with_known_name_on_startup() -> None:
-    source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    source = main_window_source()
     assert "self._restore_saved_dmr_channel()" in source
     assert "def _restore_saved_dmr_channel" in source
     method = source.split("def _restore_saved_dmr_channel", 1)[1].split("def _known_channel_for_target", 1)[0]

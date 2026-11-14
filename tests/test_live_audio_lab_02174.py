@@ -1,5 +1,6 @@
 from pathlib import Path
 import ast
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,9 +32,11 @@ def test_lab_keeps_four_run_comparison():
     assert "load_history(limit=4)" in text
 
 def test_main_window_has_lab_menu_and_service():
-    text = (ROOT / "carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    text = main_window_source()
     assert 'QAction("Live-Audiolabor …", self)' in text
     assert "def _open_audio_lab" in text
-    assert "self.local_audio_lab_service = LocalAudioLabService(" in text
+    assert "self.local_audio_lab_service = self.services.local_audio_lab" in text
+    bootstrap = (ROOT / "carendmr/bootstrap.py").read_text(encoding="utf-8")
+    assert "LocalAudioLabService(root, core.audio_send_service, core.encoder_service)" in bootstrap
     assert "self._audio_lab_window: AudioLabWindow | None = None" in text
     assert '"audio_lab": "Live-Audiolabor"' in text

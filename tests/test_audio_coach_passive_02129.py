@@ -1,4 +1,5 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 def test_audio_coach_does_not_start_separate_preroll_stream():
     source = Path("carendmr/application/audio_send_service.py").read_text(encoding="utf-8")
@@ -11,7 +12,7 @@ def test_audio_coach_uses_same_immediate_tx_release_as_normal_ptt():
     assert "signal_released = True" in source
 
 def test_main_window_persists_geometry():
-    source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    source = main_window_source()
     assert "def _save_window_geometry" in source
     assert "def _restore_window_geometry" in source
     assert "saveGeometry()" in source

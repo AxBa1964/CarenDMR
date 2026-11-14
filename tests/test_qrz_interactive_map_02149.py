@@ -1,10 +1,11 @@
 from pathlib import Path
 import unittest
+from _ui_sources import main_window_source
 
 
 class QrzInteractiveMap02149Tests(unittest.TestCase):
     def test_qrz_button_retains_geometry_without_placeholder_widget(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn("setRetainSizeWhenHidden(True)", source)
         self.assertNotIn("qrz_slot = QWidget", source)
         self.assertIn("Qt.AlignmentFlag.AlignLeft", source)

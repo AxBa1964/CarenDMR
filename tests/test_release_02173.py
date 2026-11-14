@@ -1,5 +1,6 @@
 from pathlib import Path
 import ast
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -15,16 +16,17 @@ def test_tx_limit_supports_zero_unlimited():
     assert 'setSpecialValueText("Unbegrenzt")' in settings
 
 def test_tx_warning_last_ten_seconds():
-    text = read("carendmr/ui_qt/main_window.py")
+    text = main_window_source()
     assert "0 < remaining <= 10" in text
     assert 'setProperty("visualState", "warning")' in text
     assert "play_tx_warning" in text
     assert 'pttButton[visualState="warning"]' in read("carendmr/ui_qt/theme.py")
 
 def test_qso_recorder_uses_digital_tx_and_rx():
-    text = read("carendmr/ui_qt/main_window.py")
-    assert "QsoRecordingService" in text
-    assert "set_tx_pcm_observer(self.qso_recording_service.add_tx)" in text
+    text = main_window_source()
+    bootstrap = read("carendmr/bootstrap.py")
+    assert "QsoRecordingService" in bootstrap
+    assert "core.audio_send_service.set_tx_pcm_observer(qso_recording.add_tx)" in bootstrap
     assert "self.qso_recording_service.add_rx(samples)" in text
     assert "Mitschnitt starten" in text
     service = read("carendmr/application/qso_recording_service.py")
@@ -32,7 +34,7 @@ def test_qso_recorder_uses_digital_tx_and_rx():
     assert "SAMPLE_RATE = 8000" in service
 
 def test_recording_stops_on_disconnect_and_target_change():
-    text = read("carendmr/ui_qt/main_window.py")
+    text = main_window_source()
     assert 'Mitschnitt wegen Trennen beendet' in text
     assert 'Mitschnitt wegen Zielwechsel beendet' in text
 
@@ -42,7 +44,7 @@ def test_qso_history_spoken_rows_are_green():
     assert "QColor(24, 48, 24)" in text
 
 def test_current_station_can_be_marked_worked():
-    text = read("carendmr/ui_qt/main_window.py")
+    text = main_window_source()
     assert "Als QSO markieren" in text
     assert "Weiteres QSO markieren" in text
     assert "def _mark_current_station_worked" in text
@@ -51,7 +53,7 @@ def test_current_station_can_be_marked_worked():
     assert "def last_worked_at" in history
 
 def test_recent_stations_show_last_qso():
-    text = read("carendmr/ui_qt/main_window.py")
+    text = main_window_source()
     assert '["Zeit", "Rufzeichen", "Name", "Land", "Letztes QSO"]' in text
 
 def test_changed_python_syntax():

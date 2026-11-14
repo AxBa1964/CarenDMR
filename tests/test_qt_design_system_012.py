@@ -1,4 +1,5 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 
 def test_design_system_tokens_and_metrics_are_centralized():
@@ -11,7 +12,7 @@ def test_design_system_tokens_and_metrics_are_centralized():
 
 
 def test_status_controls_use_shared_metrics():
-    text = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    text = main_window_source()
     assert "self.connection_indicator = StatusIndicator(operation_page)" in text
     indicator = Path("carendmr/ui_qt/operating_indicators.py").read_text(encoding="utf-8")
     assert "self.setFixedSize(150, 40)" in indicator
