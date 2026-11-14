@@ -13,6 +13,7 @@ NATIVE = ROOT / "native"
 datas = [
     (str(CONFIG / "config.json"), "config"),
     (str(CONFIG / "talkgroups.json"), "config"),
+    (str(CONFIG / "favorites.default.json"), "config"),
     (str(ROOT / "LICENSE"), "."),
     (str(ROOT / "README.md"), "."),
     (str(ROOT / "docs" / "UPSTREAM_PROVENANCE.md"), "docs"),

@@ -1,6 +1,6 @@
 """Central version metadata for CarenDMR."""
 
-__version__ = "0.2.1.89"
+__version__ = "0.2.1.90"
 
 def get_version() -> str:
     return __version__

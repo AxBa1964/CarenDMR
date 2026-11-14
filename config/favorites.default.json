@@ -1,0 +1,38 @@
+[
+  {
+    "custom_name": "World-wide",
+    "default_name": "World-wide",
+    "target": 91,
+    "timeslot": 2,
+    "call_type": "group",
+    "note": "",
+    "position": 0
+  },
+  {
+    "custom_name": "Papagei",
+    "default_name": "",
+    "target": 9990,
+    "timeslot": 2,
+    "call_type": "private",
+    "note": "Echotest",
+    "position": 1
+  },
+  {
+    "custom_name": "Deutschland",
+    "default_name": "Deutschland",
+    "target": 262,
+    "timeslot": 2,
+    "call_type": "group",
+    "note": "",
+    "position": 2
+  },
+  {
+    "custom_name": "Niedersachsen/Bremen",
+    "default_name": "Niedersachsen/Bremen",
+    "target": 2623,
+    "timeslot": 2,
+    "call_type": "group",
+    "note": "",
+    "position": 3
+  }
+]

@@ -167,6 +167,11 @@ class EasyWindow(QMainWindow):
         )
         help_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(help_label)
+        setup_label = QLabel(
+            "Einrichtung: Strg+Umschalt+S Station · Strg+Umschalt+C Sprach-Codec · Strg+Umschalt+A Audio"
+        )
+        setup_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        layout.addWidget(setup_label)
         layout.addStretch(1)
 
         self.setCentralWidget(page)
@@ -244,10 +249,55 @@ class EasyWindow(QMainWindow):
             ("Alt++", self._tx_level_up),
             ("Alt+-", self._tx_level_down),
             ("F4", self._announce_status),
+            ("Ctrl+Shift+S", self._open_station_setup),
+            ("Ctrl+Shift+C", self._open_codec_setup),
+            ("Ctrl+Shift+A", self._open_audio_setup),
         ):
             shortcut = QShortcut(QKeySequence(key), self)
             shortcut.activated.connect(handler)
             self._shortcuts.append(shortcut)
+
+    # --- Einrichtung (0.2.1.90) -------------------------------------------
+    def _setup_services(self):
+        from carendmr.bootstrap import build_first_run_services
+        return build_first_run_services(
+            self.project_root, audio_manager=self.audio_send_service.manager
+        )
+
+    def _connection_active(self) -> bool:
+        return self.controller.snapshot().state in {
+            RadioState.CONNECTING,
+            RadioState.CONNECTED,
+            RadioState.TRANSMITTING,
+            RadioState.DISCONNECTING,
+        }
+
+    def _open_station_setup(self) -> None:
+        from carendmr.ui_qt.first_run_dialogs import StationSetupDialog
+        StationSetupDialog(
+            self._setup_services().station_settings, self,
+            connection_active=self._connection_active,
+        ).exec()
+
+    def _open_codec_setup(self) -> None:
+        from carendmr.ui_qt.first_run_dialogs import CodecSetupDialog
+        CodecSetupDialog(self._setup_services().codec_setup, self).exec()
+
+    def _open_audio_setup(self) -> None:
+        from carendmr.ui_qt.first_run_dialogs import AudioSetupDialog
+        AudioSetupDialog(self._setup_services().audio_setup, self).exec()
+
+    def _offer_station_setup_after_error(self, error: object) -> None:
+        answer = QMessageBox.question(
+            self,
+            "CarenDMR Easy",
+            f"Verbindung fehlgeschlagen:\n\n{error}\n\n"
+            "Stationsdaten jetzt prüfen und die Verbindung testen?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self._open_station_setup()
 
     def _refresh_audio_level_label(self) -> None:
         self.audio_level_label.setText(
@@ -577,11 +627,7 @@ class EasyWindow(QMainWindow):
                     self.accessibility.announce_radio_state(
                         self.status_label, "ERROR", force=True
                     )
-                    QMessageBox.critical(
-                        self,
-                        "CarenDMR Easy",
-                        f"Verbindung fehlgeschlagen:\n\n{value}",
-                    )
+                    self._offer_station_setup_after_error(value)
                 elif kind == "disconnect_result":
                     pass
                 elif kind == "disconnect_error":

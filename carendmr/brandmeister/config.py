@@ -23,7 +23,7 @@ class BrandMeisterConfig:
     frequency_hz: int = 0
     url: str = ""
     software_id: str = "20260728_CarenDMR"
-    package_id: str = "MMDVM_HS_Hat"
+    package_id: str = "MMDVM_MMDVM_HS_Hat"
     timeout_seconds: float = 5.0
 
     def validate(self) -> None:
@@ -76,7 +76,7 @@ class BrandMeisterConfig:
             frequency_hz=int(data.get("frequency_hz", 0)),
             url=str(data.get("url", "")),
             software_id=str(data.get("software_id", "20260728_CarenDMR")),
-            package_id=str(data.get("package_id", "MMDVM_HS_Hat")),
+            package_id=str(data.get("package_id", "MMDVM_MMDVM_HS_Hat")),
             timeout_seconds=float(data.get("timeout_seconds", 5.0)),
         )
         config.validate()

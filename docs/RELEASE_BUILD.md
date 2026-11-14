@@ -33,7 +33,10 @@ AMBE+2 (DVSI) siehe `docs/UPSTREAM_PROVENANCE.md`.
    Das Skript sucht `ISCC.exe` in den üblichen Installationsordnern von
    Inno Setup 6.
 
-3. Die Bridge ohne eingebaute Firmware bauen (MSYS2 UCRT64 wie bisher):
+3. Die Bridge ohne eingebaute Firmware bauen (MSYS2 UCRT64 mit den Paketen
+   `mingw-w64-ucrt-x86_64-gcc`, `-cmake`, `-ninja`, `-boost`). Das
+   Release-Skript kopiert danach die passenden Laufzeit-DLLs aus
+   `C:\msys64\ucrt64\bin` nach `native\`:
 
    ```powershell
    cd C:\ABDevelop\CarenDMR

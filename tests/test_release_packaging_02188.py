@@ -124,6 +124,7 @@ def _fake_sources(tmp_path, monkeypatch):
     wrapped = fw.wrap(bytes(app))
     core = bytes(range(256)) * (fw.CORE_SIZE // 256)
     monkeypatch.setattr(fw, "WRAPPED_SHA256", fw.sha256(wrapped))
+    monkeypatch.setattr(fw, "UNWRAPPED_SHA256", fw.sha256(fw.unwrap(wrapped)))
     monkeypatch.setattr(fw, "CORE_SHA256", fw.sha256(core))
     return bytes(app), wrapped, core
 
@@ -165,7 +166,10 @@ def test_zip_and_unwrapped_firmware_are_accepted(tmp_path, monkeypatch):
     image, origin = fw.firmware_from_bytes(archive.read_bytes())
     assert origin == "verified" and image[: len(app)] == app
     image, origin = fw.firmware_from_bytes(app)
-    assert origin == "plausible" and image == app
+    assert origin == "verified" and image == app
+    # 0.2.1.90: Ein ausgepacktes Abbild mit falscher Prüfsumme wird abgelehnt.
+    with pytest.raises(fw.FirmwareFormatError):
+        fw.firmware_from_bytes(app[:-1] + b"\x01")
 
 
 def test_other_firmware_and_wrong_core_are_rejected(tmp_path, monkeypatch):

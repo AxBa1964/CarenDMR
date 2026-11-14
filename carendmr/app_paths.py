@@ -32,6 +32,7 @@ DATA_DIR_ENV = "CARENDMR_DATA_DIR"
 # Dateien aus config/, die beim ersten Start in den Datenordner kopiert werden,
 # falls sie dort fehlen. Bestehende Dateien werden nie überschrieben.
 _SEED_CONFIG_FILES = ("config.json", "talkgroups.json")
+FAVORITES_DEFAULT_FILE = "favorites.default.json"
 
 
 def is_frozen() -> bool:
@@ -112,6 +113,13 @@ def prepare_data_root(data_root: Path, program: Path | None = None) -> list[Path
         (data_root / name).mkdir(parents=True, exist_ok=True)
 
     copied: list[Path] = []
+    # Vorbelegte Favoriten (auch beim Quellcode-Start, z. B. nach frischem Klon).
+    favorites_default = program / "config" / FAVORITES_DEFAULT_FILE
+    favorites_target = data_root / "config" / "favorites.local.json"
+    if favorites_default.is_file() and not favorites_target.exists():
+        shutil.copy2(favorites_default, favorites_target)
+        copied.append(favorites_target)
+
     try:
         same_place = data_root.resolve() == program.resolve()
     except OSError:

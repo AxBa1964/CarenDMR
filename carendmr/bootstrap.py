@@ -29,7 +29,9 @@ from carendmr.application import (
     TalkgroupCatalogService,
     TalkgroupSearchService,
 )
+from carendmr.application.audio_setup_service import AudioSetupService
 from carendmr.application.codec_setup_service import CodecSetupService
+from carendmr.application.contact_service import ContactService
 from carendmr.application.station_settings_service import StationSettingsService
 from carendmr.benchmark import AudioBenchmarkService
 from carendmr.qrz import QrzLogbookService, QrzLookupService
@@ -124,12 +126,17 @@ class FirstRunServices:
 
     station_settings: StationSettingsService
     codec_setup: CodecSetupService
+    audio_setup: AudioSetupService
+    contacts: ContactService
 
 
-def build_first_run_services(project_root: Path) -> FirstRunServices:
+def build_first_run_services(project_root: Path, *, audio_manager=None) -> FirstRunServices:
+    """Einrichtungsdienste; ``audio_manager`` eines laufenden Funkkerns optional."""
     return FirstRunServices(
         station_settings=StationSettingsService(project_root),
         codec_setup=CodecSetupService(project_root),
+        audio_setup=AudioSetupService(project_root, audio_manager),
+        contacts=ContactService(project_root),
     )
 
 

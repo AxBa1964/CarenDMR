@@ -1,5 +1,5 @@
 {
-  "host": "SERVERNAME",
+  "host": "master2.bm262.de",
   "port": 62031,
   "dmr_id": 0,
   "password": "HOTSPOT_SECURITY_PASSWORD",
@@ -8,9 +8,9 @@
   "longitude": 0.0,
   "location": "",
   "description": "CarenDMR Digital Voice Client",
-  "frequency_hz": 0,
+  "frequency_hz": 438800000,
   "url": "",
   "software_id": "20260728_CarenDMR",
-  "package_id": "MMDVM_HS_Hat",
+  "package_id": "MMDVM_MMDVM_HS_Hat",
   "timeout_seconds": 5.0
 }

@@ -792,8 +792,8 @@ class MainWindow(
                     # Der Controller hat bereits auf ERROR gestellt.
                     self.connection_indicator.set_state("error")
                     self.statusBar().showMessage(f"Verbindungsfehler: {value}")
-                    QMessageBox.critical(self, "CarenDMR", f"Verbindung fehlgeschlagen:\n\n{value}")
                     self._set_controls_for_state(self.radio_state.state)
+                    self._offer_station_setup_after_error(value)
                 elif kind == "disconnect_result":
                     self.radio_state.synchronize(RadioState.DISCONNECTED)
                     self._set_controls_for_state(self.radio_state.state)

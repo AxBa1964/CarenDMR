@@ -44,6 +44,24 @@ if (-not $loadsAtRuntime) {
     }
 }
 
+# --- Laufzeit-DLLs passend zur Bridge -------------------------------------
+# Die Bridge braucht libstdc++-6, libgcc_s_seh-1 und libwinpthread-1 aus
+# derselben MSYS2-Installation, mit der sie gebaut wurde (objdump -p).
+$runtimeNames = @("libstdc++-6.dll", "libgcc_s_seh-1.dll", "libwinpthread-1.dll")
+$msysBin = "C:\msys64\ucrt64\bin"
+foreach ($name in $runtimeNames) {
+    $source = Join-Path $msysBin $name
+    $target = Join-Path $root "native\$name"
+    if (Test-Path $source) {
+        Copy-Item $source $target -Force
+        Write-Host "Laufzeit-DLL aus MSYS2 übernommen: $name"
+    } elseif (Test-Path $target) {
+        Write-Warning "MSYS2 nicht gefunden; verwende vorhandene native\$name. Sie muss zur Bridge passen."
+    } else {
+        throw "Laufzeit-DLL $name fehlt (weder in $msysBin noch in native\)."
+    }
+}
+
 # --- Exe bauen ------------------------------------------------------------
 $dist = Join-Path $root "release\dist"
 $work = Join-Path $root "release\build"

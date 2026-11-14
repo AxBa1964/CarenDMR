@@ -2,7 +2,7 @@
 
 CarenDMR ist ein barrierefrei bedienbarer Desktop-Client für DMR-Sprachbetrieb über BrandMeister. Das Projekt basiert auf Python und Qt und richtet sich besonders an Funkamateure, die einen direkt am Rechner bedienbaren DMR-Client mit guter Tastatur- und Screenreader-Unterstützung suchen.
 
-Aktuelle Version: **0.2.1.89**
+Aktuelle Version: **0.2.1.90**
 
 ## Aktueller Stand
 

@@ -53,8 +53,27 @@ class MainWindowWindowsMixin:
         self.window_menu.aboutToShow.connect(self._rebuild_window_menu)
 
     def _open_station_setup(self) -> None:
+        from carendmr.application import RadioState
         from carendmr.ui_qt.first_run_dialogs import StationSetupDialog
-        StationSetupDialog(self.station_settings, self).exec()
+        StationSetupDialog(
+            self.station_settings, self,
+            connection_active=lambda: self.controller.snapshot().state in {
+                RadioState.CONNECTING, RadioState.CONNECTED,
+                RadioState.TRANSMITTING, RadioState.DISCONNECTING,
+            },
+        ).exec()
+
+    def _offer_station_setup_after_error(self, error: object) -> None:
+        answer = QMessageBox.question(
+            self,
+            "CarenDMR",
+            f"Verbindung fehlgeschlagen:\n\n{error}\n\n"
+            "Stationsdaten jetzt prüfen und die Verbindung testen?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self._open_station_setup()
 
     def _open_codec_setup(self) -> None:
         from carendmr.ui_qt.first_run_dialogs import CodecSetupDialog

@@ -24,6 +24,8 @@ import zipfile
 FIRMWARE_ZIP_URL = "https://md380.org/firmware/orig/TYT-Tytera-MD-380-FW-v232.zip"
 FIRMWARE_ZIP_MEMBER = "Firmware 2.32/MD-380-D2.32(AD).bin"
 WRAPPED_SHA256 = "e1a1a11a84d9afd2d2ceed61be8395e32a8034785abd0be0236478f7d8609f43"
+# Ergebnis des Auspackens (am 14.11.2026 aus dem verifizierten Download ermittelt).
+UNWRAPPED_SHA256 = "c0351f250a834660641bca3b06be931c80cc1ed0ef808356c550b99cd0f4c632"
 
 # RAM-Abbild aus md380tools/cores (identisch mit md380_vocoder_dynarmic/firmware).
 CORE_URL = "https://raw.githubusercontent.com/travisgoodspeed/md380tools/master/cores/d02032-core.img"
@@ -116,20 +118,13 @@ def wrap(app: bytes, start: int = BASE_ADDRESS) -> bytes:
     return header + _xor_cyclic(app, KEY) + footer
 
 
-def _looks_like_app(app: bytes) -> bool:
-    """Plausibilität: Cortex-M-Vektortabelle mit Thumb-Reset-Vektor im Flash."""
-    if len(app) < 0x1000 or len(app) > MAX_FIRMWARE_BYTES:
-        return False
-    reset = struct.unpack_from("<I", app, 4)[0]
-    return bool(reset & 1) and BASE_ADDRESS <= (reset & ~1) < BASE_ADDRESS + MAX_FIRMWARE_BYTES
-
-
 def firmware_from_bytes(data: bytes) -> tuple[bytes, str]:
     """Liefert das ausgepackte Abbild D002.032 und die Herkunftsprüfung.
 
     Akzeptiert das Original-ZIP von md380.org, die verpackte Update-Datei
     MD-380-D2.32(AD).bin oder ein bereits ausgepacktes D002.032.bin.
-    Rückgabe: (Abbild, "verified" | "plausible").
+    Alle drei Wege werden über feste SHA-256-Prüfsummen geprüft.
+    Rückgabe: (Abbild, "verified").
     """
     if data[:4] == b"PK\x03\x04":
         try:
@@ -150,11 +145,15 @@ def firmware_from_bytes(data: bytes) -> tuple[bytes, str]:
             raise FirmwareFormatError(
                 "Das ist eine andere Firmware-Version. Benötigt wird MD-380 Version 2.32 (D002.032)."
             )
-        return unwrap(data), "verified"
-    if _looks_like_app(data):
-        return data, "plausible"
+        image = unwrap(data)
+        if sha256(image) != UNWRAPPED_SHA256:
+            raise FirmwareFormatError("Die Firmware ließ sich nicht korrekt auspacken.")
+        return image, "verified"
+    if sha256(data) == UNWRAPPED_SHA256:
+        return data, "verified"
     raise FirmwareFormatError(
-        "Die Datei ist keine MD-380-Firmware 2.32 (weder ZIP noch Update-Datei noch D002.032.bin)."
+        "Die Datei ist keine MD-380-Firmware 2.32 (weder Original-ZIP noch Update-Datei "
+        "noch ein passendes D002.032.bin)."
     )
 
 

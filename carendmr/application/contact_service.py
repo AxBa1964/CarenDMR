@@ -26,5 +26,9 @@ class ContactService:
             download_path.unlink(missing_ok=True)
         return result.record_count, result.updated_at
 
+    def needs_update(self) -> bool:
+        """True, solange noch keine Kontaktdatenbank geladen wurde."""
+        return not self.database_path.is_file()
+
     def info(self):
         return self.repository.info()

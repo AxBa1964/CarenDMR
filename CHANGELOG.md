@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1.90 – Ersteinrichtung vollständig und ohne Sackgasse
+
+- „Station einrichten“ mit **Verbindungstest**: meldet sich einmal bei BrandMeister an und wieder ab (ohne Senden) und sagt das Ergebnis im Klartext an. Speichern ohne erfolgreichen Test nur nach Rückfrage.
+- Stationsdaten neu aufgeteilt: abgefragt werden Rufzeichen, DMR-ID, Hotspot-Passwort, Locator sowie Breiten- und Längengrad (aus dem Locator vorbelegt); Server `master2.bm262.de:62031` ist voreingestellt; Beschreibung, Frequenz 438,8 MHz, Software-ID und Package-ID sind fest vorgegeben.
+- Package-ID-Vorgabe jetzt `MMDVM_MMDVM_HS_Hat` (mit `MMDVM_HS_Hat` lehnte BrandMeister die direkte Anmeldung ab); auch in `brandmeister.example.json`.
+- Neue Einrichtungsschritte beim ersten Start: **Audio** (Mikrofon, Lautsprecher, Probeton) und **RadioID-Kontaktdaten**.
+- Easy-Oberfläche: Strg+Umschalt+S Station, Strg+Umschalt+C Sprach-Codec, Strg+Umschalt+A Audio. Nach einem Verbindungsfehler bieten Easy und Hauptfenster an, die Stationsdaten zu prüfen.
+- Vorbelegte Favoriten (World-wide 91, Papagei 9990, Deutschland 262, Niedersachsen/Bremen 2623) aus `config/favorites.default.json`, wenn noch keine eigenen vorhanden sind.
+- Selbst gewählte `D002.032.bin` wird jetzt über ihre SHA-256-Prüfsumme geprüft (ermittelt aus dem verifizierten Download).
+- Codec-Dialog ohne den überflüssigen Hinweis auf den nächsten Programmstart.
+- `packaging/build_release.ps1` übernimmt die Laufzeit-DLLs (libstdc++, libgcc_s, libwinpthread) passend zur Bridge aus MSYS2.
+
 ## 0.2.1.89 – MD380-Firmware zur Laufzeit statt eingebaut
 
 - Die MD380-Bridge wird ohne Firmware gebaut: `native/md380_dynarmic_bridge.cpp` stellt die Speicherbereiche selbst bereit und lädt `D002.032.bin` und `d02032-core.img` über den neuen Export `carendmr_md380_init_files`. `native/md380_dynarmic_build/CMakeLists.txt` übersetzt nur noch `md380_vocoder.cpp` (Upstream-Commit unverändert 55c9a2c); unzip, xxd und python3 werden zum Bauen nicht mehr gebraucht.

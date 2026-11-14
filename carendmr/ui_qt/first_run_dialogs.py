@@ -1,16 +1,18 @@
-"""Barrierefreie Ersteinrichtung: Station und Sprach-Codec.
+"""Barrierefreie Ersteinrichtung: Station, Sprach-Codec, Audio, Kontakte.
 
-Beide Dialoge sind vollständig per Tastatur bedienbar. Jedes Eingabefeld hat
+Alle Dialoge sind vollständig per Tastatur bedienbar. Jedes Eingabefeld hat
 eine sichtbare Beschriftung (``setBuddy``) und einen zugänglichen Namen;
 Fehler erscheinen als Meldungsfenster, das Screenreader sofort vorlesen.
-Die Dialoge kennen keine Dateipfade der Konfiguration, sondern arbeiten nur
-über ``StationSettingsService`` und ``CodecSetupService``.
+Netzwerkzugriffe (Verbindungstest, Downloads) laufen in Hintergrund-Threads;
+der Fortschritt wird angesagt. Die Dialoge arbeiten nur über Dienste aus
+``carendmr.application`` und kennen keine Konfigurationsdateien.
 """
 from __future__ import annotations
 
 import queue
 import threading
 from pathlib import Path
+from typing import Callable
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
@@ -32,11 +34,15 @@ from PySide6.QtWidgets import (
 from carendmr.application.codec_setup_service import (
     CORE_FILE,
     FIRMWARE_FILE,
+    SETUP_HINT,
     CodecSetupError,
     CodecSetupService,
     CodecState,
 )
-from carendmr.application.station_settings_service import StationSettingsService
+from carendmr.application.station_settings_service import (
+    StationSettingsService,
+    locator_to_latlon,
+)
 from carendmr.ui_qt.accessibility import announce
 
 CUSTOM_SERVER_LABEL = "Anderer Server …"
@@ -49,12 +55,80 @@ def _labeled(form: QFormLayout, text: str, widget: QWidget, accessible: str) -> 
     form.addRow(label, widget)
 
 
-class StationSetupDialog(QDialog):
-    """Rufzeichen, DMR-ID, Hotspot-Passwort und BrandMeister-Server."""
+def _parse_float(text: str, what: str) -> float:
+    try:
+        return float(text.strip().replace(",", "."))
+    except ValueError as error:
+        raise ValueError(f"{what} muss eine Zahl sein, zum Beispiel 52,31.") from error
 
-    def __init__(self, settings: StationSettingsService, parent: QWidget | None = None) -> None:
+
+class _Background:
+    """Führt eine Funktion im Hintergrund aus und meldet im GUI-Thread zurück."""
+
+    def __init__(self, owner: QWidget) -> None:
+        self._queue: "queue.Queue[tuple[str, object]]" = queue.Queue()
+        self._thread: threading.Thread | None = None
+        self._on_done: Callable[[object], None] | None = None
+        self._on_error: Callable[[Exception], None] | None = None
+        self._on_progress: Callable[[str], None] | None = None
+        self._timer = QTimer(owner)
+        self._timer.setInterval(150)
+        self._timer.timeout.connect(self._drain)
+
+    @property
+    def busy(self) -> bool:
+        return self._thread is not None
+
+    def start(self, work, *, on_done, on_error, on_progress=None, name="CarenDMR-Einrichtung") -> None:
+        if self._thread is not None:
+            return
+        self._on_done, self._on_error, self._on_progress = on_done, on_error, on_progress
+
+        def run() -> None:
+            try:
+                result = work(lambda text: self._queue.put(("progress", text)))
+                self._queue.put(("done", result))
+            except Exception as error:  # Meldung im GUI-Thread anzeigen
+                self._queue.put(("error", error))
+
+        self._thread = threading.Thread(target=run, name=name, daemon=True)
+        self._thread.start()
+        self._timer.start()
+
+    def _drain(self) -> None:
+        while True:
+            try:
+                kind, payload = self._queue.get_nowait()
+            except queue.Empty:
+                return
+            if kind == "progress":
+                if self._on_progress is not None:
+                    self._on_progress(str(payload))
+                continue
+            self._timer.stop()
+            self._thread = None
+            if kind == "done":
+                self._on_done(payload)
+            else:
+                self._on_error(payload)  # type: ignore[arg-type]
+            return
+
+
+class StationSetupDialog(QDialog):
+    """Rufzeichen, DMR-ID, Passwort, Standort und Server – mit Verbindungstest."""
+
+    def __init__(
+        self,
+        settings: StationSettingsService,
+        parent: QWidget | None = None,
+        *,
+        connection_active: Callable[[], bool] | None = None,
+    ) -> None:
         super().__init__(parent)
         self._settings = settings
+        self._connection_active = connection_active or (lambda: False)
+        self._tested_ok = False
+        self._background = _Background(self)
         self.setWindowTitle("CarenDMR – Station einrichten")
         self.setAccessibleName("Station einrichten")
         self.setModal(True)
@@ -62,9 +136,9 @@ class StationSetupDialog(QDialog):
         draft = settings.draft()
         layout = QVBoxLayout(self)
         intro = QLabel(
-            "Willkommen bei CarenDMR. Bitte die Daten für die Anmeldung bei "
-            "BrandMeister eintragen. Alle Angaben lassen sich später in den "
-            "Einstellungen ändern."
+            "Bitte die Daten für die Anmeldung bei BrandMeister eintragen und "
+            "mit „Verbindung testen“ prüfen. Der Test meldet sich einmal an und "
+            "wieder ab, ohne zu senden. Alle Angaben lassen sich später ändern."
         )
         intro.setWordWrap(True)
         layout.addWidget(intro)
@@ -80,11 +154,18 @@ class StationSetupDialog(QDialog):
         self.password_edit = QLineEdit(draft["password"])
         self.password_edit.setEchoMode(QLineEdit.EchoMode.Password)
         _labeled(
-            form,
-            "Hotspot-&Passwort:",
-            self.password_edit,
+            form, "Hotspot-&Passwort:", self.password_edit,
             "BrandMeister Hotspot-Sicherheitspasswort",
         )
+
+        self.locator_edit = QLineEdit(draft["location"])
+        self.locator_edit.setMaxLength(6)
+        _labeled(form, "&Locator:", self.locator_edit, "Maidenhead-Locator, zum Beispiel JO52FI")
+        self.latitude_edit = QLineEdit(self._number_text(draft["latitude"]))
+        _labeled(form, "&Breitengrad:", self.latitude_edit, "Breitengrad in Grad, Norden positiv")
+        self.longitude_edit = QLineEdit(self._number_text(draft["longitude"]))
+        _labeled(form, "Län&gengrad:", self.longitude_edit, "Längengrad in Grad, Osten positiv")
+        self.locator_edit.editingFinished.connect(self._locator_changed)
 
         self.server_combo = QComboBox()
         for master in settings.known_masters():
@@ -108,15 +189,62 @@ class StationSetupDialog(QDialog):
         self.server_combo.currentIndexChanged.connect(self._server_changed)
         self._server_changed()
 
-        buttons = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.button(QDialogButtonBox.StandardButton.Save).setText("&Speichern")
-        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Später")
-        buttons.accepted.connect(self._save)
-        buttons.rejected.connect(self.reject)
+        self.status_label = QLabel("Noch nicht getestet.")
+        self.status_label.setWordWrap(True)
+        self.status_label.setAccessibleName("Ergebnis des Verbindungstests")
+        layout.addWidget(self.status_label)
+
+        buttons = QDialogButtonBox()
+        self.test_button = buttons.addButton("Verbindung &testen", QDialogButtonBox.ButtonRole.ActionRole)
+        self.save_button = buttons.addButton("&Speichern", QDialogButtonBox.ButtonRole.AcceptRole)
+        self.later_button = buttons.addButton("Später", QDialogButtonBox.ButtonRole.RejectRole)
+        self.test_button.clicked.connect(self._test)
+        self.save_button.clicked.connect(self._save)
+        self.later_button.clicked.connect(self.reject)
         layout.addWidget(buttons)
+
+        for edit in (self.callsign_edit, self.dmr_id_edit, self.password_edit, self.host_edit):
+            edit.textEdited.connect(self._inputs_changed)
+        self.port_spin.valueChanged.connect(self._inputs_changed)
+        self.server_combo.currentIndexChanged.connect(self._inputs_changed)
+
+        if self._connection_active():
+            self.test_button.setEnabled(False)
+            self.status_label.setText(
+                "CarenDMR ist gerade verbunden. Für einen Verbindungstest zuerst trennen. "
+                "Gespeicherte Änderungen gelten beim nächsten Verbinden."
+            )
         self.callsign_edit.setFocus()
+
+    @staticmethod
+    def _number_text(value: float) -> str:
+        return "" if not value else f"{value:g}".replace(".", ",")
+
+    def _say(self, text: str) -> None:
+        self.status_label.setText(text)
+        announce(self.status_label, text)
+
+    def _inputs_changed(self, *_args) -> None:
+        if self._tested_ok:
+            self._tested_ok = False
+            self.status_label.setText("Eingaben geändert – bitte erneut testen.")
+
+    def _locator_changed(self) -> None:
+        text = self.locator_edit.text().strip().upper()
+        self.locator_edit.setText(text)
+        if not text:
+            return
+        try:
+            latitude, longitude = locator_to_latlon(text)
+        except ValueError as error:
+            self._say(str(error))
+            return
+        self.latitude_edit.setText(self._number_text(latitude))
+        self.longitude_edit.setText(self._number_text(longitude))
+        self._say(
+            f"Koordinaten aus dem Locator übernommen: Breite {self.latitude_edit.text()}, "
+            f"Länge {self.longitude_edit.text()}. Bei Bedarf genauer eintragen."
+        )
 
     def _server_changed(self, *_args) -> None:
         data = self.server_combo.currentData()
@@ -128,25 +256,101 @@ class StationSetupDialog(QDialog):
             self.host_edit.setText(host)
             self.port_spin.setValue(int(port))
 
-    def _save(self) -> None:
+    def _values(self) -> dict:
         dmr_text = self.dmr_id_edit.text().strip()
         if not dmr_text.isdigit():
-            QMessageBox.warning(self, "CarenDMR", "Die DMR-ID darf nur aus Ziffern bestehen.")
             self.dmr_id_edit.setFocus()
+            raise ValueError("Die DMR-ID darf nur aus Ziffern bestehen.")
+        locator = self.locator_edit.text().strip().upper()
+        if locator:
+            locator_to_latlon(locator)  # prüft das Format
+        latitude = _parse_float(self.latitude_edit.text() or "0", "Der Breitengrad")
+        longitude = _parse_float(self.longitude_edit.text() or "0", "Der Längengrad")
+        return {
+            "callsign": self.callsign_edit.text(),
+            "dmr_id": int(dmr_text),
+            "password": self.password_edit.text(),
+            "host": self.host_edit.text(),
+            "port": self.port_spin.value(),
+            "location": locator,
+            "latitude": latitude,
+            "longitude": longitude,
+        }
+
+    def _set_busy(self, busy: bool) -> None:
+        for widget in (self.test_button, self.save_button):
+            widget.setEnabled(not busy)
+        if busy is False and self._connection_active():
+            self.test_button.setEnabled(False)
+
+    def _test(self) -> None:
+        if self._background.busy:
             return
         try:
-            self._settings.save_station(
-                callsign=self.callsign_edit.text(),
-                dmr_id=int(dmr_text),
-                password=self.password_edit.text(),
-                host=self.host_edit.text(),
-                port=self.port_spin.value(),
+            config = self._settings.build_config(**self._values())
+        except ValueError as error:
+            QMessageBox.warning(self, "CarenDMR", str(error))
+            return
+        self._set_busy(True)
+        self._say(f"Verbindungstest mit {config.host} läuft. Bitte warten.")
+        self._background.start(
+            lambda _progress: self._settings.test_login(config),
+            on_done=self._test_done,
+            on_error=self._test_failed,
+            name="CarenDMR-Verbindungstest",
+        )
+
+    def _test_done(self, message) -> None:
+        self._set_busy(False)
+        self._tested_ok = True
+        self._say(str(message))
+        self.save_button.setFocus()
+
+    def _test_failed(self, error: Exception) -> None:
+        self._set_busy(False)
+        self._tested_ok = False
+        text = f"Verbindungstest fehlgeschlagen: {error}"
+        self._say(text)
+        QMessageBox.warning(
+            self,
+            "CarenDMR",
+            text + "\n\nBitte DMR-ID, Hotspot-Passwort und Server prüfen. Das Passwort ist "
+            "das Hotspot-Sicherheitspasswort aus BrandMeister SelfCare.",
+        )
+        self.password_edit.setFocus()
+
+    def _save(self) -> None:
+        if self._background.busy:
+            return
+        try:
+            values = self._values()
+        except ValueError as error:
+            QMessageBox.warning(self, "CarenDMR", str(error))
+            return
+        if not self._tested_ok and not self._connection_active():
+            answer = QMessageBox.question(
+                self,
+                "CarenDMR",
+                "Die Verbindung wurde noch nicht erfolgreich getestet. Trotzdem speichern?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
+            if answer != QMessageBox.StandardButton.Yes:
+                self.test_button.setFocus()
+                return
+        try:
+            self._settings.save_station(**values)
         except ValueError as error:
             QMessageBox.warning(self, "CarenDMR", str(error))
             return
         QMessageBox.information(self, "CarenDMR", "Die Stationsdaten wurden gespeichert.")
         self.accept()
+
+    def reject(self) -> None:
+        if self._background.busy:
+            self._say("Der Verbindungstest läuft noch. Bitte kurz warten.")
+            return
+        super().reject()
 
 
 class CodecSetupDialog(QDialog):
@@ -253,7 +457,9 @@ class CodecSetupDialog(QDialog):
 
     def _show_status(self) -> None:
         report = self._codec.status()
-        self.status_label.setText(report.message)
+        # Der Hinweis „Einrichtung erscheint beim nächsten Start …“ gehört
+        # nicht in den Einrichtungsdialog selbst.
+        self.status_label.setText(report.message.replace(" " + SETUP_HINT, ""))
         needs_files = report.state in (CodecState.FILES_MISSING, CodecState.READY_FILES)
         self.download_button.setEnabled(needs_files)
         self.install_button.setEnabled(needs_files)
@@ -324,13 +530,179 @@ class CodecSetupDialog(QDialog):
         super().reject()
 
 
+class AudioSetupDialog(QDialog):
+    """Mikrofon und Lautsprecher wählen, mit kurzem Probeton."""
+
+    def __init__(self, audio, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._audio = audio
+        self.setWindowTitle("CarenDMR – Audio einrichten")
+        self.setAccessibleName("Audio einrichten")
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+        intro = QLabel(
+            "Bitte Mikrofon und Lautsprecher für CarenDMR wählen. Mit "
+            "„Probeton“ ist auf dem gewählten Lautsprecher ein kurzer Ton zu hören."
+        )
+        intro.setWordWrap(True)
+        layout.addWidget(intro)
+
+        form = QFormLayout()
+        self.input_combo = QComboBox()
+        _labeled(form, "&Mikrofon:", self.input_combo, "Mikrofon")
+        self.output_combo = QComboBox()
+        _labeled(form, "&Lautsprecher:", self.output_combo, "Lautsprecher")
+        layout.addLayout(form)
+
+        self.status_label = QLabel()
+        self.status_label.setWordWrap(True)
+        self.status_label.setAccessibleName("Status der Audioeinrichtung")
+        layout.addWidget(self.status_label)
+
+        buttons = QDialogButtonBox()
+        self.tone_button = buttons.addButton("&Probeton", QDialogButtonBox.ButtonRole.ActionRole)
+        self.save_button = buttons.addButton("&Speichern", QDialogButtonBox.ButtonRole.AcceptRole)
+        later = buttons.addButton("Später", QDialogButtonBox.ButtonRole.RejectRole)
+        self.tone_button.clicked.connect(self._tone)
+        self.save_button.clicked.connect(self._save)
+        later.clicked.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self._load()
+        self.input_combo.setFocus()
+
+    def _say(self, text: str) -> None:
+        self.status_label.setText(text)
+        announce(self.status_label, text)
+
+    def _load(self) -> None:
+        try:
+            inputs, outputs = self._audio.scan()
+        except Exception as error:
+            self.status_label.setText(f"Audiogeräte konnten nicht eingelesen werden: {error}")
+            self.save_button.setEnabled(False)
+            self.tone_button.setEnabled(False)
+            return
+        for choice in inputs:
+            self.input_combo.addItem(choice.label, choice.key)
+        for choice in outputs:
+            self.output_combo.addItem(choice.label, choice.key)
+        current_input, current_output = self._audio.current_keys()
+        for combo, key in ((self.input_combo, current_input), (self.output_combo, current_output)):
+            index = combo.findData(key) if key else -1
+            if index >= 0:
+                combo.setCurrentIndex(index)
+        self.status_label.setText(
+            f"{len(inputs)} Mikrofon(e) und {len(outputs)} Lautsprecher gefunden."
+        )
+
+    def _tone(self) -> None:
+        key = self.output_combo.currentData()
+        if not key:
+            return
+        try:
+            self._audio.play_test_tone(key)
+        except Exception as error:
+            QMessageBox.warning(self, "CarenDMR", f"Der Probeton konnte nicht abgespielt werden: {error}")
+            return
+        self._say("Probeton abgespielt.")
+
+    def _save(self) -> None:
+        input_key = self.input_combo.currentData()
+        output_key = self.output_combo.currentData()
+        if not input_key or not output_key:
+            QMessageBox.warning(self, "CarenDMR", "Bitte Mikrofon und Lautsprecher wählen.")
+            return
+        try:
+            self._audio.save(input_key, output_key)
+        except Exception as error:
+            QMessageBox.warning(self, "CarenDMR", str(error))
+            return
+        QMessageBox.information(self, "CarenDMR", "Die Audiogeräte wurden gespeichert.")
+        self.accept()
+
+
+class ContactsDialog(QDialog):
+    """Lädt die RadioID-Kontaktdaten (Namen und Rufzeichen zu DMR-IDs)."""
+
+    def __init__(self, contacts, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._contacts = contacts
+        self._background = _Background(self)
+        self.setWindowTitle("CarenDMR – Kontaktdaten laden")
+        self.setAccessibleName("Kontaktdaten laden")
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+        info = QLabel(
+            "Damit beim Empfang Rufzeichen und Namen angesagt werden, lädt CarenDMR "
+            "einmal die Kontaktdaten von RadioID.net. Das dauert je nach Verbindung "
+            "eine bis mehrere Minuten."
+        )
+        info.setWordWrap(True)
+        layout.addWidget(info)
+        self.status_label = QLabel("Noch nicht geladen.")
+        self.status_label.setWordWrap(True)
+        self.status_label.setAccessibleName("Status der Kontaktdaten")
+        layout.addWidget(self.status_label)
+
+        buttons = QDialogButtonBox()
+        self.load_button = buttons.addButton("&Jetzt laden", QDialogButtonBox.ButtonRole.AcceptRole)
+        self.later_button = buttons.addButton("Später", QDialogButtonBox.ButtonRole.RejectRole)
+        self.load_button.clicked.connect(self._load)
+        self.later_button.clicked.connect(self.reject)
+        layout.addWidget(buttons)
+        self.load_button.setFocus()
+
+    def _say(self, text: str) -> None:
+        self.status_label.setText(text)
+        announce(self.status_label, text)
+
+    def _load(self) -> None:
+        if self._background.busy:
+            return
+        self.load_button.setEnabled(False)
+        self._say("Kontaktdaten werden geladen. Bitte warten.")
+        self._background.start(
+            lambda _progress: self._contacts.update(),
+            on_done=self._done,
+            on_error=self._failed,
+            name="CarenDMR-Kontakte",
+        )
+
+    def _done(self, result) -> None:
+        count, updated = result
+        text = f"Kontaktdaten geladen: {count} Einträge, Stand {updated}."
+        self._say(text)
+        QMessageBox.information(self, "CarenDMR", text)
+        self.accept()
+
+    def _failed(self, error: Exception) -> None:
+        self.load_button.setEnabled(True)
+        text = f"Kontaktdaten konnten nicht geladen werden: {error}"
+        self._say(text)
+        QMessageBox.warning(self, "CarenDMR", text + "\n\nSpäter in den Einstellungen erneut versuchen.")
+
+    def reject(self) -> None:
+        if self._background.busy:
+            self._say("Die Kontaktdaten werden noch geladen. Bitte kurz warten.")
+            return
+        super().reject()
+
+
 def run_first_run_setup(services, parent: QWidget | None = None) -> None:
     """Zeigt fehlende Einrichtungsschritte vor dem ersten Fenster.
 
-    ``services`` ist ein ``FirstRunServices`` aus ``carendmr.bootstrap``.
-    Abbrechen ist erlaubt; CarenDMR startet dann trotzdem.
+    Reihenfolge: Station, Sprach-Codec, Audio, Kontaktdaten. ``services`` ist
+    ein ``FirstRunServices`` aus ``carendmr.bootstrap``. Jeder Schritt lässt
+    sich mit „Später“ überspringen; CarenDMR startet dann trotzdem.
     """
     if services.station_settings.needs_setup():
         StationSetupDialog(services.station_settings, parent).exec()
     if services.codec_setup.status().state is CodecState.FILES_MISSING:
         CodecSetupDialog(services.codec_setup, parent).exec()
+    if services.audio_setup.needs_setup():
+        AudioSetupDialog(services.audio_setup, parent).exec()
+    if services.contacts.needs_update():
+        ContactsDialog(services.contacts, parent).exec()
