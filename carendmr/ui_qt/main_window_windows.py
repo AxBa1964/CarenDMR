@@ -12,6 +12,7 @@ import sys
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import QApplication, QMessageBox
 from pathlib import Path
+from carendmr.app_paths import tg_monitor_command
 from carendmr.tg_monitor.instance_control import is_tg_monitor_running, send_tg_monitor_command
 from carendmr.ui_qt.audio_tool_windows import AudioBenchmarkWindow, AudioCoachWindow, AudioLabWindow
 from carendmr.ui_qt.settings_dialog import SettingsDialog
@@ -27,6 +28,12 @@ class MainWindowWindowsMixin:
         settings_action.setShortcut(QKeySequence("Ctrl+,"))
         settings_action.triggered.connect(self._open_settings)
         program_menu.addAction(settings_action)
+        station_action = QAction("Station einrichten …", self)
+        station_action.triggered.connect(self._open_station_setup)
+        program_menu.addAction(station_action)
+        codec_action = QAction("Sprach-Codec einrichten …", self)
+        codec_action.triggered.connect(self._open_codec_setup)
+        program_menu.addAction(codec_action)
         program_menu.addSeparator()
         benchmark_action = QAction("Audio-Benchmark …", self)
         benchmark_action.triggered.connect(self._open_audio_benchmark)
@@ -44,6 +51,14 @@ class MainWindowWindowsMixin:
 
         self.window_menu = self.menuBar().addMenu("Fenster")
         self.window_menu.aboutToShow.connect(self._rebuild_window_menu)
+
+    def _open_station_setup(self) -> None:
+        from carendmr.ui_qt.first_run_dialogs import StationSetupDialog
+        StationSetupDialog(self.station_settings, self).exec()
+
+    def _open_codec_setup(self) -> None:
+        from carendmr.ui_qt.first_run_dialogs import CodecSetupDialog
+        CodecSetupDialog(self.codec_setup, self).exec()
 
     def _rebuild_window_menu(self) -> None:
         self.window_menu.clear()
@@ -146,14 +161,14 @@ class MainWindowWindowsMixin:
             QMessageBox.information(self, "CarenDMR", "Der TG-Monitor läuft bereits.")
             return
 
-        script = self.project_root / "tg_monitor.py"
-        if not script.is_file():
-            QMessageBox.warning(self, "CarenDMR", f"TG-Monitor wurde nicht gefunden:\n{script}")
+        command = tg_monitor_command(self.project_root)
+        if command is None:
+            QMessageBox.warning(self, "CarenDMR", "Der TG-Monitor wurde nicht gefunden.")
             return
 
         try:
             subprocess.Popen(
-                [sys.executable, str(script)],
+                command,
                 cwd=str(self.project_root),
             )
         except OSError as error:

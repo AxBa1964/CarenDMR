@@ -692,6 +692,9 @@ class EasyWindow(QMainWindow):
 def run_easy_gui(project_root: Path) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     apply_theme(app, suppress_native_focus=False)
+    from carendmr.bootstrap import build_first_run_services
+    from carendmr.ui_qt.first_run_dialogs import run_first_run_setup
+    run_first_run_setup(build_first_run_services(project_root))
     window = EasyWindow(project_root)
     window.show()
     return int(app.exec())

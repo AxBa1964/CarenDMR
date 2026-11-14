@@ -10,6 +10,7 @@ from carendmr.encoder.md380_dynarmic import (
     AMBE_BYTES_PER_FRAME,
     PCM_SAMPLES_PER_FRAME,
     default_md380_bridge_path,
+    initialize_md380,
 )
 from .base import PcmFrame, VocoderDecodeError, VocoderUnavailableError
 
@@ -25,10 +26,14 @@ class Md380DynarmicReceiveVocoder:
             )
 
         self._dll_directory_handle = None
+        self._native_dll_handle = None
         if os.name == "nt" and hasattr(os, "add_dll_directory"):
             runtime_dir = Path(r"C:\msys64\ucrt64\bin")
             if runtime_dir.is_dir():
                 self._dll_directory_handle = os.add_dll_directory(str(runtime_dir))
+            # 0.2.1.88: In der Exe liegen die Laufzeit-DLLs (libstdc++ usw.)
+            # neben der Bridge; ohne MSYS2 muss dieser Ordner reichen.
+            self._native_dll_handle = os.add_dll_directory(str(self._path.parent))
 
         try:
             self._lib = ctypes.CDLL(str(self._path))
@@ -37,15 +42,16 @@ class Md380DynarmicReceiveVocoder:
                 f"MD380-Dynarmic-RX-Bridge konnte nicht geladen werden: {error}"
             ) from error
 
-        self._lib.carendmr_md380_init.argtypes = []
-        self._lib.carendmr_md380_init.restype = ctypes.c_int
         self._lib.carendmr_md380_decode_fec.argtypes = [
             ctypes.POINTER(ctypes.c_uint8),
             ctypes.POINTER(ctypes.c_int16),
         ]
         self._lib.carendmr_md380_decode_fec.restype = ctypes.c_int
 
-        result = int(self._lib.carendmr_md380_init())
+        try:
+            result = initialize_md380(self._lib, project_root)
+        except RuntimeError as error:
+            raise VocoderUnavailableError(str(error)) from error
         if result != 0:
             raise VocoderUnavailableError(
                 f"MD380-Dynarmic konnte nicht initialisiert werden (Code {result})."
@@ -81,10 +87,11 @@ class Md380DynarmicReceiveVocoder:
         if self._closed:
             return
         self._closed = True
-        handle = self._dll_directory_handle
-        self._dll_directory_handle = None
-        if handle is not None:
-            handle.close()
+        for name in ("_dll_directory_handle", "_native_dll_handle"):
+            handle = getattr(self, name, None)
+            setattr(self, name, None)
+            if handle is not None:
+                handle.close()
 
     def __enter__(self) -> "Md380DynarmicReceiveVocoder":
         return self

@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 from typing import Sequence
 
+from carendmr.app_paths import default_data_root, is_frozen, prepare_data_root
 from carendmr.brandmeister.config import BrandMeisterConfigStore
 from carendmr.brandmeister.listen import (
     MAX_LISTEN_SECONDS,
@@ -31,6 +32,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--easy",
         action="store_true",
         help="öffnet die extrem reduzierte barrierefreie Easy-Oberfläche",
+    )
+    parser.add_argument(
+        "--tg-monitor",
+        action="store_true",
+        help="öffnet nur den eigenständigen TG-Monitor",
     )
     parser.add_argument(
         "--listen",
@@ -157,8 +163,19 @@ def _run_live_listen(project_root: Path, *, seconds: float | None) -> int:
 
 def run(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
-    project_root = Path(__file__).resolve().parent.parent
+    # Ab 0.2.1.88: project_root ist der Datenordner. Beim Start aus dem
+    # Quellcode ist das wie bisher das Projektverzeichnis, in der Exe
+    # %LOCALAPPDATA%\CarenDMR (siehe carendmr/app_paths.py).
+    project_root = default_data_root()
+    prepare_data_root(project_root)
 
+    if is_frozen() and not (args.gui or args.easy or args.listen or args.tg_monitor):
+        # Die Exe hat keine Konsole; ohne Angabe öffnet sie das Hauptfenster.
+        args.gui = True
+
+    if args.tg_monitor and (args.gui or args.easy or args.listen):
+        print("--tg-monitor kann nicht mit einer anderen Betriebsart kombiniert werden.", file=sys.stderr)
+        return 2
     if (args.gui or args.easy) and args.listen:
         print("Eine GUI und --listen können nicht gleichzeitig verwendet werden.", file=sys.stderr)
         return 2
@@ -171,6 +188,9 @@ def run(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    if args.tg_monitor:
+        from carendmr.tg_monitor.window import run_tg_monitor
+        return run_tg_monitor(project_root)
     if args.listen:
         return _run_live_listen(project_root, seconds=args.duration)
     if args.easy:

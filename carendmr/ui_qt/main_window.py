@@ -132,6 +132,7 @@ class MainWindow(
         self.talkgroup_search_service = self.services.talkgroup_search
         self.talkgroup_catalog_service = self.services.talkgroup_catalog
         self.audio_benchmark_service = self.services.audio_benchmark
+        self.codec_setup = self.services.codec_setup
         self.receive_service.set_call_activity_observer(self._benchmark_call_activity)
         self.receive_service.set_decoded_pcm_callback(self._benchmark_pcm)
         self.receive_service.set_connection_callbacks(
@@ -991,6 +992,9 @@ class MainWindow(
 def run_gui(project_root: Path) -> int:
     app = QApplication.instance() or QApplication(sys.argv)
     apply_theme(app)
+    from carendmr.bootstrap import build_first_run_services
+    from carendmr.ui_qt.first_run_dialogs import run_first_run_setup
+    run_first_run_setup(build_first_run_services(project_root))
     window = MainWindow(project_root)
     window.show()
     QTimer.singleShot(150, window._focus_talkgroup)

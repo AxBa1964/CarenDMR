@@ -91,3 +91,35 @@ Fragen zu Patenten oder proprietären Codec-Rechten. Vor öffentlicher
 Verteilung eines Software-AMBE-Decoders ist deshalb eine gesonderte Prüfung
 für die vorgesehenen Länder und Vertriebswege erforderlich. Die lokale
 technische Validierung trifft keine rechtliche Freigabeentscheidung.
+
+## MD380-Emulation ab 0.2.1.x (Stand 0.2.1.88)
+
+Der Abschnitt oben beschreibt den Stand von 0.0.11. Seit der 0.2.1-Reihe nutzt
+CarenDMR für Senden und Empfangen zusätzlich die MD380-Emulation:
+
+- Upstream: <https://github.com/dbehnke/md380_vocoder_dynarmic>, festgelegter
+  Commit `55c9a2c6d502567380c7dfaf4a2e3cc4dd6d1dd5`, gebaut über
+  `native/build_md380_dynarmic_windows.ps1` und die CarenDMR-Hülle
+  `native/md380_dynarmic_bridge.cpp` (GPLv3-or-later).
+- Die Emulation führt den AMBE+2-Codec aus der Firmware des Funkgeräts
+  Tytera MD380 aus. Die Firmware selbst stammt von Tytera; ihre Lizenz ist
+  unbekannt, vergleichbare Projekte (md380tools, greyfoxsolid/vocoder,
+  VoxDMR) liefern sie deshalb nicht mit.
+- Die bisherige Bridge-DLL (`native/carendmr_md380_bridge.dll`, alte Bauart)
+  enthält die Firmware fest eingebaut.
+
+Festlegung ab 0.2.1.88:
+
+- Öffentliche Builds enthalten **keine** MD380-Firmware. Der Nutzer stellt
+  `D002.032.bin` und `d02032-core.img` selbst bereit („Sprach-Codec
+  einrichten“); CarenDMR lädt sie zur Laufzeit.
+- `packaging/build_release.ps1` verweigert einen öffentlichen Build mit der
+  alten Bridge.
+- Offen: Umbau der Bridge auf Laden zur Laufzeit (Export
+  `carendmr_md380_init_files`), Entfernen der alten DLL aus dem Repository,
+  Herkunft und Lizenz des RAM-Abbilds `d02032-core.img`.
+
+Patente: DVSI vergibt Lizenzen für AMBE+2. Ob für die Nutzung des
+emulierten Codecs Patentrechte berührt sind, ist nicht geprüft; die
+Verantwortung liegt wie bei DroidStar und VoxDMR beim Nutzer. Diese
+Dokumentation ist keine Rechtsberatung.

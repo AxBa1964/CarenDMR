@@ -25,7 +25,8 @@ def default_bridge_path(project_root: Path) -> Path:
         name = "libcarendmr_vocoder_bridge.dylib"
     else:
         name = "libcarendmr_vocoder_bridge.so"
-    return Path(project_root) / "native" / name
+    from carendmr.app_paths import native_dir
+    return native_dir(Path(project_root)) / name
 
 
 class DroidStarPluginEncoder(AmbeEncoder):

@@ -18,7 +18,8 @@ class TGMonitorIntegration02144Tests(unittest.TestCase):
         source = main_window_source()
         self.assertIn('QAction("TG-Monitor starten", self)', source)
         self.assertIn("subprocess.Popen(", source)
-        self.assertIn("[sys.executable, str(script)]", source)
+        # Ab 0.2.1.88 liefert app_paths den Startbefehl (Exe oder Skript).
+        self.assertIn("command = tg_monitor_command(self.project_root)", source)
 
     def test_main_window_checks_for_existing_monitor(self):
         source = main_window_source()

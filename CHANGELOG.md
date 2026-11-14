@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1.88 – Vorbereitung Windows-Exe und Installer
+
+- Neu: `carendmr/app_paths.py` trennt Programmordner und Datenordner. Beim Start aus dem Quellcode bleibt alles im Projektverzeichnis; in der Exe liegen Einstellungen, Logs, Daten und Codec-Dateien unter `%LOCALAPPDATA%\CarenDMR`. Fehlende Startdateien (`config.json`, `talkgroups.json`, Beispielkonfigurationen) werden beim ersten Start dorthin kopiert. `CARENDMR_DATA_DIR` lenkt den Datenordner um.
+- Native Bibliotheken werden über `native_dir()` gefunden (in der Exe im Programmordner); der Bridge-Ordner wird zusätzlich als DLL-Suchpfad registriert, damit die mitgelieferten Laufzeit-DLLs ohne MSYS2 reichen.
+- Neu: `--tg-monitor` startet nur den TG-Monitor; das Hauptfenster nutzt das in der Exe. Ohne Angabe öffnet die Exe das Hauptfenster.
+- Neu: Ersteinrichtung „Station einrichten“ (Rufzeichen, DMR-ID, Hotspot-Passwort, Server) und „Sprach-Codec einrichten“ (MD380-Firmware-Dateien auswählen). Beide erscheinen beim Start, wenn etwas fehlt, und stehen im Hauptfenster im Menü Programm.
+- Neu: `CodecSetupService`. Die Bridge-Ansteuerung erkennt eine künftige Bridge mit Export `carendmr_md380_init_files` und übergibt ihr die Firmware-Dateien; die bisherige Bridge mit eingebauter Firmware läuft unverändert.
+- Neu: `packaging/` mit PyInstaller-Bauplan, Inno-Setup-Skript und `build_release.ps1`; Anleitung in `docs/RELEASE_BUILD.md`. Öffentliche Builds mit eingebauter Firmware werden verweigert.
+- `docs/UPSTREAM_PROVENANCE.md` um die MD380-Emulation ergänzt.
+- Funk-, Audio- und TX-Verhalten unverändert.
+
 ## 0.2.1.87 – Architektur-Umbau abgeschlossen (Refactoring Schritte 4–6)
 
 - Desktop-Zusatzdienste (QRZ-Abfrage, QRZ-Logbook, ADIF-UDP, Hotkeys, Favoriten, Talkgroup-Verzeichnis, QSO-Mitschnitt, Audio-Labor, Benchmark) entstehen in `bootstrap.py` (`build_desktop_services`) statt im Hauptfenster.

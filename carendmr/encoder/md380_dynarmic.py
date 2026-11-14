@@ -19,7 +19,38 @@ def default_md380_bridge_path(project_root: Path) -> Path:
         name = "libcarendmr_md380_bridge.dylib"
     else:
         name = "libcarendmr_md380_bridge.so"
-    return project_root / "native" / name
+    from carendmr.app_paths import native_dir
+    return native_dir(project_root) / name
+
+
+def initialize_md380(lib, project_root: Path) -> int:
+    """Initialisiert die Bridge; neue Bridges laden die Firmware aus Dateien.
+
+    Ab 0.2.1.88 vorbereitet: Bietet die Bridge ``carendmr_md380_init_files``,
+    werden ``D002.032.bin`` und ``d02032-core.img`` aus dem Firmware-Ordner
+    des Datenordners übergeben. Ältere Bridges mit eingebauter Firmware
+    werden unverändert über ``carendmr_md380_init`` gestartet.
+    """
+    init_files = getattr(lib, "carendmr_md380_init_files", None)
+    if init_files is None:
+        lib.carendmr_md380_init.argtypes = []
+        lib.carendmr_md380_init.restype = ctypes.c_int
+        return int(lib.carendmr_md380_init())
+
+    from carendmr.application.codec_setup_service import SETUP_HINT, codec_file_paths
+
+    firmware, core = codec_file_paths(project_root)
+    missing = [path.name for path in (firmware, core) if not path.is_file()]
+    if missing:
+        raise RuntimeError(
+            "Der Sprach-Codec ist noch nicht eingerichtet (es fehlen: "
+            + ", ".join(missing)
+            + "). "
+            + SETUP_HINT
+        )
+    init_files.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
+    init_files.restype = ctypes.c_int
+    return int(init_files(os.fsencode(str(firmware)), os.fsencode(str(core))))
 
 
 class Md380DynarmicEncoder:
@@ -37,10 +68,14 @@ class Md380DynarmicEncoder:
             raise RuntimeError(f"MD380-Dynarmic-Bridge fehlt: {self._path}")
 
         self._dll_directory_handle = None
+        self._native_dll_handle = None
         if os.name == "nt" and hasattr(os, "add_dll_directory"):
             runtime_dir = Path(r"C:\msys64\ucrt64\bin")
             if runtime_dir.is_dir():
                 self._dll_directory_handle = os.add_dll_directory(str(runtime_dir))
+            # 0.2.1.88: In der Exe liegen die Laufzeit-DLLs (libstdc++ usw.)
+            # neben der Bridge; ohne MSYS2 muss dieser Ordner reichen.
+            self._native_dll_handle = os.add_dll_directory(str(self._path.parent))
 
         try:
             self._lib = ctypes.CDLL(str(self._path))
@@ -56,8 +91,6 @@ class Md380DynarmicEncoder:
                 "MD380-Dynarmic-Bridge konnte nicht geladen werden."
                 f"{hint} Originalfehler: {error}"
             ) from error
-        self._lib.carendmr_md380_init.argtypes = []
-        self._lib.carendmr_md380_init.restype = ctypes.c_int
         self._lib.carendmr_md380_encode_fec.argtypes = [
             ctypes.POINTER(ctypes.c_int16), ctypes.POINTER(ctypes.c_uint8)
         ]
@@ -66,7 +99,7 @@ class Md380DynarmicEncoder:
             ctypes.POINTER(ctypes.c_uint8), ctypes.POINTER(ctypes.c_int16)
         ]
         self._lib.carendmr_md380_decode_fec.restype = ctypes.c_int
-        result = int(self._lib.carendmr_md380_init())
+        result = initialize_md380(self._lib, project_root)
         if result != 0:
             raise RuntimeError(f"MD380-Dynarmic konnte nicht initialisiert werden (Code {result}).")
 
@@ -75,10 +108,11 @@ class Md380DynarmicEncoder:
         return self._path
 
     def close(self) -> None:
-        handle = self._dll_directory_handle
-        self._dll_directory_handle = None
-        if handle is not None:
-            handle.close()
+        for name in ("_dll_directory_handle", "_native_dll_handle"):
+            handle = getattr(self, name, None)
+            setattr(self, name, None)
+            if handle is not None:
+                handle.close()
 
     def encode_2450x1150(self, pcm: tuple[int, ...]) -> bytes:
         if len(pcm) != PCM_SAMPLES_PER_FRAME:

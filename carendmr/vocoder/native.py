@@ -23,7 +23,8 @@ def _default_library_path() -> Path:
         filename = "carendmr_mbe.dll"
     else:
         filename = "libcarendmr_mbe.so"
-    return Path(__file__).resolve().parents[2] / "native" / filename
+    from carendmr.app_paths import native_dir
+    return native_dir() / filename
 
 
 class NativeMbeReceiveVocoder:

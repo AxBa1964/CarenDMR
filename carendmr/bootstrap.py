@@ -29,6 +29,7 @@ from carendmr.application import (
     TalkgroupCatalogService,
     TalkgroupSearchService,
 )
+from carendmr.application.codec_setup_service import CodecSetupService
 from carendmr.application.station_settings_service import StationSettingsService
 from carendmr.benchmark import AudioBenchmarkService
 from carendmr.qrz import QrzLogbookService, QrzLookupService
@@ -114,6 +115,22 @@ class DesktopServices:
     talkgroup_search: TalkgroupSearchService
     talkgroup_catalog: TalkgroupCatalogService
     audio_benchmark: AudioBenchmarkService
+    codec_setup: CodecSetupService
+
+
+@dataclass(frozen=True)
+class FirstRunServices:
+    """Dienste für die Ersteinrichtung vor dem Öffnen eines Fensters."""
+
+    station_settings: StationSettingsService
+    codec_setup: CodecSetupService
+
+
+def build_first_run_services(project_root: Path) -> FirstRunServices:
+    return FirstRunServices(
+        station_settings=StationSettingsService(project_root),
+        codec_setup=CodecSetupService(project_root),
+    )
 
 
 def build_desktop_services(core: RadioCore) -> DesktopServices:
@@ -139,4 +156,5 @@ def build_desktop_services(core: RadioCore) -> DesktopServices:
         talkgroup_search=talkgroup_search,
         talkgroup_catalog=TalkgroupCatalogService(config / "talkgroups.json"),
         audio_benchmark=AudioBenchmarkService(root, contact_lookup=core.receive_service.contacts.lookup),
+        codec_setup=CodecSetupService(root),
     )

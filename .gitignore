@@ -17,3 +17,5 @@ dist/
 *.dylib
 native/md380_dynarmic_build/out*/
 native/vendor/
+# Vom Nutzer bereitgestellte MD380-Firmware niemals einchecken
+firmware/
