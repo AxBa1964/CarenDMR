@@ -3,13 +3,11 @@ from pathlib import Path
 import ast
 
 from carendmr.qrz.logbook import build_dmr_adif, QrzLogbookConfig
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
 def read(rel): return (ROOT / rel).read_text(encoding='utf-8')
-
-def test_version_02176():
-    assert '__version__ = "0.2.1.76"' in read('carendmr/version.py')
 
 def test_adif_contains_required_qrz_fields_and_utc():
     adif = build_dmr_adif(
@@ -40,8 +38,9 @@ def test_logbook_key_is_local_only(tmp_path):
     assert '*.local.json' in read('.gitignore')
 
 def test_gui_requires_manual_confirmation_and_records_logid():
-    text=read('carendmr/ui_qt/main_window.py')
-    assert 'Bei QRZ loggen' in text
+    text=main_window_source()
+    history=read('carendmr/ui_qt/history_widget.py')
+    assert 'Bei QRZ loggen' in history
     assert 'QSO bei QRZ.com loggen' in text
     assert 'QMessageBox.question' in text
     assert 'record_qrz_log' in text
@@ -55,7 +54,7 @@ def test_settings_have_logbook_activation_and_key():
     assert 'qrz_logbook.local.json' in text
 
 def test_qso_none_path_has_no_recursion_regression():
-    text=read('carendmr/ui_qt/main_window.py')
+    text=main_window_source()
     start=text.index('    def _update_current_qso_status')
     end=text.index('    def _mark_current_station_worked', start)
     method=text[start:end]

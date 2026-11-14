@@ -2,7 +2,7 @@
 
 CarenDMR ist ein barrierefrei bedienbarer Desktop-Client für DMR-Sprachbetrieb über BrandMeister. Das Projekt basiert auf Python und Qt und richtet sich besonders an Funkamateure, die einen direkt am Rechner bedienbaren DMR-Client mit guter Tastatur- und Screenreader-Unterstützung suchen.
 
-Aktuelle Version: **0.2.1.83**
+Aktuelle Version: **0.2.1.87**
 
 ## Aktueller Stand
 
@@ -61,6 +61,8 @@ Danach CarenDMR starten:
 python main.py --gui
 ```
 
+Die Easy-Oberfläche startet mit `python main.py --easy`. Unter Windows gibt es dafür auch die Startdateien `start_gui.bat` und `start_easy.bat`, die direkt das Python aus `.venv` verwenden.
+
 Unter macOS entsprechend mit `python3 -m venv .venv` und `source .venv/bin/activate`.
 
 ## BrandMeister-Konfiguration
@@ -105,10 +107,10 @@ Vor einem Commit sollte trotzdem immer `git status` geprüft werden.
 
 Der aktuelle Hauptzweig ist `main`. Änderungen sollten klein, nachvollziehbar und testbar bleiben. Der Funk-, Audio- und GUI-Code wird bewusst getrennt gehalten, soweit dies technisch sinnvoll ist.
 
-Tests können mit folgendem Befehl gestartet werden:
+Tests können mit folgendem Befehl gestartet werden. Bitte pytest verwenden: Ein Teil der Tests ist als einfache `test_…`-Funktion geschrieben und wird von `unittest discover` nicht gefunden.
 
 ```powershell
-python -m unittest discover -s tests -v
+python -m pytest tests
 ```
 
 Weitere technische Details stehen unter anderem in:

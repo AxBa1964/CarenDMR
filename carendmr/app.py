@@ -28,11 +28,6 @@ def _build_parser() -> argparse.ArgumentParser:
         help="öffnet die neue funktionale Qt-Betriebsoberfläche",
     )
     parser.add_argument(
-        "--gui-tk",
-        action="store_true",
-        help="öffnet die stabile Tkinter-Oberfläche als Rückfallebene",
-    )
-    parser.add_argument(
         "--easy",
         action="store_true",
         help="öffnet die extrem reduzierte barrierefreie Easy-Oberfläche",
@@ -164,7 +159,7 @@ def run(argv: Sequence[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     project_root = Path(__file__).resolve().parent.parent
 
-    if (args.gui or args.gui_tk or args.easy) and args.listen:
+    if (args.gui or args.easy) and args.listen:
         print("Eine GUI und --listen können nicht gleichzeitig verwendet werden.", file=sys.stderr)
         return 2
     if args.duration is not None and not args.listen:
@@ -178,9 +173,6 @@ def run(argv: Sequence[str] | None = None) -> int:
         return 2
     if args.listen:
         return _run_live_listen(project_root, seconds=args.duration)
-    if args.gui_tk:
-        from carendmr.ui import run_gui
-        return run_gui(project_root)
     if args.easy:
         from carendmr.ui_qt.easy_window import run_easy_gui
         return run_easy_gui(project_root)

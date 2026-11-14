@@ -3,11 +3,6 @@ from pathlib import Path
 
 from carendmr.audio.tuner import TxAudioTunerSettings
 from carendmr.benchmark.audio_benchmark import AudioBenchmarkService
-from carendmr.version import __version__
-
-
-def test_release_version_0214():
-    assert __version__ == "0.2.1.32"
 
 
 def test_reference_contains_robust_statistics():

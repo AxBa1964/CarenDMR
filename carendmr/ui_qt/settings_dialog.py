@@ -36,13 +36,11 @@ from PySide6.QtWidgets import (
 
 from carendmr.ui_qt.theme import METRICS
 from carendmr.audio import AudioDirection
-from carendmr.diagnostics import initialize as initialize_diagnostics
-from carendmr.diagnostics import set_enabled as set_diagnostics_enabled
+from carendmr.application.diagnostics_service import load_diagnostics_enabled, set_diagnostics_enabled
 from carendmr.accessibility.hotkeys import DEFAULT_HOTKEYS, FUNCTION_LABELS, REQUIRED_HOTKEYS, HotkeyManager
 from carendmr.application import ContactService, EncoderService
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
-from carendmr.brandmeister.config import BrandMeisterConfigStore
-from carendmr.brandmeister.masters import MASTERS, by_host
+from carendmr.application.station_settings_service import StationSettingsService
 from carendmr.qrz import QrzLogbookConfig
 from carendmr.adif_udp import AdifUdpConfig
 from carendmr.qso_sync import QsoSyncConfig
@@ -53,9 +51,18 @@ class SettingsDialog(QDialog):
 
     settings_applied = Signal()
 
-    def __init__(self, project_root: Path, audio_service, receive_service, parent=None) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        audio_service,
+        receive_service,
+        parent=None,
+        *,
+        station_settings: StationSettingsService | None = None,
+    ) -> None:
         super().__init__(parent)
         self.project_root = Path(project_root)
+        self.station_settings = station_settings or StationSettingsService(self.project_root)
         self.audio_service = audio_service
         self.receive_service = receive_service
         self._input_devices = []
@@ -144,7 +151,7 @@ class SettingsDialog(QDialog):
         self.network_server.setEditable(True)
         self.network_server.setAccessibleName("BrandMeister-Master")
         self.network_server.setToolTip("Master auswählen oder Hostnamen direkt eingeben.")
-        for master in MASTERS:
+        for master in self.station_settings.known_masters():
             self.network_server.addItem(f"{master.label} – {master.host}", (master.host, master.port))
         self.network_server.currentIndexChanged.connect(self._network_master_changed)
         self.network_server.editTextChanged.connect(self._network_master_changed)
@@ -342,7 +349,7 @@ class SettingsDialog(QDialog):
         data = self.network_server.currentData()
         text = self.network_server.currentText().strip()
         if isinstance(data, tuple) and len(data) == 2:
-            known = by_host(str(data[0]), int(data[1]))
+            known = self.station_settings.find_master(str(data[0]), int(data[1]))
             if known is not None and text in {known.label, f"{known.label} – {known.host}", known.host}:
                 return known.host, known.port
         if " – " in text:
@@ -355,18 +362,13 @@ class SettingsDialog(QDialog):
         return text, port
 
     def _save_network_master(self) -> None:
-        store = BrandMeisterConfigStore(self.project_root / "config" / "brandmeister.local.json")
-        cfg = store.load()
         host, port = self._selected_network_master()
-        data = cfg.to_dict()
-        data["host"] = host
-        data["port"] = port
-        store.save(type(cfg).from_dict(data))
+        self.station_settings.save_master(host, port)
 
     def _load_profile_and_system_info(self) -> None:
         try:
-            cfg = BrandMeisterConfigStore(self.project_root / "config" / "brandmeister.local.json").load()
-            known = by_host(cfg.host, cfg.port)
+            cfg = self.station_settings.load()
+            known = self.station_settings.find_master(cfg.host, cfg.port)
             if known is not None:
                 index = next((i for i in range(self.network_server.count()) if self.network_server.itemData(i) == (known.host, known.port)), -1)
                 if index >= 0:
@@ -509,7 +511,7 @@ class SettingsDialog(QDialog):
         self.tx_limit_spin.setValue(int(self.audio_service.tx_safety_limit_seconds))
         self.audio_debug_check.setChecked(False)
         self._refresh_audio_test_status()
-        self.diagnostics_check.setChecked(bool(initialize_diagnostics(self.project_root)))
+        self.diagnostics_check.setChecked(load_diagnostics_enabled(self.project_root))
         preferences = self.preferences_store.load()
         self.ptt_lead_in_spin.setValue(preferences.screenreader_ptt_lead_in_seconds)
         qrz_cfg = QrzLogbookConfig.load(self.project_root / "config" / "qrz_logbook.local.json")

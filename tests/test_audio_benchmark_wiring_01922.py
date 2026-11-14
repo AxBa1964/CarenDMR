@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from _ui_sources import main_window_source
 
 
 def _method_node(name: str) -> ast.FunctionDef:
-    source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    source = main_window_source()
     module = ast.parse(source)
     for node in ast.walk(module):
         if isinstance(node, ast.FunctionDef) and node.name == name:
@@ -31,7 +32,8 @@ def test_refresh_favorites_does_not_replace_audio_benchmark_service() -> None:
 
 
 def test_audio_benchmark_service_is_created_once_in_main_window_init() -> None:
-    source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    # Seit 0.2.1.87 erzeugt carendmr/bootstrap.py die Desktop-Dienste genau einmal.
+    source = Path("carendmr/bootstrap.py").read_text(encoding="utf-8")
     module = ast.parse(source)
     calls = []
     for node in ast.walk(module):

@@ -1,14 +1,9 @@
 from pathlib import Path
-
-from carendmr.version import __version__
-
-
-def test_version_0141() -> None:
-    assert __version__ == "0.2.1.32"
+from _ui_sources import main_window_source
 
 
 def test_timeslot_and_call_type_accessibility_are_centralized() -> None:
-    source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    source = main_window_source()
     manager = Path("carendmr/ui_qt/accessibility_manager.py").read_text(encoding="utf-8")
     assert "def _sync_radio_controls" in source
     assert '"Timeslot 1"' in source

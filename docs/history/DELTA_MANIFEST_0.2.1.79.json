@@ -1,0 +1,16 @@
+{
+  "version": "0.2.1.79",
+  "base": "0.2.1.78",
+  "purpose": "WSJT-X-compatible Logged ADIF UDP forwarding for confirmed QSOs",
+  "files": [
+    "carendmr/adif_udp.py",
+    "carendmr/ui_qt/history_widget.py",
+    "carendmr/ui_qt/main_window.py",
+    "carendmr/ui_qt/settings_dialog.py",
+    "carendmr/version.py",
+    "config/adif_udp.example.json",
+    "tests/test_adif_udp_02179.py",
+    "README_0.2.1.79_DELTA.txt",
+    "DELTA_MANIFEST_0.2.1.79.json"
+  ]
+}

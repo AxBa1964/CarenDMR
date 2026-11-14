@@ -1,8 +1,9 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 
 def _source() -> str:
-    return Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    return main_window_source()
 
 
 def test_search_text_change_does_not_clear_current_talkgroup_name() -> None:

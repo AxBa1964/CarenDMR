@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from carendmr.qrz.service import QrzConfig
+from _ui_sources import main_window_source
 
 
 class QrzSatelliteHamGrid02154Tests(unittest.TestCase):
@@ -20,7 +21,7 @@ class QrzSatelliteHamGrid02154Tests(unittest.TestCase):
             self.assertEqual("abc123", config.maptiler_api_key)
 
     def test_main_window_passes_maptiler_key_to_qrz_window(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn(
             "maptiler_api_key=self.qrz_service.maptiler_api_key",
             source,

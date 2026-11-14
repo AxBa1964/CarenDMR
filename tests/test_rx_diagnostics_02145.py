@@ -1,12 +1,14 @@
 from pathlib import Path
 import unittest
+from _ui_sources import main_window_source
 
 
 class RxDiagnostics02145Tests(unittest.TestCase):
     def test_qt_startup_disables_rx_agc_for_diagnostic_comparison(self):
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
-        self.assertIn("self.audio_send_service.set_agc_enabled(False)", source)
-        self.assertIn("self.receive_service.set_agc_enabled(False)", source)
+        core = Path("carendmr/bootstrap.py").read_text(encoding="utf-8")
+        source = main_window_source()
+        self.assertIn("audio_send_service.set_agc_enabled(False)", core)
+        self.assertIn("receive_service.set_agc_enabled(False)", core)
         self.assertIn('timing_mark("RX_AGC_DIAGNOSE", "Beim Programmstart ausgeschaltet")', source)
 
     def test_receive_stop_requests_are_timing_logged(self):

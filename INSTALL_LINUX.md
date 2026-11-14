@@ -39,7 +39,7 @@ Hinweis: `make -C native check` verwendet derzeit die macOS-Variante von
 ## 4. Tests
 
 ```bash
-python -m unittest discover -s tests -v
+python -m pytest tests
 python main.py
 ```
 

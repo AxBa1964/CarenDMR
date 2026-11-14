@@ -13,4 +13,5 @@ def test_easy_connect_button_has_explicit_accessible_name():
 
 def test_easy_ptt_stop_sets_existing_stop_event():
     assert "self._tx_stop_event.set()" in EASY
-    assert 'self._updates.put(("tx_wire_complete", None))' in EASY
+    assert "tx_complete_callback=self._tx_wire_complete" in EASY
+    assert "def _tx_wire_complete(self)" in EASY

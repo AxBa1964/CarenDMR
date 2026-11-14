@@ -1,5 +1,6 @@
 from pathlib import Path
 import ast
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,6 +38,6 @@ def test_lab_keeps_four_run_comparison():
 
 
 def test_main_window_has_lab_menu():
-    text = (ROOT / "carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    text = main_window_source()
     assert 'QAction("Live-Audiolabor …", self)' in text
     assert "def _open_audio_lab" in text

@@ -1,7 +1,8 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
-MAIN = (ROOT / "carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+MAIN = main_window_source()
 LIVE = (ROOT / "carendmr/brandmeister/live_voice_transmit.py").read_text(encoding="utf-8")
 MANAGER = (ROOT / "carendmr/application/connection_manager.py").read_text(encoding="utf-8")
 SERVICE = (ROOT / "carendmr/application/parrot_test_service.py").read_text(encoding="utf-8")

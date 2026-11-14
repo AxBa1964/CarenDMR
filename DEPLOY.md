@@ -332,7 +332,7 @@ TG91 ist für diesen Test keine Voraussetzung. Ein zuvor verbliebener dynamische
 ```powershell
 cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 python -c "from carendmr.version import get_version; print(get_version())"
-python -m unittest discover -s tests -v
+python -m pytest tests
 python main.py --gui
 ```
 
@@ -415,7 +415,7 @@ Erwartung:
 ```powershell
 cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 python -c "from carendmr.version import get_version; print(get_version())"
-python -m unittest discover -s tests -v
+python -m pytest tests
 python main.py --gui
 ```
 
@@ -439,7 +439,7 @@ Erwartete Version: `0.2.1.38`.
 ```powershell
 cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 python -c "from carendmr.version import get_version; print(get_version())"
-python -m unittest discover -s tests -v
+python -m pytest tests
 python main.py --gui
 ```
 
@@ -470,7 +470,7 @@ Erwartete Version: `0.2.1.38`.
 ```powershell
 cd C:\Users\abaru\OneDrive\AB_Entwicklung\CarenDMR
 python -c "from carendmr.version import get_version; print(get_version())"
-python -m unittest discover -s tests -v
+python -m pytest tests
 python main.py --gui
 ```
 

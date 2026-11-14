@@ -1,21 +1,24 @@
 # CarenDMR Roadmap
 
-## 0.2.0 – Modulationsvergleich
+Stand: 0.2.1.87
 
-- Eigener AMBE-Loopback gegen benannte TG-Referenz
-- reproduzierbarer Referenztext
-- Vergleichstabelle und Tuner-Empfehlungen
-- Empfehlungen zunächst ohne automatische Übernahme
+## Abgeschlossen: Architektur-Umbau (0.2.1.84 – 0.2.1.87)
 
-## 0.1.9.4 – Benannte Referenzstruktur
+- Gemeinsamer Startpunkt `bootstrap.py` für Funkkern und Desktop-Dienste
+- Hauptfenster und Easy-Oberfläche über denselben `OperatingController`
+- Hauptfenster in fachliche Teilmodule aufgeteilt
+- Tkinter-Oberfläche entfernt, Testsuite auf pytest umgestellt
 
-- TG91-Bestand einmalig als `TG91_Global` übernehmen
-- aktive Referenz über `index.json` verwalten
-- Metadaten je Referenz dauerhaft aktualisieren
-- Grundlage für mehrere TG- und Sprachreferenzen schaffen
+## Als Nächstes
 
-## Nächster Schwerpunkt
+- Branch `refactor/bootstrap-controller` nach `main` übernehmen
+- Quelltext-Tests schrittweise durch Verhaltenstests ersetzen
+- Prüfen, welche Tests echte Audio- oder Netzwerkgeräte benötigen, und diese
+  kennzeichnen, damit die Suite überall gleich schnell und stabil läuft
+- Android-Prototyp (Branch `feature/android-arm64-prototype`) auf Basis von
+  `bootstrap.py` und `OperatingController`
 
-- eigene Modulation mit der TG91-Referenz vergleichen
-- Abweichungen auf Mic-Gain, Tiefen, Mitten, Präsenz, Höhen, Dynamik und Limiter abbilden
-- geführte Optimierung mit Vorher-/Nachher-Test
+## Offen aus früheren Planungen
+
+- Modulationsvergleich: eigener AMBE-Loopback gegen benannte TG-Referenz,
+  Abweichungen auf Tuner-Empfehlungen abbilden (ohne automatische Übernahme)

@@ -3,10 +3,6 @@ import ast
 
 ROOT = Path(__file__).resolve().parents[1]
 
-def test_version():
-    text=(ROOT/"carendmr/version.py").read_text(encoding="utf-8")
-    assert '__version__ = "0.2.1.70"' in text
-
 def test_productive_receive_uses_md380():
     text=(ROOT/"carendmr/application/receive_service.py").read_text(encoding="utf-8")
     assert "Md380DynarmicReceiveVocoder" in text

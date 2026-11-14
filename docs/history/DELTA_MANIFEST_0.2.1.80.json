@@ -1,0 +1,12 @@
+{
+  "version": "0.2.1.80",
+  "base": "0.2.1.79",
+  "purpose": "QSO-Historie Detailstatus unmittelbar nach Bestätigen synchronisieren",
+  "files": [
+    "carendmr/ui_qt/history_widget.py",
+    "carendmr/version.py",
+    "tests/test_history_refresh_02180.py",
+    "README_0.2.1.80_DELTA.txt",
+    "DELTA_MANIFEST_0.2.1.80.json"
+  ]
+}

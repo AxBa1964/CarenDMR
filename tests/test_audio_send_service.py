@@ -138,9 +138,12 @@ class AudioSendServiceTests(unittest.TestCase):
         self.service.save_settings()
         reloaded = AudioSendService(self.root, backend=self.backend)
         self.assertEqual(120, reloaded.tx_safety_limit_seconds)
-        with self.assertRaisesRegex(ValueError, "zwischen 5 und 300"):
-            self.service.set_tx_safety_limit_seconds(4)
-        with self.assertRaisesRegex(ValueError, "zwischen 5 und 300"):
+        # 0 bedeutet bewusst "unbegrenzt" (gültiger Bereich 0 bis 300 Sekunden).
+        self.assertEqual(0, self.service.set_tx_safety_limit_seconds(0))
+        self.assertEqual(4, self.service.set_tx_safety_limit_seconds(4))
+        with self.assertRaisesRegex(ValueError, "zwischen 0 und 300"):
+            self.service.set_tx_safety_limit_seconds(-1)
+        with self.assertRaisesRegex(ValueError, "zwischen 0 und 300"):
             self.service.set_tx_safety_limit_seconds(301)
 
 

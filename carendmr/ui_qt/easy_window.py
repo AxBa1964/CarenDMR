@@ -25,16 +25,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from carendmr.application import (
-    AudioSendService,
-    ConnectionManager,
-    EncoderService,
-    EventService,
-    ParrotTestService,
-    RadioState,
-    ReceiveService,
-)
-from carendmr.application.operating_controller import OperatingController
+from carendmr.application import RadioState
+from carendmr.bootstrap import RadioCore, build_radio_core
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.ui_qt.accessibility_manager import AccessibilityManager
 from carendmr.ui_qt.audio_cue import AudioCuePlayer
@@ -56,7 +48,7 @@ class EasyButton(QPushButton):
 class EasyWindow(QMainWindow):
     """Minimaler, vollständig tastaturbedienbarer DMR-Betrieb."""
 
-    def __init__(self, project_root: Path) -> None:
+    def __init__(self, project_root: Path, core: RadioCore | None = None) -> None:
         super().__init__()
         self.project_root = Path(project_root)
         self.setWindowTitle(f"CarenDMR Easy {__version__}")
@@ -69,33 +61,15 @@ class EasyWindow(QMainWindow):
         self._timeslot = self.preferences.timeslot
         self._call_type = self.preferences.call_type
 
-        # Identische, bereits getestete Funk-Komponenten wie in der Desktop-UI.
-        self.events = EventService()
-        self.receive_service = ReceiveService(self.project_root, events=self.events)
-        self.encoder_service = EncoderService(self.project_root)
-        self.audio_send_service = AudioSendService(
-            self.project_root,
-            mute_receive=self.receive_service.mute_audio_output,
-            unmute_receive=self.receive_service.unmute_audio_output,
-        )
-        self.receive_service.set_output_factory(self.audio_send_service.create_pcm_output)
-        self.receive_service.set_output_volume_percent(self.audio_send_service.output_volume_percent)
-        self.receive_service.set_user_muted(self.audio_send_service.user_muted)
-        self.audio_send_service.set_agc_enabled(False)
-        self.receive_service.set_agc_enabled(False)
-        self.receive_service.set_audio_debug_enabled(self.audio_send_service.audio_debug_wav_enabled)
-        self.receive_service.set_audio_debug_dir_provider(
-            lambda: self.audio_send_service.audio_test_session_dir
-        )
-        self.parrot_service = ParrotTestService(
-            self.project_root,
-            audio_service=self.audio_send_service,
-            encoder_service=self.encoder_service,
-        )
-        self.connection_manager = ConnectionManager(
-            self.receive_service, self.parrot_service, events=self.events
-        )
-        self.controller = OperatingController(self.connection_manager, self.receive_service)
+        # Identischer Funkkern wie in der Desktop-UI aus dem gemeinsamen Startpunkt.
+        self.radio_core = core or build_radio_core(self.project_root)
+        self.events = self.radio_core.events
+        self.receive_service = self.radio_core.receive_service
+        self.encoder_service = self.radio_core.encoder_service
+        self.audio_send_service = self.radio_core.audio_send_service
+        self.parrot_service = self.radio_core.parrot_service
+        self.connection_manager = self.radio_core.connection_manager
+        self.controller = self.radio_core.controller
 
         self.accessibility = AccessibilityManager()
         self.audio_cues = AudioCuePlayer(self.audio_send_service)

@@ -2,6 +2,7 @@ import unittest
 from pathlib import Path
 
 from carendmr.domain import DmrChannel
+from _ui_sources import main_window_source
 
 
 class DmrChannel0172Tests(unittest.TestCase):
@@ -30,7 +31,7 @@ class DmrChannel0172Tests(unittest.TestCase):
                 channel.normalized()
 
     def test_operation_page_uses_dmr_channel_wording(self) -> None:
-        source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+        source = main_window_source()
         self.assertIn('QLabel("DMR-KANAL")', source)
         self.assertIn('setPlaceholderText("Talkgroup nach Nummer oder Name suchen")', source)
         self.assertIn('setAccessibleName("Talkgroup")', source)

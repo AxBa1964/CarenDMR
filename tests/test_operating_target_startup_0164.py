@@ -1,8 +1,9 @@
 from pathlib import Path
+from _ui_sources import main_window_source
 
 
 def test_disconnected_default_does_not_override_persisted_talkgroup():
-    source = (Path(__file__).parents[1] / "carendmr" / "ui_qt" / "main_window.py").read_text(encoding="utf-8")
+    source = main_window_source()
     assert "state.brandmeister_connected" in source
     assert "ConnectionState.CONNECTING" in source
     assert "self.current_tg_label.setText(str(state.talkgroup))" in source

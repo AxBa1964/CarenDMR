@@ -1,14 +1,12 @@
 from pathlib import Path
 import ast
+from _ui_sources import main_window_source
 
 ROOT = Path(__file__).resolve().parents[1]
 def read(rel): return (ROOT / rel).read_text(encoding="utf-8")
 
-def test_version():
-    assert '__version__ = "0.2.1.77"' in read("carendmr/version.py")
-
 def test_qrz_removed_from_current_station():
-    text = read("carendmr/ui_qt/main_window.py")
+    text = main_window_source()
     assert 'setAccessibleName("Aktuelles QSO bei QRZ.com loggen")' not in text
     assert "def _log_current_qso_to_qrz" not in text
 
@@ -19,7 +17,7 @@ def test_qrz_is_in_history():
     assert "def _log_selected_to_qrz" in text
 
 def test_history_qrz_status():
-    text = read("carendmr/ui_qt/main_window.py")
+    text = main_window_source()
     assert "def _history_qrz_status" in text
     assert 'return f"Gespeichert · LOGID {logid}"' in text
     assert "self.history_widget.refresh()" in text
@@ -30,4 +28,4 @@ def test_only_confirmed_qso_can_log():
 
 def test_syntax():
     ast.parse(read("carendmr/ui_qt/history_widget.py"))
-    ast.parse(read("carendmr/ui_qt/main_window.py"))
+    ast.parse(main_window_source())

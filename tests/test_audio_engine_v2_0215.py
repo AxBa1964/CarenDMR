@@ -3,7 +3,6 @@ from __future__ import annotations
 import numpy as np
 
 from carendmr.audio.backend import SoundDeviceBackend
-from carendmr.version import __version__
 
 
 class _FakeSoundDevice:
@@ -21,10 +20,6 @@ class _FakeSoundDevice:
         self.checked.append(int(samplerate))
         if int(samplerate) != 48000:
             raise RuntimeError("unsupported")
-
-
-def test_release_version_0215() -> None:
-    assert __version__ == "0.2.1.32"
 
 
 def test_audio_engine_uses_native_rate_when_target_is_rejected() -> None:

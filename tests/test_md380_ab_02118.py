@@ -3,11 +3,6 @@ import subprocess
 import sys
 
 
-def test_version_is_02118():
-    from carendmr.version import get_version
-    assert get_version() == "0.2.1.32"
-
-
 def test_md380_ab_tool_is_offline_and_has_fixed_gain():
     source = Path("tools/ambe_md380_ab.py").read_text(encoding="utf-8")
     assert "FIXED_GAIN_DB = 1.0" in source

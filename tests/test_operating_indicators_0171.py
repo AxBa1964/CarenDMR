@@ -1,14 +1,9 @@
 from pathlib import Path
-
-from carendmr.version import __version__
-
-
-def test_release_version_is_0171() -> None:
-    assert __version__ == "0.2.1.32"
+from _ui_sources import main_window_source
 
 
 def test_visual_indicators_are_integrated_without_ambe_text() -> None:
-    source = Path("carendmr/ui_qt/main_window.py").read_text(encoding="utf-8")
+    source = main_window_source()
     assert "StatusIndicator" in source
     assert "LevelMeter" in source
     assert "MIC-PEGEL" in source
