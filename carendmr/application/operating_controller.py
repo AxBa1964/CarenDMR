@@ -246,9 +246,12 @@ class OperatingController:
             with self._lock:
                 if self._ptt_stop_event is stop_event:
                     self._ptt_stop_event = None
-            self.radio_state.synchronize(
-                RadioState.CONNECTED if self.receive_service.is_running else RadioState.DISCONNECTED
-            )
+            # Wurde während der Sendung bereits getrennt, bleibt DISCONNECTING
+            # stehen; der StateStore meldet anschließend DISCONNECTED.
+            if self.radio_state.state is not RadioState.DISCONNECTING:
+                self.radio_state.synchronize(
+                    RadioState.CONNECTED if self.receive_service.is_running else RadioState.DISCONNECTED
+                )
 
     @staticmethod
     def _run_async(

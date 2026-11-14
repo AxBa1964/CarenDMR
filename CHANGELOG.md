@@ -1,3 +1,11 @@
+## 0.2.1.86 – Hauptfenster über OperatingController (Refactoring Schritt 3)
+
+- Das Hauptfenster verbindet, trennt und sendet jetzt über den `OperatingController` (`connect_async`, `disconnect_async`, `start_ptt`, `stop_ptt`) – genau wie die Easy-Oberfläche.
+- Eigene Zustandsmaschine und eigene Hintergrund-Threads des Hauptfensters für Verbinden, Trennen und TX entfallen; der Bedienzustand kommt ausschließlich aus dem Controller.
+- Unverändert im Fenster: Screenreader-Vorlauf, Start-/End-/Warntöne, TX-Sekundenanzeige, Schnellwahl und TG-Monitor-Übernahme.
+- Controller: Endet eine Sendung, während bereits getrennt wird, bleibt der Zustand „Verbindung wird getrennt“ stehen statt kurz wieder „Verbunden“ zu melden.
+- Beim Schließen des Fensters beendet der Controller eine laufende Sendung und den Empfang.
+
 ## 0.2.1.85 – OperatingController asynchron (Refactoring Schritt 2)
 
 - `OperatingController` bietet jetzt `connect_async`, `disconnect_async`, `start_ptt` und `stop_ptt`. Oberflächen brauchen für Verbinden, Trennen und Senden keine eigenen Hintergrund-Threads mehr; Ergebnisse kommen über `on_done`/`on_error`.

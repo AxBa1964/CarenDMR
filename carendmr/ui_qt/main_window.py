@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 
 from carendmr.application import (
     LocalAudioLabService, QsoRecordingService,
-    FavoriteService, RadioState, RadioStateMachine, TalkgroupSearchService, TalkgroupCatalogService,
+    FavoriteService, RadioState, TalkgroupSearchService, TalkgroupCatalogService,
 )
 from carendmr.bootstrap import RadioCore, build_radio_core
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
@@ -73,6 +73,10 @@ class MainWindow(QMainWindow):
         self.audio_send_service = self.radio_core.audio_send_service
         self.parrot_service = self.radio_core.parrot_service
         self.connection_manager = self.radio_core.connection_manager
+        # Ab 0.2.1.86 laufen Verbinden, Trennen und Senden über den
+        # OperatingController. Seine Zustandsmaschine ist die einzige Quelle
+        # für den Bedienzustand – identisch zur Easy-Oberfläche.
+        self.controller = self.radio_core.controller
         # build_radio_core() hat die RX-AGC bereits diagnosehalber ausgeschaltet.
         timing_mark("RX_AGC_DIAGNOSE", "Beim Programmstart ausgeschaltet")
         self.preferences_store = OperatingPreferencesStore(self.project_root / "config" / "operating.local.json")
@@ -84,7 +88,7 @@ class MainWindow(QMainWindow):
         )
         self.qso_recording_service = QsoRecordingService(self.project_root)
         self.audio_send_service.set_tx_pcm_observer(self.qso_recording_service.add_tx)
-        self.radio_state = RadioStateMachine()
+        self.radio_state = self.controller.radio_state
         self._updates: queue.SimpleQueue[tuple[str, object]] = queue.SimpleQueue()
         self._tx_stop_event: Event | None = None
         self._tx_active = False
@@ -1878,36 +1882,33 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "CarenDMR", str(error))
             return
         self._startup_announcement_timer.stop()
+        try:
+            self.controller.connect_async(
+                tg, ts, call_type,
+                on_done=lambda started: self._updates.put(("connect_result", started)),
+                on_error=lambda error: self._updates.put(("connect_error", error)),
+            )
+        except (RuntimeError, ValueError) as error:
+            QMessageBox.warning(self, "CarenDMR", str(error))
+            return
         self._connected_announcement_pending = True
-        self.radio_state.synchronize(RadioState.CONNECTING)
         self.connection_indicator.set_state("busy")
         self.statusBar().showMessage("Verbindung wird hergestellt …")
         self._set_controls_for_state(self.radio_state.state)
-
-        def worker() -> None:
-            try:
-                started = self.connection_manager.connect(tg, ts, call_type)
-                self._updates.put(("connect_result", started))
-            except Exception as error:
-                self._updates.put(("connect_error", error))
-        Thread(target=worker, name="CarenDMR-Qt-Connect", daemon=True).start()
 
     def _disconnect(self) -> None:
         self._stop_qso_recording("Mitschnitt wegen Trennen beendet")
         if self._tx_active:
             self._stop_tx()
-        self.radio_state.synchronize(RadioState.DISCONNECTING)
+        # Der Controller beendet eine noch laufende Sendung und wartet bis zu
+        # 8 Sekunden auf das Ende des Empfangs.
+        self.controller.disconnect_async(
+            wait_timeout=8.0,
+            on_done=lambda _finished: self._updates.put(("disconnect_result", True)),
+            on_error=lambda error: self._updates.put(("disconnect_error", error)),
+        )
         self.statusBar().showMessage("Empfang und Verbindung werden beendet …")
         self._set_controls_for_state(self.radio_state.state)
-
-        def worker() -> None:
-            try:
-                self.connection_manager.disconnect()
-                self.receive_service.wait(8.0)
-                self._updates.put(("disconnect_result", True))
-            except Exception as error:
-                self._updates.put(("disconnect_error", error))
-        Thread(target=worker, name="CarenDMR-Qt-Disconnect", daemon=True).start()
 
     def _toggle_tx(self) -> None:
         if self._tx_stopping:
@@ -1972,7 +1973,19 @@ class MainWindow(QMainWindow):
         if not self._tx_pending or self.radio_state.state is not RadioState.CONNECTED:
             return
         self._tx_pending = False
-        self._tx_stop_event = Event()
+        try:
+            # Der Controller schaltet auf TRANSMITTING und sendet im Hintergrund.
+            self._tx_stop_event = self.controller.start_ptt(
+                level_callback=lambda level: self._updates.put(("mic_level", level)),
+                optimize=True,
+                tx_complete_callback=lambda: self._updates.put(("tx_wire_complete", None)),
+                on_done=lambda result: self._updates.put(("tx_result", result)),
+                on_error=lambda error: self._updates.put(("tx_error", error)),
+            )
+        except RuntimeError as error:
+            self._cancel_pending_tx()
+            self.statusBar().showMessage(str(error))
+            return
         self._tx_active = True
         self._tx_stopping = False
         self._tx_elapsed_seconds = 0
@@ -1982,24 +1995,9 @@ class MainWindow(QMainWindow):
         self.ptt_button.setProperty("visualState", "tx")
         self.ptt_button.style().unpolish(self.ptt_button)
         self.ptt_button.style().polish(self.ptt_button)
-        self.radio_state.synchronize(RadioState.TRANSMITTING)
         self.tx_status.setText("TX")
         self.statusBar().showMessage("TX")
         self._set_controls_for_state(self.radio_state.state)
-        stop_event = self._tx_stop_event
-
-        def worker() -> None:
-            try:
-                result = self.connection_manager.run_parrot_hold_to_talk(
-                    stop_event,
-                    level_callback=lambda level: self._updates.put(("mic_level", level)),
-                    optimize=True,
-                    tx_complete_callback=lambda: self._updates.put(("tx_wire_complete", None)),
-                )
-                self._updates.put(("tx_result", result))
-            except Exception as error:
-                self._updates.put(("tx_error", error))
-        Thread(target=worker, name="CarenDMR-Qt-TX", daemon=True).start()
 
     def _cancel_pending_tx(self) -> None:
         self._tx_pending = False
@@ -2040,8 +2038,7 @@ class MainWindow(QMainWindow):
     def _stop_tx(self) -> None:
         if not self._tx_active:
             return
-        if self._tx_stop_event is not None:
-            self._tx_stop_event.set()
+        self.controller.stop_ptt()
         self._tx_stopping = True
         # Bediener sieht sofort, dass TX beendet wurde. Der Worker darf im
         # Hintergrund noch sauber auslaufen, aber Zähler und TX-Anzeige stoppen.
@@ -2064,8 +2061,8 @@ class MainWindow(QMainWindow):
         self._tx_elapsed_timer.stop()
         self._tx_elapsed_seconds = 0
         self._tx_warning_played = False
-        state = RadioState.CONNECTED if self.receive_service.is_running else RadioState.DISCONNECTED
-        self.radio_state.synchronize(state)
+        # Den Bedienzustand nach TX hat der OperatingController bereits gesetzt.
+        state = self.radio_state.state
         self.ptt_button.setText("TX")
         self.ptt_button.setProperty("visualState", "ready" if state is RadioState.CONNECTED else "idle")
         self.ptt_button.style().unpolish(self.ptt_button)
@@ -2200,12 +2197,12 @@ class MainWindow(QMainWindow):
                 elif kind == "event":
                     self.last_event_label.setText(str(getattr(value, "message", value)))
                 elif kind == "connect_result":
+                    # Den Zustand (auch bei unverändertem Ziel) führt der Controller.
                     if bool(value):
                         self.statusBar().showMessage("Empfang wird gestartet …")
-                    elif self.receive_service.is_running:
-                        self.radio_state.synchronize(RadioState.CONNECTED)
+                    self._set_controls_for_state(self.radio_state.state)
                 elif kind == "connect_error":
-                    self.radio_state.synchronize(RadioState.ERROR)
+                    # Der Controller hat bereits auf ERROR gestellt.
                     self.connection_indicator.set_state("error")
                     self.statusBar().showMessage(f"Verbindungsfehler: {value}")
                     QMessageBox.critical(self, "CarenDMR", f"Verbindung fehlgeschlagen:\n\n{value}")
@@ -2311,16 +2308,8 @@ class MainWindow(QMainWindow):
             pass
 
     def _apply_state(self, state: ApplicationState) -> None:
-        if state.connection is ConnectionState.CONNECTING:
-            self.radio_state.synchronize(RadioState.CONNECTING)
-        elif state.brandmeister_connected and state.receive_active:
-            if not self._tx_active:
-                self.radio_state.synchronize(RadioState.CONNECTED)
-        elif state.connection is ConnectionState.ERROR:
-            self.radio_state.synchronize(RadioState.ERROR)
-        elif not state.receive_active and not self._tx_active and self.radio_state.state not in {RadioState.CONNECTING, RadioState.DISCONNECTING}:
-            self.radio_state.synchronize(RadioState.DISCONNECTED)
-
+        # Den Bedienzustand leitet der OperatingController aus demselben
+        # StateStore ab; hier wird nur noch angezeigt.
         self.server_label.setText("Message Server: verbunden" if state.brandmeister_connected else "Message Server: nicht verbunden")
         self.audio_status_label.setText("Audio aktiv" if state.audio_active else "Audio nicht aktiv")
         stats = state.statistics
@@ -2448,12 +2437,10 @@ class MainWindow(QMainWindow):
         self._save_window_geometry()
         self._tx_pending = False
         self._tx_elapsed_timer.stop()
-        if self._tx_active and self._tx_stop_event is not None:
-            self._tx_stop_event.set()
         if hasattr(self, "_channel_control_server"):
             self._channel_control_server.close()
-        self.connection_manager.disconnect()
-        self.receive_service.wait(3.0)
+        # Beendet eine laufende Sendung und den Empfang.
+        self.controller.disconnect(wait_timeout=3.0)
         self.audio_benchmark_service.close()
         event.accept()
 

@@ -1,0 +1,13 @@
+{
+  "version": "0.2.1.81",
+  "base": "0.2.1.80",
+  "files": [
+    "carendmr/adif_udp.py",
+    "carendmr/ui_qt/settings_dialog.py",
+    "carendmr/version.py",
+    "config/adif_udp.example.json",
+    "tests/test_adif_udp_02181.py",
+    "README_0.2.1.81_DELTA.txt",
+    "tests/test_history_refresh_02180.py"
+  ]
+}
