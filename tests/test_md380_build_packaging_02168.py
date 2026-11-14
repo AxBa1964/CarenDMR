@@ -7,7 +7,8 @@ def test_md380_cmake_wrapper_is_packaged():
     wrapper = ROOT / "native" / "md380_dynarmic_build" / "CMakeLists.txt"
     text = wrapper.read_text(encoding="utf-8")
     assert "add_library(carendmr_md380_bridge SHARED" in text
-    assert "add_subdirectory(\"${MD380_SOURCE_DIR}\" md380_upstream)" in text
+    # Ab 0.2.1.89 ohne Upstream-Build (der die Firmware einbaut).
+    assert "md380_vocoder.cpp" in text
     assert "target_link_libraries(carendmr_md380_bridge PRIVATE" in text
 
 

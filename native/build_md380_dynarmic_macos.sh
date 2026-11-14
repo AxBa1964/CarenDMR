@@ -16,7 +16,8 @@ if [ ! -f "$CMAKE_PROJECT/CMakeLists.txt" ]; then
     exit 1
 fi
 
-for tool in git cmake sh unzip xxd python3; do
+# Ab 0.2.1.89 ohne eingebaute Firmware: unzip, xxd und python3 entfallen.
+for tool in git cmake sh; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "Fehlendes Werkzeug: $tool" >&2
         exit 1
@@ -32,20 +33,10 @@ fi
 git -C "$SOURCE_DIR" fetch --all --tags
 git -C "$SOURCE_DIR" checkout --detach "$COMMIT"
 
-python3 - "$SOURCE_DIR/CMakeLists.txt" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-text = path.read_text()
-bad = "target_link_libraries(md380_vocoder STATIC dynarmic)"
-good = "target_link_libraries(md380_vocoder PRIVATE dynarmic)"
-if bad in text:
-    path.write_text(text.replace(bad, good))
-elif good not in text:
-    raise SystemExit("Erwartete md380_vocoder-Linkzeile nicht gefunden.")
-PY
-
+if [ ! -f "$SOURCE_DIR/md380_vocoder.cpp" ]; then
+    echo "md380_vocoder.cpp fehlt im Upstream-Quellordner." >&2
+    exit 1
+fi
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
@@ -62,6 +53,10 @@ if [ -z "$CANDIDATE" ]; then
 fi
 
 cp "$CANDIDATE" "$OUTPUT"
+if ! grep -q carendmr_md380_init_files "$OUTPUT"; then
+    echo "Die gebaute Bridge kennt carendmr_md380_init_files nicht." >&2
+    exit 1
+fi
 echo "MD380-Dynarmic-Bridge erfolgreich gebaut: $OUTPUT"
 echo "Upstream: $REPO"
 echo "Commit: $COMMIT"

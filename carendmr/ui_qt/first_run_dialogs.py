@@ -8,8 +8,11 @@ Die Dialoge kennen keine Dateipfade der Konfiguration, sondern arbeiten nur
 """
 from __future__ import annotations
 
+import queue
+import threading
 from pathlib import Path
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -34,6 +37,7 @@ from carendmr.application.codec_setup_service import (
     CodecState,
 )
 from carendmr.application.station_settings_service import StationSettingsService
+from carendmr.ui_qt.accessibility import announce
 
 CUSTOM_SERVER_LABEL = "Anderer Server …"
 
@@ -146,11 +150,13 @@ class StationSetupDialog(QDialog):
 
 
 class CodecSetupDialog(QDialog):
-    """Bereitstellen von D002.032.bin und d02032-core.img."""
+    """Sprach-Codec einrichten: Download oder eigene Dateien."""
 
     def __init__(self, codec: CodecSetupService, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._codec = codec
+        self._worker: threading.Thread | None = None
+        self._messages: "queue.Queue[tuple[str, object]]" = queue.Queue()
         self.setWindowTitle("CarenDMR – Sprach-Codec einrichten")
         self.setAccessibleName("Sprach-Codec einrichten")
         self.setModal(True)
@@ -164,20 +170,36 @@ class CodecSetupDialog(QDialog):
         info = QLabel(
             "CarenDMR verwendet für Sprache den Codec aus der Firmware des "
             "Funkgeräts MD380. Diese Firmware darf CarenDMR nicht mitliefern. "
-            f"Benötigt werden die Dateien {FIRMWARE_FILE} und {CORE_FILE}. "
-            "Bitte beide Dateien auswählen; CarenDMR kopiert sie in den eigenen "
-            "Datenordner. Die Nutzung erfolgt in eigener Verantwortung."
+            "Mit „Herunterladen“ holt CarenDMR die Original-Firmware 2.32 von "
+            "md380.org und das passende RAM-Abbild aus dem Projekt md380tools, "
+            "prüft beide anhand fester Prüfsummen und legt sie im eigenen "
+            "Datenordner ab. Die Nutzung erfolgt in eigener Verantwortung."
         )
         info.setWordWrap(True)
         layout.addWidget(info)
+
+        self.download_button = QPushButton("&Herunterladen und einrichten")
+        self.download_button.setAccessibleName("Herunterladen und einrichten")
+        self.download_button.clicked.connect(self._start_download)
+        layout.addWidget(self.download_button)
+
+        manual = QLabel(
+            "Ohne Internet: Firmware als Original-ZIP, als Update-Datei "
+            f"MD-380-D2.32(AD).bin oder als {FIRMWARE_FILE} wählen, dazu {CORE_FILE}."
+        )
+        manual.setWordWrap(True)
+        layout.addWidget(manual)
 
         form = QFormLayout()
         self.firmware_edit = QLineEdit()
         firmware_row, firmware_button = self._file_row(self.firmware_edit, "&Firmware wählen …")
         firmware_button.clicked.connect(
-            lambda: self._choose(self.firmware_edit, f"{FIRMWARE_FILE} wählen", "Firmware (*.bin);;Alle Dateien (*)")
+            lambda: self._choose(
+                self.firmware_edit, "Firmware wählen",
+                "Firmware (*.zip *.bin);;Alle Dateien (*)",
+            )
         )
-        _labeled(form, f"Firmware ({FIRMWARE_FILE}):", self.firmware_edit, f"Pfad zur Datei {FIRMWARE_FILE}")
+        _labeled(form, "Firmware-Datei:", self.firmware_edit, "Pfad zur Firmware-Datei")
         form.addRow("", firmware_row)
 
         self.core_edit = QLineEdit()
@@ -190,14 +212,18 @@ class CodecSetupDialog(QDialog):
         layout.addLayout(form)
 
         buttons = QDialogButtonBox()
-        self.install_button = buttons.addButton("&Übernehmen", QDialogButtonBox.ButtonRole.AcceptRole)
-        close_button = buttons.addButton("Später", QDialogButtonBox.ButtonRole.RejectRole)
+        self.install_button = buttons.addButton("&Dateien übernehmen", QDialogButtonBox.ButtonRole.ApplyRole)
+        self.close_button = buttons.addButton("Später", QDialogButtonBox.ButtonRole.RejectRole)
         self.install_button.clicked.connect(self._install)
-        close_button.clicked.connect(self.reject)
+        self.close_button.clicked.connect(self.reject)
         layout.addWidget(buttons)
 
+        self._poll = QTimer(self)
+        self._poll.setInterval(200)
+        self._poll.timeout.connect(self._drain_messages)
+
         self._show_status()
-        self.firmware_edit.setFocus()
+        self.download_button.setFocus()
 
     @staticmethod
     def _file_row(edit: QLineEdit, button_text: str) -> tuple[QWidget, QPushButton]:
@@ -217,11 +243,65 @@ class CodecSetupDialog(QDialog):
             target.setText(path)
             target.setFocus()
 
+    def _set_busy(self, busy: bool) -> None:
+        for widget in (self.download_button, self.install_button, self.firmware_edit, self.core_edit):
+            widget.setEnabled(not busy)
+
+    def _say(self, text: str) -> None:
+        self.status_label.setText(text)
+        announce(self.status_label, text)
+
     def _show_status(self) -> None:
         report = self._codec.status()
         self.status_label.setText(report.message)
-        needs_files = report.state is CodecState.FILES_MISSING or report.state is CodecState.READY_FILES
+        needs_files = report.state in (CodecState.FILES_MISSING, CodecState.READY_FILES)
+        self.download_button.setEnabled(needs_files)
         self.install_button.setEnabled(needs_files)
+
+    def _start_download(self) -> None:
+        if self._worker is not None:
+            return
+        self._set_busy(True)
+        self._say("Download gestartet. Bitte warten.")
+
+        def work() -> None:
+            try:
+                report = self._codec.download_and_install(
+                    progress=lambda text: self._messages.put(("progress", text))
+                )
+                self._messages.put(("done", report))
+            except (CodecSetupError, OSError) as error:
+                self._messages.put(("error", str(error)))
+
+        self._worker = threading.Thread(target=work, name="CarenDMR-Codec-Download", daemon=True)
+        self._worker.start()
+        self._poll.start()
+
+    def _drain_messages(self) -> None:
+        while True:
+            try:
+                kind, payload = self._messages.get_nowait()
+            except queue.Empty:
+                return
+            if kind == "progress":
+                self._say(str(payload))
+                continue
+            self._poll.stop()
+            self._worker = None
+            self._set_busy(False)
+            if kind == "error":
+                self._show_status()
+                QMessageBox.warning(self, "CarenDMR", str(payload))
+                self.download_button.setFocus()
+                return
+            self._finish(payload)
+            return
+
+    def _finish(self, report) -> None:
+        self._show_status()
+        QMessageBox.information(self, "CarenDMR", report.message)
+        if report.ready:
+            self.accept()
 
     def _install(self) -> None:
         firmware = self.firmware_edit.text().strip()
@@ -235,10 +315,13 @@ class CodecSetupDialog(QDialog):
         except (CodecSetupError, OSError) as error:
             QMessageBox.warning(self, "CarenDMR", str(error))
             return
-        self._show_status()
-        QMessageBox.information(self, "CarenDMR", report.message)
-        if report.ready:
-            self.accept()
+        self._finish(report)
+
+    def reject(self) -> None:
+        if self._worker is not None:
+            self._say("Der Download läuft noch. Bitte kurz warten.")
+            return
+        super().reject()
 
 
 def run_first_run_setup(services, parent: QWidget | None = None) -> None:

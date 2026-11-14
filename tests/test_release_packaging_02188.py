@@ -114,47 +114,124 @@ def test_old_bridge_needs_no_files(tmp_path):
     assert report.ready
 
 
-def test_runtime_bridge_requires_and_installs_files(tmp_path):
+def _fake_sources(tmp_path, monkeypatch):
+    """Erzeugt Test-Firmware/RAM-Abbild und trägt deren Prüfsummen ein."""
+    from carendmr.vocoder import md380_firmware as fw
+
+    app = bytearray(b"\x00" * 0x2000)
+    app[0:4] = (0x2001FFF0).to_bytes(4, "little")
+    app[4:8] = (0x0800C401).to_bytes(4, "little")
+    wrapped = fw.wrap(bytes(app))
+    core = bytes(range(256)) * (fw.CORE_SIZE // 256)
+    monkeypatch.setattr(fw, "WRAPPED_SHA256", fw.sha256(wrapped))
+    monkeypatch.setattr(fw, "CORE_SHA256", fw.sha256(core))
+    return bytes(app), wrapped, core
+
+
+def test_runtime_bridge_requires_and_installs_files(tmp_path, monkeypatch):
     _bridge(tmp_path, runtime=True)
     service = CodecSetupService(tmp_path)
     report = service.status()
     assert report.state is CodecState.FILES_MISSING
     assert FIRMWARE_FILE in report.message and CORE_FILE in report.message
 
+    app, wrapped, core = _fake_sources(tmp_path, monkeypatch)
     source = tmp_path / "download"
     source.mkdir()
-    firmware = source / "fw.bin"
-    firmware.write_bytes(b"\x00\x40\x00\x20" + b"\x01" * 1000)
-    core = source / "core.img"
-    core.write_bytes(b"\x02" * 2048)
+    (source / "update.bin").write_bytes(wrapped)
+    (source / "core.img").write_bytes(core)
 
-    report = service.install_files(firmware, core)
+    report = service.install_files(source / "update.bin", source / "core.img")
     assert report.state is CodecState.READY_FILES
-    assert service.firmware_path.read_bytes() == firmware.read_bytes()
+    # Ausgepackt wird das Programmabbild (auf 512 Byte aufgefüllt).
+    assert service.firmware_path.read_bytes()[: len(app)] == app
     assert service.core_path == tmp_path / "firmware" / CORE_FILE
     manifest = json.loads((tmp_path / "firmware" / MANIFEST_FILE).read_text(encoding="utf-8"))
+    assert manifest["firmware"]["check"] == "verified"
     assert len(manifest["firmware"]["sha256"]) == 64
 
     assert service.remove_files().state is CodecState.FILES_MISSING
 
 
-def test_wrapped_update_file_is_rejected(tmp_path):
+def test_zip_and_unwrapped_firmware_are_accepted(tmp_path, monkeypatch):
+    import zipfile
+
+    from carendmr.vocoder import md380_firmware as fw
+
+    app, wrapped, core = _fake_sources(tmp_path, monkeypatch)
+    archive = tmp_path / "fw.zip"
+    with zipfile.ZipFile(archive, "w") as handle:
+        handle.writestr(fw.FIRMWARE_ZIP_MEMBER, wrapped)
+    image, origin = fw.firmware_from_bytes(archive.read_bytes())
+    assert origin == "verified" and image[: len(app)] == app
+    image, origin = fw.firmware_from_bytes(app)
+    assert origin == "plausible" and image == app
+
+
+def test_other_firmware_and_wrong_core_are_rejected(tmp_path, monkeypatch):
+    from carendmr.vocoder import md380_firmware as fw
+
     _bridge(tmp_path, runtime=True)
-    wrapped = tmp_path / "update.bin"
-    wrapped.write_bytes(b"OutSecurityBin" + b"\x00" * 300)
-    core = tmp_path / "core.img"
-    core.write_bytes(b"\x01")
-    with pytest.raises(CodecSetupError, match="verpackte"):
-        CodecSetupService(tmp_path).install_files(wrapped, core)
+    app, wrapped, core = _fake_sources(tmp_path, monkeypatch)
+    other = fw.wrap(bytes(app) + b"\x01")
+    (tmp_path / "other.bin").write_bytes(other)
+    (tmp_path / "core.img").write_bytes(core)
+    with pytest.raises(CodecSetupError, match="andere Firmware-Version"):
+        CodecSetupService(tmp_path).install_files(tmp_path / "other.bin", tmp_path / "core.img")
+    (tmp_path / "fw.bin").write_bytes(wrapped)
+    (tmp_path / "bad.img").write_bytes(core[:-1] + b"\x00")
+    with pytest.raises(CodecSetupError, match="RAM-Abbild"):
+        CodecSetupService(tmp_path).install_files(tmp_path / "fw.bin", tmp_path / "bad.img")
+    (tmp_path / "noise.bin").write_bytes(b"\x00" * 5000)
+    with pytest.raises(CodecSetupError):
+        CodecSetupService(tmp_path).install_files(tmp_path / "noise.bin", tmp_path / "core.img")
 
 
-def test_empty_or_missing_files_are_rejected(tmp_path):
-    empty = tmp_path / "empty.bin"
-    empty.write_bytes(b"")
+def test_missing_files_are_rejected(tmp_path):
     with pytest.raises(CodecSetupError):
-        CodecSetupService(tmp_path).install_files(empty, empty)
-    with pytest.raises(CodecSetupError):
-        CodecSetupService(tmp_path).install_files(tmp_path / "fehlt.bin", empty)
+        CodecSetupService(tmp_path).install_files(tmp_path / "fehlt.bin", tmp_path / "fehlt.img")
+
+
+def test_download_uses_fixed_sources(tmp_path, monkeypatch):
+    from carendmr.application import codec_setup_service as module
+    from carendmr.vocoder import md380_firmware as fw
+
+    _bridge(tmp_path, runtime=True)
+    app, wrapped, core = _fake_sources(tmp_path, monkeypatch)
+    calls = []
+
+    def fake_download(url, label):
+        calls.append(url)
+        return wrapped if url == fw.FIRMWARE_ZIP_URL else core
+
+    monkeypatch.setattr(module, "_download", fake_download)
+    messages = []
+    report = CodecSetupService(tmp_path).download_and_install(progress=messages.append)
+    assert report.state is CodecState.READY_FILES
+    assert calls == [fw.FIRMWARE_ZIP_URL, fw.CORE_URL]
+    assert fw.FIRMWARE_ZIP_URL.startswith("https://md380.org/")
+    assert len(messages) == 3
+
+
+def test_unwrap_key_and_roundtrip():
+    from carendmr.vocoder import md380_firmware as fw
+
+    assert len(fw.KEY) == 1024
+    assert fw.sha256(fw.KEY) == fw.KEY_SHA256
+    payload = bytes(range(256)) * 9
+    assert fw.unwrap(fw.wrap(payload))[: len(payload)] == payload
+
+
+def test_bridge_source_loads_firmware_at_runtime():
+    bridge = (ROOT / "native" / "md380_dynarmic_bridge.cpp").read_text(encoding="utf-8")
+    assert 'CARENDMR_EXPORT int carendmr_md380_init_files(const char* firmware_path, const char* core_path)' in bridge
+    assert "unsigned char firmware[kFirmwareCapacity];" in bridge
+    cmake = (ROOT / "native" / "md380_dynarmic_build" / "CMakeLists.txt").read_text(encoding="utf-8")
+    assert "add_subdirectory(" not in cmake
+    assert '"${MD380_SOURCE_DIR}/md380_vocoder.cpp"' in cmake
+    script = (ROOT / "native" / "build_md380_dynarmic_windows.ps1").read_text(encoding="utf-8-sig")
+    assert "xxd" not in script.split("# Ab 0.2.1.89")[0]
+    assert "carendmr_md380_init_files" in script
 
 
 class _OldLib:

@@ -1,4 +1,4 @@
-# CarenDMR 0.2.1.88
+# CarenDMR 0.2.1.89
 
 Vorbereitung für die Windows-Exe mit Installer:
 
@@ -7,8 +7,8 @@ Vorbereitung für die Windows-Exe mit Installer:
 - Ersteinrichtung für Station und Sprach-Codec, barrierefrei.
 - Bauplan für PyInstaller und Inno Setup in `packaging/`,
   Anleitung in `docs/RELEASE_BUILD.md`.
-- Öffentliche Builds enthalten keine MD380-Firmware; die Bridge für das
-  Laden zur Laufzeit folgt.
+- Öffentliche Builds enthalten keine MD380-Firmware. Die Bridge lädt sie zur
+  Laufzeit; „Sprach-Codec einrichten“ lädt sie auf Wunsch herunter.
 
 Start aus dem Quellcode:
 

@@ -115,9 +115,23 @@ Festlegung ab 0.2.1.88:
   einrichten“); CarenDMR lädt sie zur Laufzeit.
 - `packaging/build_release.ps1` verweigert einen öffentlichen Build mit der
   alten Bridge.
-- Offen: Umbau der Bridge auf Laden zur Laufzeit (Export
-  `carendmr_md380_init_files`), Entfernen der alten DLL aus dem Repository,
-  Herkunft und Lizenz des RAM-Abbilds `d02032-core.img`.
+- Ab 0.2.1.89 lädt die Bridge die Firmware zur Laufzeit (Export
+  `carendmr_md380_init_files`); `native/md380_dynarmic_build/CMakeLists.txt`
+  übersetzt nur `md380_vocoder.cpp` aus dem Upstream (GPL-2.0-or-later,
+  Doug McLain AD8DP, basierend auf md380tools).
+- Bezug für den Nutzer: `TYT-Tytera-MD-380-FW-v232.zip` von md380.org
+  (SHA-256 der Update-Datei `e1a1a11a…09f43` wie in
+  `md380_vocoder_dynarmic/firmware/download.sh`) und `cores/d02032-core.img`
+  aus md380tools (SHA-256 `d4039818…19f66`, identisch mit der Kopie in
+  md380_vocoder_dynarmic). Das RAM-Abbild stammt aus einem laufenden MD380
+  und wird wie die Firmware nicht mit CarenDMR verteilt.
+- `carendmr/vocoder/md380_firmware.py` enthält das Auspackverfahren und den
+  XOR-Schlüssel aus md380tools `md380_fw.py` (Travis Goodspeed KK4VCZ u. a.;
+  Lizenz laut README „licensed in exchange for two liters of India Pale
+  Ale“). Der Schlüssel ist keine Firmware, sondern das Verfahren, um die
+  verschlüsselte Update-Datei zu lesen.
+- Offen: alte DLL mit eingebauter Firmware aus dem Repository und ggf. der
+  Git-Historie entfernen.
 
 Patente: DVSI vergibt Lizenzen für AMBE+2. Ob für die Nutzung des
 emulierten Codecs Patentrechte berührt sind, ist nicht geprüft; die

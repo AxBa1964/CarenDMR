@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 $repo = "https://github.com/dbehnke/md380_vocoder_dynarmic.git"
 $commit = "55c9a2c6d502567380c7dfaf4a2e3cc4dd6d1dd5"
@@ -14,11 +14,9 @@ $cmake = Join-Path $msysUcrt "cmake.exe"
 $ninja = Join-Path $msysUcrt "ninja.exe"
 $git = Join-Path $msysUsr "git.exe"
 $sh = Join-Path $msysUsr "sh.exe"
-$unzip = Join-Path $msysUsr "unzip.exe"
-$xxd = Join-Path $msysUsr "xxd.exe"
-$python3 = Join-Path $msysUcrt "python3.exe"
-
-$required = @($cmake, $ninja, $git, $sh, $unzip, $xxd, $python3)
+# Ab 0.2.1.89 wird die Firmware nicht mehr eingebaut; unzip, xxd und
+# python3 (Firmware-Download des Upstream-Builds) werden nicht mehr gebraucht.
+$required = @($cmake, $ninja, $git, $sh)
 $missing = $required | Where-Object { -not (Test-Path $_) }
 if ($missing.Count -gt 0) {
     Write-Host "Fehlende MSYS2-Bausteine:" -ForegroundColor Yellow
@@ -45,21 +43,11 @@ try {
     Pop-Location
 }
 
-# Upstream 55c9a2c enthält:
-# target_link_libraries(md380_vocoder STATIC dynarmic)
-# "STATIC" wird hier von CMake als Bibliotheksname an den Linker weitergereicht
-# und erzeugt "-lSTATIC". Für diesen festgelegten Upstream-Commit wird genau
-# diese eine Zeile reproduzierbar korrigiert.
-$upstreamCmake = Join-Path $sourceDir "CMakeLists.txt"
-$upstreamText = Get-Content -Raw -Path $upstreamCmake
-$badLinkLine = 'target_link_libraries(md380_vocoder STATIC dynarmic)'
-$goodLinkLine = 'target_link_libraries(md380_vocoder PRIVATE dynarmic)'
-if ($upstreamText.Contains($badLinkLine)) {
-    $upstreamText = $upstreamText.Replace($badLinkLine, $goodLinkLine)
-    Set-Content -Path $upstreamCmake -Value $upstreamText -Encoding UTF8
-    Write-Host "Upstream-CMake-Linkfehler korrigiert: STATIC -> PRIVATE"
-} elseif (-not $upstreamText.Contains($goodLinkLine)) {
-    throw "Erwartete md380_vocoder-Linkzeile im festgelegten Upstream-Commit nicht gefunden."
+# Der Upstream-CMake-Build wird nicht mehr verwendet (er lädt die Firmware
+# herunter und baut sie ein). md380_dynarmic_build\CMakeLists.txt übersetzt
+# nur md380_vocoder.cpp; die Firmware lädt CarenDMR zur Laufzeit.
+if (-not (Test-Path (Join-Path $sourceDir "md380_vocoder.cpp"))) {
+    throw "md380_vocoder.cpp fehlt im Upstream-Quellordner."
 }
 
 if (Test-Path $buildDir) { Remove-Item -Recurse -Force $buildDir }
@@ -74,9 +62,16 @@ if ($LASTEXITCODE -ne 0) {
 & $cmake --build $buildDir --config Release
 if ($LASTEXITCODE -ne 0) { throw "MD380-Dynarmic-Build fehlgeschlagen." }
 
-$candidates = @(Get-ChildItem -Path $buildDir -Recurse -Filter "carendmr_md380_bridge.dll")
+# Je nach Toolchain mit oder ohne "lib"-Vorsilbe.
+$candidates = @(Get-ChildItem -Path $buildDir -Recurse -Filter "*carendmr_md380_bridge.dll")
 if ($candidates.Count -lt 1) { throw "carendmr_md380_bridge.dll wurde nach dem Build nicht gefunden." }
 Copy-Item $candidates[0].FullName $output -Force
+
+$bridgeText = [System.Text.Encoding]::ASCII.GetString([System.IO.File]::ReadAllBytes($output))
+if (-not $bridgeText.Contains("carendmr_md380_init_files")) {
+    throw "Die gebaute Bridge kennt carendmr_md380_init_files nicht."
+}
+Write-Host "Bridge ohne eingebaute Firmware: Codec-Dateien richtet CarenDMR beim Start ein."
 
 Write-Host "MD380-Dynarmic-Bridge erfolgreich gebaut: $output"
 Write-Host "Upstream: $repo"

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1.89 – MD380-Firmware zur Laufzeit statt eingebaut
+
+- Die MD380-Bridge wird ohne Firmware gebaut: `native/md380_dynarmic_bridge.cpp` stellt die Speicherbereiche selbst bereit und lädt `D002.032.bin` und `d02032-core.img` über den neuen Export `carendmr_md380_init_files`. `native/md380_dynarmic_build/CMakeLists.txt` übersetzt nur noch `md380_vocoder.cpp` (Upstream-Commit unverändert 55c9a2c); unzip, xxd und python3 werden zum Bauen nicht mehr gebraucht.
+- „Sprach-Codec einrichten“ kann jetzt herunterladen: Original-Firmware 2.32 von md380.org und RAM-Abbild aus md380tools, beide mit festen SHA-256-Prüfsummen aus `md380_vocoder_dynarmic/firmware/download.sh` bzw. md380tools. Download läuft im Hintergrund, Fortschritt wird angesagt.
+- Neu: `carendmr/vocoder/md380_firmware.py` packt die Tytera-Update-Datei aus (Verfahren aus md380tools `md380_fw.py`, Ergebnis bytegleich geprüft). Bei eigener Dateiauswahl werden Original-ZIP, Update-Datei oder `D002.032.bin` angenommen.
+- Fehlermeldungen der Bridge (`carendmr_md380_last_error`) erscheinen im Klartext.
+- Build-Skripte für Windows und macOS prüfen, dass die gebaute Bridge keine Firmware mehr braucht.
+
 ## 0.2.1.88 – Vorbereitung Windows-Exe und Installer
 
 - Neu: `carendmr/app_paths.py` trennt Programmordner und Datenordner. Beim Start aus dem Quellcode bleibt alles im Projektverzeichnis; in der Exe liegen Einstellungen, Logs, Daten und Codec-Dateien unter `%LOCALAPPDATA%\CarenDMR`. Fehlende Startdateien (`config.json`, `talkgroups.json`, Beispielkonfigurationen) werden beim ersten Start dorthin kopiert. `CARENDMR_DATA_DIR` lenkt den Datenordner um.

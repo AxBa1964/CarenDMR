@@ -33,7 +33,14 @@ AMBE+2 (DVSI) siehe `docs/UPSTREAM_PROVENANCE.md`.
    Das Skript sucht `ISCC.exe` in den üblichen Installationsordnern von
    Inno Setup 6.
 
-3. Optional ein Programmsymbol als `packaging\CarenDMR.ico` ablegen.
+3. Die Bridge ohne eingebaute Firmware bauen (MSYS2 UCRT64 wie bisher):
+
+   ```powershell
+   cd C:\ABDevelop\CarenDMR
+   powershell -ExecutionPolicy Bypass -File .\native\build_md380_dynarmic_windows.ps1
+   ```
+
+4. Optional ein Programmsymbol als `packaging\CarenDMR.ico` ablegen.
 
 ## Bauen
 

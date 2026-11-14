@@ -50,7 +50,22 @@ def initialize_md380(lib, project_root: Path) -> int:
         )
     init_files.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
     init_files.restype = ctypes.c_int
-    return int(init_files(os.fsencode(str(firmware)), os.fsencode(str(core))))
+    # Die Bridge erwartet UTF-8-Pfade (unter Windows per _wfopen geöffnet).
+    result = int(init_files(str(firmware).encode("utf-8"), str(core).encode("utf-8")))
+    if result != 0:
+        detail = ""
+        last_error = getattr(lib, "carendmr_md380_last_error", None)
+        if last_error is not None:
+            last_error.argtypes = []
+            last_error.restype = ctypes.c_char_p
+            raw = last_error()
+            if raw:
+                detail = " " + raw.decode("utf-8", errors="replace")
+        raise RuntimeError(
+            f"Der Sprach-Codec konnte nicht gestartet werden (Code {result}).{detail} "
+            + SETUP_HINT
+        )
+    return result
 
 
 class Md380DynarmicEncoder:
