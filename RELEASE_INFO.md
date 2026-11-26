@@ -13,7 +13,7 @@ Vorbereitung für die Windows-Exe mit Installer:
 
 Update-Prüfung auf Anfrage (Menü Programm bzw. Strg+Umschalt+U).
 
-Neu in 0.2.1.93: Bedien-Tastenfeld für CarenDMR Easy (Pico 2 H über USB,
+Neu in 0.2.1.93: Bedien-Tastenfeld für CarenDMR Easy (Pico H über USB,
 12 Tasten, Quittung mit Ton und Vibration). Firmware und Anleitung in
 `hardware/keypad/`, Belegung in `config/keypad.local.json`.
 

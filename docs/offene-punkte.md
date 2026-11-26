@@ -39,7 +39,7 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.93.
 
 ## Tastenfeld (0.2.1.93) – Test mit Hardware
 
-- [ ] Pico 2 H: CircuitPython aufspielen, `hardware/keypad/boot.py`, `pins.py`,
+- [ ] Pico H (RP2040): CircuitPython für den Pico (nicht Pico 2) aufspielen, `hardware/keypad/boot.py`, `pins.py`,
       `code.py` kopieren (Anleitung `hardware/keypad/README.md`).
 - [ ] Testaufbau: Tasten zeigen im Terminal `KEY n DOWN/UP`, `ACK` gibt Ton.
 - [ ] Prüfen, ob 3,3 V vom Pico das Vibrationsmodul sicher schalten (sonst BC337).

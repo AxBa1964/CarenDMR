@@ -1,4 +1,4 @@
-"""0.2.1.93: Bedien-Tastenfeld (Pico 2 H, USB-CDC) für CarenDMR Easy."""
+"""0.2.1.93: Bedien-Tastenfeld (Pico H, USB-CDC) für CarenDMR Easy."""
 from __future__ import annotations
 
 import ast

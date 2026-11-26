@@ -1,4 +1,4 @@
-"""Bedien-Tastenfeld (Pico 2 H, USB-CDC seriell) – Qt-frei.
+"""Bedien-Tastenfeld (Pico H, USB-CDC seriell) – Qt-frei.
 
 Das Tastenfeld meldet Tastendrücke als Textzeilen über eine serielle
 USB-Schnittstelle (CDC). Dieser Dienst

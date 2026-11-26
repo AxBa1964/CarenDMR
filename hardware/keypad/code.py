@@ -1,4 +1,4 @@
-"""CarenDMR-Tastenfeld – Firmware (CircuitPython, Raspberry Pi Pico 2 H).
+"""CarenDMR-Tastenfeld – Firmware (CircuitPython, Raspberry Pi Pico H, RP2040; läuft auch auf Pico 2 H).
 
 Protokoll über usb_cdc.data (eine Zeile pro Meldung, ASCII, "\n"):
 

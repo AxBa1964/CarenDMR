@@ -1,4 +1,4 @@
-"""Pinbelegung des CarenDMR-Tastenfelds (Raspberry Pi Pico 2 H).
+"""Pinbelegung des CarenDMR-Tastenfelds (Raspberry Pi Pico H, RP2040; läuft auch auf Pico 2 H).
 
 Die Reihenfolge in KEY_PINS ergibt die Tastennummer (0, 1, 2 …), die an
 CarenDMR gemeldet wird. Die Bedeutung der Nummern steht in

@@ -139,5 +139,7 @@ per dynarmic emulieren; Firmware **nicht** ausliefern, sondern zur Laufzeit lade
 
 ## Git
 
-- Commits und Pushes macht der Nutzer selbst.
+- Claude darf committen und pushen, sobald eine Arbeit erledigt ist (Tests grün),
+  aber nur auf den Arbeits-Branch der Sitzung, nie direkt auf `main`.
+  Die Übernahme nach `main` macht der Nutzer selbst. (Freigabe vom 26.11.2026)
 - Commit-Nachrichten im Stil `0.2.1.xx: Kurzbeschreibung`.
