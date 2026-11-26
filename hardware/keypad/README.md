@@ -10,8 +10,13 @@ Konzept und Verdrahtung: `docs/TASTENFELD_KONZEPT.md`.
 | `boot.py` | schaltet die zweite serielle USB-Schnittstelle (Daten) ein |
 | `pins.py` | Pinbelegung (Tasten GP0–GP11, Audio GP16/GP17, Vibration GP18) |
 | `code.py` | Tasten lesen, an CarenDMR melden, Quittungston und Vibration |
+| `steckbrett.png` / `.svg` | Zeichnung des Steckbrett-Aufbaus |
 
 ## Verdrahtung (Pico H, Stiftnummern 1–40)
+
+Zeichnung für das Steckbrett: `steckbrett.png` (bzw. `steckbrett.svg`).
+
+![Steckbrett-Aufbau](steckbrett.png)
 
 Stift 1 ist neben der USB-Buchse (siehe Pinout im offiziellen Datenblatt,
 Abschnitt 2.1: https://datasheets.raspberrypi.com/pico/pico-datasheet.pdf,
