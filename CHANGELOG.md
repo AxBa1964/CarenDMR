@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1.93 – Bedien-Tastenfeld für CarenDMR Easy
+
+- Neu: Easy lässt sich mit einem USB-Tastenfeld (Raspberry Pi Pico 2 H, USB-CDC seriell) bedienen – ohne PC-Tastatur und unabhängig davon, welches Fenster aktiv ist.
+- Belegung (12 Tasten): PTT halten = senden, loslassen = empfangen; Lauter/Leiser (Empfang); TG vor/zurück durch die Favoriten; Favorit 1–4; Verbinden; Trennen; Beenden nur nach 2 Sekunden Halten.
+- Favoriten-Tasten wählen nur aus und sagen Name, Talkgroup, Timeslot und Rufart an; verbunden wird mit „Verbinden“. Während einer Verbindung heißt es „Zum Wechseln der Talkgroup erst trennen.“
+- Quittung am Tastenfeld: kurzer hoher Ton bei Erfolg, tiefer Doppelton mit langer Vibration bei Fehler; jeder Tastendruck vibriert kurz. „Tastenfeld verbunden/getrennt“ wird angesagt. Fällt das Tastenfeld bei gedrückter PTT weg, endet das Senden.
+- Neuer Qt-freier `KeypadService` (`carendmr/application/keypad_service.py`), aufgebaut in `build_easy_services()` (`bootstrap.py`). Belegung in `config/keypad.local.json`, Vorlage `config/keypad.example.json`; ohne Datei gilt die Vorbelegung.
+- Firmware (CircuitPython) mit Anleitung in `hardware/keypad/`.
+- Neue Abhängigkeit `pyserial`.
+
 ## 0.2.1.92 – Update-Prüfung auf Anfrage
 
 - Neu: „Nach Updates suchen …“ im Menü Programm des Hauptfensters, in Easy Strg+Umschalt+U. Es gibt keine automatische Prüfung.

@@ -32,6 +32,7 @@ from carendmr.application import (
 from carendmr.application.audio_setup_service import AudioSetupService
 from carendmr.application.codec_setup_service import CodecSetupService
 from carendmr.application.contact_service import ContactService
+from carendmr.application.keypad_service import KeypadService, load_keypad_config
 from carendmr.application.station_settings_service import StationSettingsService
 from carendmr.benchmark import AudioBenchmarkService
 from carendmr.qrz import QrzLogbookService, QrzLookupService
@@ -118,6 +119,23 @@ class DesktopServices:
     talkgroup_catalog: TalkgroupCatalogService
     audio_benchmark: AudioBenchmarkService
     codec_setup: CodecSetupService
+
+
+@dataclass(frozen=True)
+class EasyServices:
+    """Zusatzdienste der Easy-Oberfläche (Favoriten und Bedien-Tastenfeld)."""
+
+    favorites: FavoriteService
+    keypad: KeypadService
+
+
+def build_easy_services(core: RadioCore) -> EasyServices:
+    """Favoriten und Tastenfeld für Easy; das Tastenfeld startet die Oberfläche."""
+    config = core.project_root / "config"
+    return EasyServices(
+        favorites=FavoriteService(config / "favorites.local.json"),
+        keypad=KeypadService(load_keypad_config(config)),
+    )
 
 
 @dataclass(frozen=True)

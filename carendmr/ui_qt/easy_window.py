@@ -27,7 +27,24 @@ from PySide6.QtWidgets import (
 
 from carendmr.application import RadioState
 from carendmr.application.channel_rules import required_call_type
-from carendmr.bootstrap import RadioCore, build_radio_core
+from carendmr.application.keypad_service import (
+    ACTION_CONNECT,
+    ACTION_DISCONNECT,
+    ACTION_EXIT,
+    ACTION_FAVORITE_1,
+    ACTION_FAVORITE_2,
+    ACTION_FAVORITE_3,
+    ACTION_FAVORITE_4,
+    ACTION_FAVORITE_NEXT,
+    ACTION_FAVORITE_PREVIOUS,
+    ACTION_PTT,
+    ACTION_VOLUME_DOWN,
+    ACTION_VOLUME_UP,
+    FavoriteSelector,
+    KeypadEvent,
+    favorite_announcement,
+)
+from carendmr.bootstrap import EasyServices, RadioCore, build_easy_services, build_radio_core
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.ui_qt.accessibility_manager import AccessibilityManager
 from carendmr.ui_qt.audio_cue import AudioCuePlayer
@@ -49,7 +66,12 @@ class EasyButton(QPushButton):
 class EasyWindow(QMainWindow):
     """Minimaler, vollständig tastaturbedienbarer DMR-Betrieb."""
 
-    def __init__(self, project_root: Path, core: RadioCore | None = None) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        core: RadioCore | None = None,
+        services: EasyServices | None = None,
+    ) -> None:
         super().__init__()
         self.project_root = Path(project_root)
         self.setWindowTitle(f"CarenDMR Easy {__version__}")
@@ -72,6 +94,15 @@ class EasyWindow(QMainWindow):
         self.connection_manager = self.radio_core.connection_manager
         self.controller = self.radio_core.controller
 
+        # Favoriten und Bedien-Tastenfeld (0.2.1.93) ebenfalls aus bootstrap.
+        self.easy_services = services or build_easy_services(self.radio_core)
+        self.keypad = self.easy_services.keypad
+        self.favorite_selector = FavoriteSelector(self.easy_services.favorites.favorites)
+        self.favorite_selector.sync_to(
+            self.preferences.talkgroup, self._timeslot, self._call_type
+        )
+        self._keypad_ptt_held = False
+
         self.accessibility = AccessibilityManager()
         self.audio_cues = AudioCuePlayer(self.audio_send_service)
         self._updates: queue.SimpleQueue[tuple[str, object]] = queue.SimpleQueue()
@@ -92,6 +123,11 @@ class EasyWindow(QMainWindow):
         self._timer.setInterval(80)
         self._timer.timeout.connect(self._process_updates)
         self._timer.start()
+
+        self.keypad.start(
+            lambda event: self._updates.put(("keypad", event)),
+            lambda connected, message: self._updates.put(("keypad_status", (connected, message))),
+        )
 
         self._apply_radio_state(self.controller.snapshot().state)
         QTimer.singleShot(0, self._focus_talkgroup)
@@ -674,8 +710,128 @@ class EasyWindow(QMainWindow):
                     self._finish_tx()
                 elif kind == "tx_error":
                     self._finish_tx(value)
+                elif kind == "keypad":
+                    self._handle_keypad_event(value)
+                elif kind == "keypad_status":
+                    self._handle_keypad_status(*value)
         except queue.Empty:
             pass
+
+    # --- Bedien-Tastenfeld (0.2.1.93) -------------------------------------
+    def _handle_keypad_event(self, event: KeypadEvent) -> None:
+        """Führt eine Tastenfeld-Aktion aus und quittiert sie am Gerät."""
+        if event.action == ACTION_PTT:
+            self._keypad_ptt(event.phase == "down")
+            return
+        if event.action == ACTION_EXIT:
+            # Kommt nur nach langem Druck (Firmware meldet LONG).
+            self.keypad.acknowledge(True)
+            self._exit_application()
+            return
+        handlers = {
+            ACTION_VOLUME_UP: lambda: self._keypad_volume(+10),
+            ACTION_VOLUME_DOWN: lambda: self._keypad_volume(-10),
+            ACTION_FAVORITE_NEXT: lambda: self._keypad_step_favorite(+1),
+            ACTION_FAVORITE_PREVIOUS: lambda: self._keypad_step_favorite(-1),
+            ACTION_FAVORITE_1: lambda: self._keypad_select_favorite(1),
+            ACTION_FAVORITE_2: lambda: self._keypad_select_favorite(2),
+            ACTION_FAVORITE_3: lambda: self._keypad_select_favorite(3),
+            ACTION_FAVORITE_4: lambda: self._keypad_select_favorite(4),
+            ACTION_CONNECT: self._keypad_connect,
+            ACTION_DISCONNECT: self._keypad_disconnect,
+        }
+        handler = handlers.get(event.action)
+        if handler is None:
+            return
+        self.keypad.acknowledge(bool(handler()))
+
+    def _handle_keypad_status(self, connected: bool, message: str) -> None:
+        if not connected and self._keypad_ptt_held:
+            # Sicherheit: Fällt das Tastenfeld bei gedrückter PTT weg, endet TX.
+            self._keypad_ptt(False)
+        self.accessibility.announcer.announce(
+            self.status_label, message, channel="easy-keypad-status", force=True
+        )
+
+    def _keypad_say(self, text: str) -> None:
+        self.accessibility.announcer.announce(
+            self.status_label, text, channel="easy-keypad", force=True
+        )
+
+    def _keypad_ptt(self, pressed: bool) -> None:
+        """PTT halten = senden, loslassen = empfangen."""
+        if pressed:
+            self._keypad_ptt_held = True
+            if self._tx_active or self._tx_pending or self._tx_stopping:
+                return
+            self._start_tx()
+            if not self._tx_pending:
+                self.keypad.acknowledge(False)
+            return
+        self._keypad_ptt_held = False
+        if self._tx_pending:
+            self._cancel_pending_tx()
+        elif self._tx_active:
+            self._stop_tx()
+
+    def _keypad_volume(self, step: int) -> bool:
+        before = int(self.audio_send_service.output_volume_percent)
+        self._set_rx_volume(before + step)
+        return int(self.audio_send_service.output_volume_percent) != before
+
+    def _keypad_can_change_talkgroup(self) -> bool:
+        if self.controller.snapshot().can_edit_parameters:
+            return True
+        self._keypad_say("Zum Wechseln der Talkgroup erst trennen.")
+        return False
+
+    def _keypad_apply_favorite(self, favorite, number: int) -> None:
+        """Übernimmt den Favoriten nur in die Auswahl; verbunden wird mit „Verbinden“."""
+        self.talkgroup_edit.setText(self._spaced_digits(favorite.target))
+        self._timeslot = favorite.timeslot
+        self._call_type = favorite.call_type
+        self._refresh_channel_label()
+        self._keypad_say(favorite_announcement(favorite, number))
+
+    def _keypad_select_favorite(self, number: int) -> bool:
+        if not self._keypad_can_change_talkgroup():
+            return False
+        favorite = self.favorite_selector.select(number)
+        if favorite is None:
+            self._keypad_say(f"Favorit {number} ist nicht belegt.")
+            return False
+        self._keypad_apply_favorite(favorite, number)
+        return True
+
+    def _keypad_step_favorite(self, direction: int) -> bool:
+        if not self._keypad_can_change_talkgroup():
+            return False
+        favorite = self.favorite_selector.step(direction)
+        if favorite is None:
+            self._keypad_say("Keine Favoriten gespeichert.")
+            return False
+        self._keypad_apply_favorite(favorite, (self.favorite_selector.index or 0) + 1)
+        return True
+
+    def _keypad_connect(self) -> bool:
+        state = self.controller.snapshot().state
+        if state in {RadioState.DISCONNECTED, RadioState.ERROR}:
+            self._connect()
+            return self._connect_requested
+        if state is RadioState.CONNECTING:
+            self._keypad_say("Verbindung wird bereits hergestellt.")
+        elif state is RadioState.DISCONNECTING:
+            self._keypad_say("Verbindung wird gerade getrennt.")
+        else:
+            self._keypad_say("Bereits verbunden.")
+        return False
+
+    def _keypad_disconnect(self) -> bool:
+        if self.controller.snapshot().state in {RadioState.CONNECTED, RadioState.TRANSMITTING}:
+            self._disconnect()
+            return True
+        self._keypad_say("Nicht verbunden.")
+        return False
 
     def _apply_radio_state(self, state: RadioState) -> None:
         state = RadioState(state)
@@ -746,6 +902,10 @@ class EasyWindow(QMainWindow):
     def closeEvent(self, event: QCloseEvent) -> None:
         """Schließt Easy immer; aktive Funkstrecken werden vorher best-effort getrennt."""
         self._timer.stop()
+        try:
+            self.keypad.stop()
+        except Exception:
+            pass
         self._tx_pending = False
         if self._tx_stop_event is not None:
             self._tx_stop_event.set()

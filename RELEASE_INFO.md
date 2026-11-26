@@ -1,4 +1,4 @@
-# CarenDMR 0.2.1.92
+# CarenDMR 0.2.1.93
 
 Vorbereitung für die Windows-Exe mit Installer:
 
@@ -12,6 +12,10 @@ Vorbereitung für die Windows-Exe mit Installer:
   Laufzeit; „Sprach-Codec einrichten“ lädt sie auf Wunsch herunter.
 
 Update-Prüfung auf Anfrage (Menü Programm bzw. Strg+Umschalt+U).
+
+Neu in 0.2.1.93: Bedien-Tastenfeld für CarenDMR Easy (Pico 2 H über USB,
+12 Tasten, Quittung mit Ton und Vibration). Firmware und Anleitung in
+`hardware/keypad/`, Belegung in `config/keypad.local.json`.
 
 Setup bauen: `build_setup.bat` (Tests, Exe, Installer in einem Schritt).
 

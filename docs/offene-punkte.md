@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.92.
+Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.93.
 
 ## Stand
 
@@ -16,6 +16,8 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.92.
 - Setup 0.2.1.92 gebaut und als `CarenDMR-Setup-0.2.1.92.zip` unter
   dk7ee.de/download abgelegt; Projektseite dk7ee.de/carendmr.html bietet den
   Download direkt an, GitHub nur noch unten als Quellcode-Verweis.
+- 0.2.1.93: Bedien-Tastenfeld für Easy umgesetzt (`KeypadService`, USB-CDC,
+  Pico-2-H-Firmware in `hardware/keypad/`); mit echter Hardware noch ungetestet.
 
 ## Nutzer-Handgriffe (offen)
 
@@ -35,7 +37,20 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.92.
 - [ ] „Nach Updates suchen“ (Menü Programm bzw. Strg+Umschalt+U in Easy).
 - [ ] Papagei 9990 wird automatisch auf Privatruf gestellt.
 
+## Tastenfeld (0.2.1.93) – Test mit Hardware
+
+- [ ] Pico 2 H: CircuitPython aufspielen, `hardware/keypad/boot.py`, `pins.py`,
+      `code.py` kopieren (Anleitung `hardware/keypad/README.md`).
+- [ ] Testaufbau: Tasten zeigen im Terminal `KEY n DOWN/UP`, `ACK` gibt Ton.
+- [ ] Prüfen, ob 3,3 V vom Pico das Vibrationsmodul sicher schalten (sonst BC337).
+- [ ] Easy mit Tastenfeld: Favorit wählen (Ansage) → Verbinden → PTT halten;
+      Trennen; Beenden nach 2 s; USB abziehen während PTT → Senden endet.
+- [ ] Lautsprecher und Vibrationsmodul nachmessen (Gehäuse).
+
 ## Offene Entscheidungen
+
+- Tastenfeld: Soll ein Favorit während einer Verbindung direkt wechseln können
+  (trennen + neu verbinden mit „Verbinden“)? Umgesetzt ist: erst trennen.
 
 - Sollen die Sendewerte des Nutzers (Mikrofon 74 %, Sprachbearbeitung aus,
   Profil „Eigene“) die Vorgabe für neue Installationen werden?
@@ -46,9 +61,8 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.92.
 
 ## Ideen / später
 
-- Bedien-Tastenfeld für Caren (USB-CDC): Konzept in `docs/TASTENFELD_KONZEPT.md`;
-  CarenDMR-Seite: Qt-freier `KeypadService`, Belegung `config/keypad.local.json`.
-- Easy-Oberfläche für das Tastenfeld umbauen.
+- Tastenfeld: Gehäuse und Deckplatte (PETG) konstruieren, Konzept in
+  `docs/TASTENFELD_KONZEPT.md`.
 - Quelltext-Tests schrittweise durch Verhaltenstests ersetzen; Tests kennzeichnen,
   die echte Audio-/Netzwerkgeräte brauchen.
 - Android-Prototyp (Branch `feature/android-arm64-prototype`, muss an die

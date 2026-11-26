@@ -1,0 +1,20 @@
+{
+  "enabled": true,
+  "port": "auto",
+  "baudrate": 115200,
+  "long_press_seconds": 2.0,
+  "keys": {
+    "0": "ptt",
+    "1": "volume_up",
+    "2": "volume_down",
+    "3": "favorite_next",
+    "4": "favorite_previous",
+    "5": "favorite_1",
+    "6": "favorite_2",
+    "7": "favorite_3",
+    "8": "favorite_4",
+    "9": "connect",
+    "10": "disconnect",
+    "11": "exit"
+  }
+}
