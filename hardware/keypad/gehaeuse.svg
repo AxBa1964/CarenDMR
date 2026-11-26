@@ -1,241 +1,227 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="1420" viewBox="0 0 1560 1420" font-family="Arial, Helvetica, sans-serif">
-<rect width="1560" height="1420" fill="#fff"/>
-<text x="30" y="44" font-size="28" font-weight="bold">CarenDMR-Tastenfeld – Gehäuse und Deckplatte (Entwurf 1)</text>
-<text x="30" y="74" font-size="16" fill="#333">Maße in mm. PETG, Bambu Lab H2S. Modulmaße von Lautsprecher und Vibrationsmodul noch nachmessen – Positionen sind vorläufig.</text>
-<text x="90" y="135" font-size="20" font-weight="bold">1  Deckplatte, Draufsicht (vorne = unten, Caren sitzt unten)</text>
-<rect x="90.0" y="175.0" width="560.0" height="580.0" rx="16.0" fill="#e9eef3" stroke="#333" stroke-width="1.5" opacity="1"/>
-<circle cx="350.0" cy="221.0" r="4.0" fill="#555"/>
-<circle cx="350.0" cy="241.0" r="4.0" fill="#555"/>
-<circle cx="350.0" cy="261.0" r="4.0" fill="#555"/>
-<circle cx="350.0" cy="281.0" r="4.0" fill="#555"/>
-<circle cx="370.0" cy="221.0" r="4.0" fill="#555"/>
-<circle cx="370.0" cy="241.0" r="4.0" fill="#555"/>
-<circle cx="370.0" cy="261.0" r="4.0" fill="#555"/>
-<circle cx="370.0" cy="281.0" r="4.0" fill="#555"/>
-<circle cx="390.0" cy="221.0" r="4.0" fill="#555"/>
-<circle cx="390.0" cy="241.0" r="4.0" fill="#555"/>
-<circle cx="390.0" cy="261.0" r="4.0" fill="#555"/>
-<circle cx="390.0" cy="281.0" r="4.0" fill="#555"/>
-<circle cx="410.0" cy="221.0" r="4.0" fill="#555"/>
-<circle cx="410.0" cy="241.0" r="4.0" fill="#555"/>
-<circle cx="410.0" cy="261.0" r="4.0" fill="#555"/>
-<circle cx="410.0" cy="281.0" r="4.0" fill="#555"/>
-<circle cx="430.0" cy="221.0" r="4.0" fill="#555"/>
-<circle cx="430.0" cy="241.0" r="4.0" fill="#555"/>
-<circle cx="430.0" cy="261.0" r="4.0" fill="#555"/>
-<circle cx="430.0" cy="281.0" r="4.0" fill="#555"/>
-<circle cx="450.0" cy="221.0" r="4.0" fill="#555"/>
-<circle cx="450.0" cy="241.0" r="4.0" fill="#555"/>
-<circle cx="450.0" cy="261.0" r="4.0" fill="#555"/>
-<circle cx="450.0" cy="281.0" r="4.0" fill="#555"/>
-<circle cx="470.0" cy="221.0" r="4.0" fill="#555"/>
-<circle cx="470.0" cy="241.0" r="4.0" fill="#555"/>
-<circle cx="470.0" cy="261.0" r="4.0" fill="#555"/>
-<circle cx="470.0" cy="281.0" r="4.0" fill="#555"/>
-<circle cx="490.0" cy="221.0" r="4.0" fill="#555"/>
-<circle cx="490.0" cy="241.0" r="4.0" fill="#555"/>
-<circle cx="490.0" cy="261.0" r="4.0" fill="#555"/>
-<circle cx="490.0" cy="281.0" r="4.0" fill="#555"/>
-<circle cx="510.0" cy="221.0" r="4.0" fill="#555"/>
-<circle cx="510.0" cy="241.0" r="4.0" fill="#555"/>
-<circle cx="510.0" cy="261.0" r="4.0" fill="#555"/>
-<circle cx="510.0" cy="281.0" r="4.0" fill="#555"/>
-<text x="430.0" y="207.0" font-size="12" fill="#333" text-anchor="middle">Lochgitter Lautsprecher (Ø2, Raster 5)</text>
-<circle cx="370.0" cy="731.0" r="6.0" fill="#333"/>
-<text x="370.0" y="749.0" font-size="11" fill="#333" text-anchor="middle">Orientierungsnoppe</text>
-<circle cx="114.0" cy="199.0" r="6.8" fill="#fff" stroke="#333"/>
-<circle cx="626.0" cy="199.0" r="6.8" fill="#fff" stroke="#333"/>
-<circle cx="114.0" cy="731.0" r="6.8" fill="#fff" stroke="#333"/>
-<circle cx="626.0" cy="731.0" r="6.8" fill="#fff" stroke="#333"/>
-<text x="114.0" y="231.0" font-size="11" fill="#333" text-anchor="middle">M3</text>
-<rect x="143.5" y="327.0" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="151.5" y="335.0" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="179.5" y="361.0" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">Favorit 1</text>
-<text x="179.5" y="377.0" font-size="10" fill="#555" text-anchor="middle">Braille 1</text>
-<rect x="219.7" y="327.0" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="227.7" y="335.0" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="255.7" y="361.0" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">Favorit 2</text>
-<text x="255.7" y="377.0" font-size="10" fill="#555" text-anchor="middle">Braille 2</text>
-<rect x="334.0" y="327.0" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="342.0" y="335.0" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="370.0" y="361.0" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">Favorit 3</text>
-<text x="370.0" y="377.0" font-size="10" fill="#555" text-anchor="middle">Braille 3</text>
-<rect x="410.2" y="327.0" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="418.2" y="335.0" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="446.2" y="361.0" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">Favorit 4</text>
-<text x="446.2" y="377.0" font-size="10" fill="#555" text-anchor="middle">Braille 4</text>
-<rect x="524.5" y="327.0" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="532.5" y="335.0" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="560.5" y="361.0" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">Beenden</text>
-<text x="560.5" y="377.0" font-size="10" fill="#555" text-anchor="middle">Mulde, 2 s</text>
-<rect x="143.5" y="422.25" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="151.5" y="430.25" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="179.5" y="456.25" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">TG zurück</text>
-<text x="179.5" y="472.25" font-size="10" fill="#555" text-anchor="middle">◀ Dreieck</text>
-<rect x="219.7" y="422.25" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="227.7" y="430.25" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="255.7" y="456.25" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">TG vor</text>
-<text x="255.7" y="472.25" font-size="10" fill="#555" text-anchor="middle">▶ Dreieck</text>
-<rect x="334.0" y="422.25" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="342.0" y="430.25" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="370.0" y="456.25" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">Leiser</text>
-<text x="370.0" y="472.25" font-size="10" fill="#555" text-anchor="middle">− Steg</text>
-<rect x="410.2" y="422.25" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="418.2" y="430.25" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="446.2" y="456.25" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">Lauter</text>
-<text x="446.2" y="472.25" font-size="10" fill="#555" text-anchor="middle">+ Kreuz</text>
-<rect x="143.5" y="517.5" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="151.5" y="525.5" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="179.5" y="551.5" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">Verbinden</text>
-<text x="179.5" y="567.5" font-size="10" fill="#555" text-anchor="middle">● Noppe</text>
-<rect x="410.2" y="517.5" width="72.0" height="72.0" rx="6.0" fill="#fff" stroke="#888" stroke-width="1" stroke-dasharray="4 3" opacity="1"/>
-<rect x="418.2" y="525.5" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="446.2" y="551.5" font-size="11" fill="#111" text-anchor="middle" font-weight="bold">Trennen</text>
-<text x="446.2" y="567.5" font-size="10" fill="#555" text-anchor="middle">✕ Kreuz</text>
-<rect x="255.7" y="612.75" width="228.6" height="72.0" rx="8.0" fill="#fff7e6" stroke="#e07b00" stroke-width="1.5" stroke-dasharray="5 3" opacity="1"/>
-<rect x="266.0" y="620.75" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<rect x="418.0" y="620.75" width="56.0" height="56.0" rx="0.0" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5" opacity="1"/>
-<text x="370.0" y="652.75" font-size="12" fill="#7a3e00" text-anchor="middle" font-weight="bold">PTT – 2 Taster parallel</text>
-<line x1="90.0" y1="153.0" x2="650.0" y2="153.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="90.0" y1="147.0" x2="90.0" y2="159.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="650.0" y1="147.0" x2="650.0" y2="159.0" stroke="#c0392b" stroke-width="1.2"/>
-<text x="370.0" y="148.0" font-size="13" text-anchor="middle" fill="#c0392b">140</text>
-<line x1="672.0" y1="175.0" x2="672.0" y2="755.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="666.0" y1="175.0" x2="678.0" y2="175.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="666.0" y1="755.0" x2="678.0" y2="755.0" stroke="#c0392b" stroke-width="1.2"/>
-<text x="680.0" y="469.0" font-size="13" fill="#c0392b">145</text>
-<line x1="179.5" y1="607.5" x2="255.7" y2="607.5" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="179.5" y1="601.5" x2="179.5" y2="613.5" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="255.7" y1="601.5" x2="255.7" y2="613.5" stroke="#c0392b" stroke-width="1.2"/>
-<text x="217.6" y="602.5" font-size="13" text-anchor="middle" fill="#c0392b">19,05</text>
-<line x1="255.7" y1="607.5" x2="370.0" y2="607.5" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="255.7" y1="601.5" x2="255.7" y2="613.5" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="370.0" y1="601.5" x2="370.0" y2="613.5" stroke="#c0392b" stroke-width="1.2"/>
-<text x="312.85" y="602.5" font-size="13" text-anchor="middle" fill="#c0392b">28,58</text>
-<line x1="604.5" y1="363.0" x2="604.5" y2="458.25" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="598.5" y1="363.0" x2="610.5" y2="363.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="598.5" y1="458.25" x2="610.5" y2="458.25" stroke="#c0392b" stroke-width="1.2"/>
-<text x="612.5" y="414.625" font-size="13" fill="#c0392b">23,81</text>
-<line x1="294.0" y1="700.75" x2="446.0" y2="700.75" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="294.0" y1="694.75" x2="294.0" y2="706.75" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="446.0" y1="694.75" x2="446.0" y2="706.75" stroke="#c0392b" stroke-width="1.2"/>
-<text x="370.0" y="695.75" font-size="13" text-anchor="middle" fill="#c0392b">38 (Tasterabstand)</text>
-<line x1="255.7" y1="718.75" x2="484.3" y2="718.75" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="255.7" y1="712.75" x2="255.7" y2="724.75" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="484.3" y1="712.75" x2="484.3" y2="724.75" stroke="#c0392b" stroke-width="1.2"/>
-<text x="370.0" y="713.75" font-size="13" text-anchor="middle" fill="#c0392b">57,15 (Kappe)</text>
-<line x1="50.0" y1="175.0" x2="50.0" y2="363.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="44.0" y1="175.0" x2="56.0" y2="175.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="44.0" y1="363.0" x2="56.0" y2="363.0" stroke="#c0392b" stroke-width="1.2"/>
-<text x="58.0" y="273.0" font-size="13" fill="#c0392b">47</text>
-<text x="370.0" y="843.0" font-size="12" fill="#333" text-anchor="middle">Ausschnitt 14 × 14 (blau), Kappe 18 × 18 (gestrichelt), Platte 1,5 dick</text>
-<text x="830" y="135" font-size="20" font-weight="bold">2  Gehäuse ohne Deckplatte, Draufsicht</text>
-<rect x="830.0" y="175.0" width="580.0" height="600.0" rx="20.0" fill="#f4f4f4" stroke="#222" stroke-width="2" opacity="1"/>
-<rect x="840.0" y="185.0" width="560.0" height="580.0" rx="0.0" fill="#fbfbfb" stroke="#999" stroke-width="1" opacity="1"/>
-<circle cx="864.0" cy="209.0" r="18.0" fill="#ddd" stroke="#555"/>
-<circle cx="864.0" cy="209.0" r="8.0" fill="#fff" stroke="#555"/>
-<circle cx="1376.0" cy="209.0" r="18.0" fill="#ddd" stroke="#555"/>
-<circle cx="1376.0" cy="209.0" r="8.0" fill="#fff" stroke="#555"/>
-<circle cx="864.0" cy="741.0" r="18.0" fill="#ddd" stroke="#555"/>
-<circle cx="864.0" cy="741.0" r="8.0" fill="#fff" stroke="#555"/>
-<circle cx="1376.0" cy="741.0" r="18.0" fill="#ddd" stroke="#555"/>
-<circle cx="1376.0" cy="741.0" r="8.0" fill="#fff" stroke="#555"/>
-<rect x="1040.0" y="201.0" width="280.0" height="120.0" rx="8.0" fill="#555" stroke="#111" stroke-width="1.5" opacity="1"/>
-<text x="1180.0" y="253.0" font-size="12" fill="#fff" text-anchor="middle" font-weight="bold">Lautsprecher</text>
-<text x="1180.0" y="277.0" font-size="11" fill="#fff" text-anchor="middle">ca. 70 × 30 × 15</text>
-<rect x="1216.0" y="337.0" width="104.0" height="68.0" rx="0.0" fill="#1d3f8a" stroke="#0c2357" stroke-width="1.5" opacity="1"/>
-<text x="1268.0" y="375.0" font-size="11" fill="#fff" text-anchor="middle" font-weight="bold">PAM8302</text>
-<rect x="896.0" y="197.0" width="84.0" height="204.0" rx="4.0" fill="#1f7a3a" stroke="#0d4a22" stroke-width="1.5" opacity="1"/>
-<rect x="922.0" y="191.0" width="32.0" height="20.0" rx="0.0" fill="#c9c9c9" stroke="#666" stroke-width="1" opacity="1"/>
-<text x="938.0" y="293.0" font-size="12" fill="#fff" text-anchor="middle" font-weight="bold">Pico H</text>
-<text x="938.0" y="313.0" font-size="10" fill="#fff" text-anchor="middle">in Buchsen-</text>
-<text x="938.0" y="329.0" font-size="10" fill="#fff" text-anchor="middle">leisten</text>
-<rect x="920.0" y="173" width="36.0" height="14.0" fill="#e07b00"/>
-<text x="938.0" y="163.0" font-size="12" fill="#e07b00" text-anchor="middle" font-weight="bold">Kabelausgang Ø6</text>
-<rect x="904.0" y="409.0" width="68.0" height="24.0" rx="4.0" fill="none" stroke="#e07b00" stroke-width="2" opacity="1"/>
-<text x="1016.0" y="429.0" font-size="11" fill="#7a3e00" text-anchor="start">Zugentlastung (Kabelbinder-Steg)</text>
-<rect x="1060.0" y="614.75" width="120.0" height="88.0" rx="4.0" fill="#0f6e44" stroke="#08402a" stroke-width="1.5" opacity="1"/>
-<text x="1120.0" y="654.75" font-size="12" fill="#fff" text-anchor="middle" font-weight="bold">Vibration</text>
-<text x="1120.0" y="674.75" font-size="10" fill="#fff" text-anchor="middle">30 × 22, 2 × M2</text>
-<rect x="880.0" y="613.0" width="160.0" height="100.0" rx="0.0" fill="none" stroke="#777" stroke-width="1.5" stroke-dasharray="5 3" opacity="1"/>
-<text x="960.0" y="669.0" font-size="11" fill="#555" text-anchor="middle">Gewicht</text>
-<rect x="1200.0" y="613.0" width="160.0" height="100.0" rx="0.0" fill="none" stroke="#777" stroke-width="1.5" stroke-dasharray="5 3" opacity="1"/>
-<text x="1280.0" y="669.0" font-size="11" fill="#555" text-anchor="middle">Gewicht</text>
-<circle cx="886.0" cy="231.0" r="24.0" fill="none" stroke="#999" stroke-dasharray="3 3"/>
-<circle cx="1354.0" cy="231.0" r="24.0" fill="none" stroke="#999" stroke-dasharray="3 3"/>
-<circle cx="886.0" cy="719.0" r="24.0" fill="none" stroke="#999" stroke-dasharray="3 3"/>
-<circle cx="1354.0" cy="719.0" r="24.0" fill="none" stroke="#999" stroke-dasharray="3 3"/>
-<text x="1120.0" y="831.0" font-size="12" fill="#555" text-anchor="middle">Graue Dome: M3 mit Einschmelzmutter · gestrichelte Kreise: TPU-Füße Ø12 unter dem Boden</text>
-<rect x="901.5" y="345.0" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="977.7" y="345.0" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="1092.0" y="345.0" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="1168.2" y="345.0" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="1282.5" y="345.0" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="901.5" y="440.25" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="977.7" y="440.25" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="1092.0" y="440.25" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="1168.2" y="440.25" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="901.5" y="535.5" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="1168.2" y="535.5" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="1016.0" y="630.75" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<rect x="1168.0" y="630.75" width="56.0" height="56.0" rx="0.0" fill="none" stroke="#bbb" stroke-width="1" stroke-dasharray="2 2" opacity="1"/>
-<line x1="830.0" y1="153.0" x2="1410.0" y2="153.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="830.0" y1="147.0" x2="830.0" y2="159.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="1410.0" y1="147.0" x2="1410.0" y2="159.0" stroke="#c0392b" stroke-width="1.2"/>
-<text x="1120.0" y="148.0" font-size="13" text-anchor="middle" fill="#c0392b">145 außen</text>
-<line x1="1432.0" y1="175.0" x2="1432.0" y2="775.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="1426.0" y1="175.0" x2="1438.0" y2="175.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="1426.0" y1="775.0" x2="1438.0" y2="775.0" stroke="#c0392b" stroke-width="1.2"/>
-<text x="1440.0" y="479.0" font-size="13" fill="#c0392b">150 außen</text>
-<text x="90" y="885" font-size="20" font-weight="bold">3  Seitenschnitt (von links, vorne = rechts)</text>
-<rect x="90.0" y="1098.0" width="600.0" height="10.0" fill="#c8d0d8" stroke="#333" stroke-width="1.5"/>
-<rect x="90.0" y="980.0" width="10.0" height="128.0" fill="#c8d0d8" stroke="#333" stroke-width="1.5"/>
-<rect x="680.0" y="980.0" width="10.0" height="128.0" fill="#c8d0d8" stroke="#333" stroke-width="1.5"/>
-<rect x="100.0" y="980.0" width="580.0" height="6.0" fill="#9fb3c8" stroke="#333" stroke-width="1.5"/>
-<rect x="260.0" y="986.0" width="56.0" height="20.0" fill="#888" stroke="#333" stroke-width="1.5"/>
-<rect x="284.0" y="1006.0" width="8.0" height="13.2" fill="#d4a017" stroke="#333" stroke-width="1.5"/>
-<rect x="260.0" y="953.6" width="56.0" height="26.4" fill="#666" stroke="#333" stroke-width="1.5"/>
-<rect x="252.0" y="921.6" width="72.0" height="32.0" fill="#fff" stroke="#777" stroke-width="1.2" stroke-dasharray="4 3"/>
-<rect x="355.25" y="986.0" width="56.0" height="20.0" fill="#888" stroke="#333" stroke-width="1.5"/>
-<rect x="379.25" y="1006.0" width="8.0" height="13.2" fill="#d4a017" stroke="#333" stroke-width="1.5"/>
-<rect x="355.25" y="953.6" width="56.0" height="26.4" fill="#666" stroke="#333" stroke-width="1.5"/>
-<rect x="347.25" y="921.6" width="72.0" height="32.0" fill="#fff" stroke="#777" stroke-width="1.2" stroke-dasharray="4 3"/>
-<rect x="450.5" y="986.0" width="56.0" height="20.0" fill="#888" stroke="#333" stroke-width="1.5"/>
-<rect x="474.5" y="1006.0" width="8.0" height="13.2" fill="#d4a017" stroke="#333" stroke-width="1.5"/>
-<rect x="450.5" y="953.6" width="56.0" height="26.4" fill="#666" stroke="#333" stroke-width="1.5"/>
-<rect x="442.5" y="921.6" width="72.0" height="32.0" fill="#fff" stroke="#777" stroke-width="1.2" stroke-dasharray="4 3"/>
-<rect x="545.75" y="986.0" width="56.0" height="20.0" fill="#888" stroke="#333" stroke-width="1.5"/>
-<rect x="569.75" y="1006.0" width="8.0" height="13.2" fill="#d4a017" stroke="#333" stroke-width="1.5"/>
-<rect x="545.75" y="953.6" width="56.0" height="26.4" fill="#666" stroke="#333" stroke-width="1.5"/>
-<rect x="537.75" y="921.6" width="72.0" height="32.0" fill="#fff" stroke="#777" stroke-width="1.2" stroke-dasharray="4 3"/>
-<text x="288.0" y="912.0" font-size="11" fill="#555" text-anchor="middle">Kappe</text>
-<rect x="116.0" y="1038.0" width="120.0" height="60.0" fill="none" stroke="#555" stroke-width="1.5" stroke-dasharray="4 3"/>
-<text x="176.0" y="1030.0" font-size="11" fill="#555" text-anchor="middle">Lautsprecher (dahinter)</text>
-<rect x="112.0" y="1050.0" width="204.0" height="6.4" fill="#1f7a3a" stroke="#333" stroke-width="1.5"/>
-<rect x="112.0" y="1056.4" width="204.0" height="34.0" fill="#333" stroke="#333" stroke-width="1"/>
-<text x="214.0" y="1082.0" font-size="11" fill="#fff" text-anchor="middle">Pico H auf Buchsenleisten</text>
-<rect x="513.75" y="1074.0" width="120.0" height="24.0" fill="#0f6e44" stroke="#333" stroke-width="1.5"/>
-<text x="573.75" y="1122.0" font-size="11" fill="#111" text-anchor="middle">Vibration am Boden</text>
-<rect x="122.0" y="1108.0" width="48.0" height="12.0" fill="#444" stroke="#333" stroke-width="1.5"/>
-<rect x="610.0" y="1108.0" width="48.0" height="12.0" fill="#444" stroke="#333" stroke-width="1.5"/>
-<text x="146.0" y="1140.0" font-size="11" fill="#111" text-anchor="middle">TPU-Fuß</text>
-<line x1="706.0" y1="980.0" x2="706.0" y2="1108.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="700.0" y1="980.0" x2="712.0" y2="980.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="700.0" y1="1108.0" x2="712.0" y2="1108.0" stroke="#c0392b" stroke-width="1.2"/>
-<text x="714.0" y="1048.0" font-size="13" fill="#c0392b" text-anchor="start">32.0 gesamt</text>
-<line x1="810.0" y1="986.0" x2="810.0" y2="1098.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="804.0" y1="986.0" x2="816.0" y2="986.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="804.0" y1="1098.0" x2="816.0" y2="1098.0" stroke="#c0392b" stroke-width="1.2"/>
-<text x="818.0" y="1046.0" font-size="13" fill="#c0392b" text-anchor="start">28 innen</text>
-<line x1="74.0" y1="1098.0" x2="74.0" y2="1108.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="68.0" y1="1098.0" x2="80.0" y2="1098.0" stroke="#c0392b" stroke-width="1.2"/>
-<line x1="68.0" y1="1108.0" x2="80.0" y2="1108.0" stroke="#c0392b" stroke-width="1.2"/>
-<text x="66.0" y="1107.0" font-size="13" fill="#c0392b" text-anchor="end">Boden 2.5</text>
-<text x="390.0" y="1172.0" font-size="12" fill="#333" text-anchor="middle">Wand 2.5 · Deckplatte 1,5 auf Absatz, 4 × M3 in Einschmelzmuttern · Unterkante Taster ca. 10 unter Deckplatte</text>
-<text x="70" y="1200" font-size="16" fill="#222" font-weight="bold">Hinweise (Entwurf, mit Caren ausprobieren):</text>
-<text x="70" y="1226" font-size="14" fill="#222">• Tastenblöcke: hinten Favorit 1–4, rechts abgesetzt Beenden (nur 2 s halten); Mitte TG zurück/vor und Leiser/Lauter; Verbinden links, Trennen rechts; vorne die breite PTT.</text>
-<text x="70" y="1252" font-size="14" fill="#222">• Gruppen sind durch größere Abstände (28,58 statt 19,05) und tastbare Symbole auf den Kappen unterscheidbar; Favoriten mit Braille-Ziffer (Braille-Maße aus dem Konzept).</text>
-<text x="70" y="1278" font-size="14" fill="#222">• Orientierungsnoppe vorne Mitte; Beenden als Mulde (vertieft), damit es sich deutlich anders anfühlt.</text>
-<text x="70" y="1304" font-size="14" fill="#222">• BOOTSEL: nur zum Firmware-Aufspielen nötig – Deckplatte abschrauben statt Loch (abweichend vom Konzept, bitte entscheiden).</text>
-<text x="70" y="1330" font-size="14" fill="#222">• Lautsprecher, PAM8302 und Vibrationsmodul: Positionen und Schraublöcher nach dem Nachmessen festlegen; Probedruck für Tasterausschnitt (14,0 ± 0,1).</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1480" viewBox="0 0 1600 1480" font-family="Arial, Helvetica, sans-serif">
+<rect width="1600" height="1480" fill="#fff"/>
+<text x="30" y="44" font-size="28" font-weight="bold">CarenDMR-Tastenfeld – Gehäuse Entwurf 2: Keilform mit Lautsprecher-Podest</text>
+<text x="30" y="74" font-size="16" fill="#333">Maße in mm. PETG, Bambu Lab H2S. Vorne 20 hoch, Tastenplatte 7° ansteigend, hinten Podest 52 hoch. Modulmaße noch nachmessen.</text>
+<text x="30" y="125" font-size="20" fill="#111" text-anchor="start" font-weight="bold">1  Seitenschnitt (Caren sitzt links/vorne)</text>
+<polygon points="190.0,430.0 190.0,330.0 758.3258449191403,261.7531676931174 758.3258449191403,170.0 995.8258449191403,170.0 995.8258449191403,430.0" fill="#eef2f6" stroke="#222" stroke-width="2.5"/>
+<polygon points="202.5,417.5 202.5,340.0 758.3258449191403,271.7531676931174 758.3258449191403,182.5 983.3258449191403,182.5 983.3258449191403,417.5" fill="#ffffff" stroke="#999" stroke-width="1" stroke-dasharray="4 3"/>
+<line x1="190.0" y1="330.0" x2="758.3258449191403" y2="261.7531676931174" stroke="#4a6a8a" stroke-width="6"/>
+<g transform="translate(661.459422029628,272.11206188255494) rotate(-7.0)">
+<rect x="-35.0" y="0" width="70.0" height="40.0" fill="#888" stroke="#333"/>
+<rect x="-5.0" y="40.0" width="10.0" height="16.5" fill="#d4a017"/>
+<rect x="-35.0" y="-33.0" width="70.0" height="33.0" fill="#666" stroke="#333"/>
+<rect x="-45.0" y="-73.0" width="90.0" height="40.0" fill="#fff" stroke="#777" stroke-dasharray="4 3"/>
+</g>
+<g transform="translate(543.2843958498331,286.6221305817303) rotate(-7.0)">
+<rect x="-35.0" y="0" width="70.0" height="40.0" fill="#888" stroke="#333"/>
+<rect x="-5.0" y="40.0" width="10.0" height="16.5" fill="#d4a017"/>
+<rect x="-35.0" y="-33.0" width="70.0" height="33.0" fill="#666" stroke="#333"/>
+<rect x="-45.0" y="-73.0" width="90.0" height="40.0" fill="#fff" stroke="#777" stroke-dasharray="4 3"/>
+</g>
+<g transform="translate(425.1093696700382,301.1321992809057) rotate(-7.0)">
+<rect x="-35.0" y="0" width="70.0" height="40.0" fill="#888" stroke="#333"/>
+<rect x="-5.0" y="40.0" width="10.0" height="16.5" fill="#d4a017"/>
+<rect x="-35.0" y="-33.0" width="70.0" height="33.0" fill="#666" stroke="#333"/>
+<rect x="-45.0" y="-73.0" width="90.0" height="40.0" fill="#fff" stroke="#777" stroke-dasharray="4 3"/>
+</g>
+<g transform="translate(306.93434349024324,315.6422679800811) rotate(-7.0)">
+<rect x="-35.0" y="0" width="70.0" height="40.0" fill="#888" stroke="#333"/>
+<rect x="-5.0" y="40.0" width="10.0" height="16.5" fill="#d4a017"/>
+<rect x="-35.0" y="-33.0" width="70.0" height="33.0" fill="#666" stroke="#333"/>
+<rect x="-45.0" y="-73.0" width="90.0" height="40.0" fill="#fff" stroke="#777" stroke-dasharray="4 3"/>
+</g>
+<rect x="783.3258449191403" y="182.5" width="150.0" height="75.0" fill="#555" stroke="#111"/>
+<text x="858.3258449191403" y="222.5" font-size="13" fill="#fff" text-anchor="middle" font-weight="bold">Lautsprecher</text>
+<text x="858.3258449191403" y="237.5" font-size="11" fill="#fff" text-anchor="middle">Membran nach oben</text>
+<line x1="798.3258449191403" y1="168.0" x2="798.3258449191403" y2="180.0" stroke="#fff" stroke-width="3"/>
+<line x1="818.3258449191403" y1="168.0" x2="818.3258449191403" y2="180.0" stroke="#fff" stroke-width="3"/>
+<line x1="838.3258449191403" y1="168.0" x2="838.3258449191403" y2="180.0" stroke="#fff" stroke-width="3"/>
+<line x1="858.3258449191403" y1="168.0" x2="858.3258449191403" y2="180.0" stroke="#fff" stroke-width="3"/>
+<line x1="878.3258449191403" y1="168.0" x2="878.3258449191403" y2="180.0" stroke="#fff" stroke-width="3"/>
+<line x1="898.3258449191403" y1="168.0" x2="898.3258449191403" y2="180.0" stroke="#fff" stroke-width="3"/>
+<line x1="918.3258449191403" y1="168.0" x2="918.3258449191403" y2="180.0" stroke="#fff" stroke-width="3"/>
+<text x="858.3258449191403" y="158.0" font-size="13" fill="#333" text-anchor="middle">Podestdeckel mit Lochgitter (abnehmbar, 4 × M3)</text>
+<rect x="723.3258449191403" y="367.0" width="255.0" height="8.0" fill="#1f7a3a"/>
+<rect x="723.3258449191403" y="375.0" width="255.0" height="42.5" fill="#333"/>
+<text x="850.8258449191403" y="402.0" font-size="12" fill="#fff" text-anchor="middle">Pico H auf Buchsenleisten, USB nach hinten</text>
+<rect x="979.3258449191403" y="372.5" width="20.5" height="30.0" fill="#e07b00"/>
+<text x="1003.5758449191403" y="391.5" font-size="12" fill="#7a3e00" text-anchor="start" font-weight="bold">Kabelausgang Ø6 + Zugentlastung</text>
+<rect x="713.3258449191403" y="307.5" width="130.0" height="20.0" fill="#1d3f8a"/>
+<text x="778.3258449191403" y="301.5" font-size="12" fill="#1d3f8a" text-anchor="middle" font-weight="bold">PAM8302 (an Podest-Innenwand)</text>
+<rect x="231.93434349024324" y="387.5" width="150.0" height="30.0" fill="#0f6e44"/>
+<text x="465.0" y="448.0" font-size="12" fill="#0f6e44" text-anchor="start" font-weight="bold">Vibration am Boden unter PTT (Abstand zu den Taster-Pins ca. 3)</text>
+<rect x="220.0" y="430.0" width="60.0" height="15.0" fill="#444"/>
+<rect x="905.8258449191403" y="430.0" width="60.0" height="15.0" fill="#444"/>
+<text x="250.0" y="461.0" font-size="11" fill="#111" text-anchor="middle">TPU-Fuß</text>
+<line x1="165.0" y1="430.0" x2="165.0" y2="330.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="159.0" y1="430.0" x2="171.0" y2="430.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="159.0" y1="330.0" x2="171.0" y2="330.0" stroke="#c0392b" stroke-width="1.2"/>
+<text x="157.0" y="384.0" font-size="13" fill="#c0392b" text-anchor="end">20</text>
+<line x1="1023.8258449191403" y1="430.0" x2="1023.8258449191403" y2="170.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="1017.8258449191403" y1="430.0" x2="1029.8258449191403" y2="430.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="1017.8258449191403" y1="170.0" x2="1029.8258449191403" y2="170.0" stroke="#c0392b" stroke-width="1.2"/>
+<text x="1031.8258449191403" y="304.0" font-size="13" fill="#c0392b" text-anchor="start">52</text>
+<line x1="120.0" y1="430.0" x2="120.0" y2="261.7531676931174" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="114.0" y1="430.0" x2="126.0" y2="430.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="114.0" y1="261.7531676931174" x2="126.0" y2="261.7531676931174" stroke="#c0392b" stroke-width="1.2"/>
+<text x="112.0" y="349.8765838465587" font-size="13" fill="#c0392b" text-anchor="end">33,6 hinten</text>
+<line x1="190.0" y1="493.0" x2="995.8258449191403" y2="493.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="190.0" y1="487.0" x2="190.0" y2="499.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="995.8258449191403" y1="487.0" x2="995.8258449191403" y2="499.0" stroke="#c0392b" stroke-width="1.2"/>
+<text x="592.9129224595702" y="488.0" font-size="13" fill="#c0392b" text-anchor="middle">161 Tiefe gesamt</text>
+<line x1="758.3258449191403" y1="136.0" x2="995.8258449191403" y2="136.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="758.3258449191403" y1="130.0" x2="758.3258449191403" y2="142.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="995.8258449191403" y1="130.0" x2="995.8258449191403" y2="142.0" stroke="#c0392b" stroke-width="1.2"/>
+<text x="877.0758449191403" y="131.0" font-size="13" fill="#c0392b" text-anchor="middle">Podest 45</text>
+<path d="M280.0,330.0 A 90 90 0 0 0 279.32915364771895,319.0317590935367" fill="none" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="190.0" y1="330.0" x2="300.0" y2="330.0" stroke="#c0392b" stroke-width="1" stroke-dasharray="3 3"/>
+<text x="308.0" y="328.0" font-size="13" fill="#c0392b" text-anchor="start">7°</text>
+<text x="592.9129224595702" y="525.0" font-size="13" fill="#333" text-anchor="middle">Platte schräg 112 lang · Wand 2.5 · Boden 2.5 · Platz unter dem Podest ca. 32 hoch für Pico, PAM8302 und Verdrahtung</text>
+<text x="30" y="610" font-size="20" fill="#111" text-anchor="start" font-weight="bold">2  Draufsicht (vorne = unten)</text>
+<rect x="90.0" y="660.0" width="522.0" height="580.1946083417811" rx="18.0" fill="#eef2f6" stroke="#222" stroke-width="2.5"/>
+<rect x="90.0" y="660.0" width="522.0" height="171.0" rx="18.0" fill="#d9e2ec" stroke="#222" stroke-width="2"/>
+<text x="351.0" y="816.6" font-size="13" fill="#333" text-anchor="middle" font-weight="bold">Podest 52 hoch</text>
+<circle cx="261.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="261.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="261.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="261.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="279.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="279.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="279.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="279.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="297.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="297.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="297.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="297.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="315.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="315.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="315.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="315.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="333.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="333.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="333.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="333.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="351.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="351.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="351.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="351.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="369.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="369.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="369.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="369.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="387.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="387.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="387.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="387.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="405.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="405.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="405.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="405.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="423.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="423.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="423.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="423.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="441.0" cy="697.8" r="3.6" fill="#555"/>
+<circle cx="441.0" cy="715.8" r="3.6" fill="#555"/>
+<circle cx="441.0" cy="733.8" r="3.6" fill="#555"/>
+<circle cx="441.0" cy="751.8" r="3.6" fill="#555"/>
+<circle cx="118.8" cy="690.6" r="6.12" fill="#fff" stroke="#333"/>
+<circle cx="583.2" cy="690.6" r="6.12" fill="#fff" stroke="#333"/>
+<circle cx="118.8" cy="809.4" r="6.12" fill="#fff" stroke="#333"/>
+<circle cx="583.2" cy="809.4" r="6.12" fill="#fff" stroke="#333"/>
+<rect x="99.0" y="831.0" width="504.0" height="400.1946083417811" fill="#e9eef3" stroke="#4a6a8a" stroke-width="1.5"/>
+<rect x="147.15" y="859.3438244804489" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="154.35000000000002" y="866.5438244804488" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="179.55" y="890.7438244804489" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">Favorit 1</text>
+<text x="179.55" y="902.7438244804489" font-size="9" fill="#555" text-anchor="middle">Braille 1</text>
+<rect x="215.73" y="859.3438244804489" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="222.93" y="866.5438244804488" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="248.13" y="890.7438244804489" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">Favorit 2</text>
+<text x="248.13" y="902.7438244804489" font-size="9" fill="#555" text-anchor="middle">Braille 2</text>
+<rect x="318.6" y="859.3438244804489" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="325.8" y="866.5438244804488" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="351.0" y="890.7438244804489" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">Favorit 3</text>
+<text x="351.0" y="902.7438244804489" font-size="9" fill="#555" text-anchor="middle">Braille 3</text>
+<rect x="387.18" y="859.3438244804489" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="394.38" y="866.5438244804488" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="419.58" y="890.7438244804489" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">Favorit 4</text>
+<text x="419.58" y="902.7438244804489" font-size="9" fill="#555" text-anchor="middle">Braille 4</text>
+<rect x="490.05000000000007" y="859.3438244804489" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="497.25000000000006" y="866.5438244804488" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="522.45" y="890.7438244804489" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">Beenden</text>
+<text x="522.45" y="902.7438244804489" font-size="9" fill="#555" text-anchor="middle">Mulde, 2 s</text>
+<rect x="147.15" y="944.4298433299012" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="154.35000000000002" y="951.6298433299012" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="179.55" y="975.8298433299012" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">TG zurück</text>
+<text x="179.55" y="987.8298433299012" font-size="9" fill="#555" text-anchor="middle">◀ Dreieck</text>
+<rect x="215.73" y="944.4298433299012" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="222.93" y="951.6298433299012" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="248.13" y="975.8298433299012" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">TG vor</text>
+<text x="248.13" y="987.8298433299012" font-size="9" fill="#555" text-anchor="middle">▶ Dreieck</text>
+<rect x="318.6" y="944.4298433299012" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="325.8" y="951.6298433299012" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="351.0" y="975.8298433299012" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">Leiser</text>
+<text x="351.0" y="987.8298433299012" font-size="9" fill="#555" text-anchor="middle">− Steg</text>
+<rect x="387.18" y="944.4298433299012" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="394.38" y="951.6298433299012" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="419.58" y="975.8298433299012" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">Lauter</text>
+<text x="419.58" y="987.8298433299012" font-size="9" fill="#555" text-anchor="middle">+ Kreuz</text>
+<rect x="147.15" y="1029.5158621793535" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="154.35000000000002" y="1036.7158621793535" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="179.55" y="1060.9158621793536" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">Verbinden</text>
+<text x="179.55" y="1072.9158621793536" font-size="9" fill="#555" text-anchor="middle">● Noppe</text>
+<rect x="387.18" y="1029.5158621793535" width="64.8" height="64.31699062635766" rx="4" fill="#fff" stroke="#888" stroke-dasharray="4 3"/>
+<rect x="394.38" y="1036.7158621793535" width="50.4" height="50.024326042722635" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="419.58" y="1060.9158621793536" font-size="10" fill="#111" text-anchor="middle" font-weight="bold">Trennen</text>
+<text x="419.58" y="1072.9158621793536" font-size="9" fill="#555" text-anchor="middle">✕ Kreuz</text>
+<rect x="248.13" y="1114.6018810288058" width="205.74" height="64.8" rx="5" fill="#fff7e6" stroke="#e07b00" stroke-dasharray="5 3" stroke-width="1.5"/>
+<rect x="257.4" y="1121.8018810288058" width="50.4" height="50.4" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<rect x="394.2" y="1121.8018810288058" width="50.4" height="50.4" fill="#cfd8e3" stroke="#1f3b57" stroke-width="1.5"/>
+<text x="351.0" y="1151.0018810288059" font-size="13" fill="#7a3e00" text-anchor="middle" font-weight="bold">PTT</text>
+<circle cx="351.0" cy="1222.194608341781" r="5.4" fill="#333"/>
+<text x="351.0" y="1212.194608341781" font-size="11" fill="#111" text-anchor="middle">Orientierungsnoppe</text>
+<line x1="90.0" y1="644.0" x2="612.0" y2="644.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="90.0" y1="638.0" x2="90.0" y2="650.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="612.0" y1="638.0" x2="612.0" y2="650.0" stroke="#c0392b" stroke-width="1.2"/>
+<text x="351.0" y="639.0" font-size="13" fill="#c0392b" text-anchor="middle">145</text>
+<line x1="632.0" y1="660.0" x2="632.0" y2="1240.194608341781" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="626.0" y1="660.0" x2="638.0" y2="660.0" stroke="#c0392b" stroke-width="1.2"/>
+<line x1="626.0" y1="1240.194608341781" x2="638.0" y2="1240.194608341781" stroke="#c0392b" stroke-width="1.2"/>
+<text x="640.0" y="954.0973041708905" font-size="13" fill="#c0392b" text-anchor="start">161</text>
+<text x="800" y="610" font-size="20" fill="#111" text-anchor="start" font-weight="bold">3  Innenraum ohne Deckplatte und Podestdeckel</text>
+<rect x="860.0" y="660.0" width="522.0" height="580.1946083417811" rx="18.0" fill="#f6f6f6" stroke="#222" stroke-width="2.5"/>
+<line x1="860.0" y1="831.0" x2="1382.0" y2="831.0" stroke="#888" stroke-width="1.5" stroke-dasharray="6 4"/>
+<text x="1324.4" y="845.0" font-size="11" fill="#666" text-anchor="end">Podestkante</text>
+<rect x="995.0" y="687.0" width="252.0" height="108.0" fill="none" stroke="#555" stroke-width="2" stroke-dasharray="6 3"/>
+<text x="1121.0" y="789.0" font-size="11" fill="#555" text-anchor="middle">Lautsprecher (hängt am Podestdeckel)</text>
+<rect x="924.8" y="672.6" width="75.60000000000001" height="183.6" fill="#1f7a3a" stroke="#0d4a22"/>
+<rect x="948.1999999999999" y="665.4" width="28.8" height="18.0" fill="#c9c9c9" stroke="#666"/>
+<text x="962.5999999999999" y="751.8000000000001" font-size="12" fill="#fff" text-anchor="middle" font-weight="bold">Pico H</text>
+<text x="962.5999999999999" y="769.8000000000001" font-size="9" fill="#fff" text-anchor="middle">BOOTSEL bei</text>
+<text x="962.5999999999999" y="782.4" font-size="9" fill="#fff" text-anchor="middle">abgen. Deckel</text>
+<rect x="946.4" y="658.0" width="32.4" height="13.0" fill="#e07b00"/>
+<text x="962.5999999999999" y="652.0" font-size="12" fill="#7a3e00" text-anchor="middle" font-weight="bold">Kabel Ø6</text>
+<rect x="932.0" y="863.4000000000001" width="61.2" height="18.0" fill="none" stroke="#e07b00" stroke-width="2"/>
+<text x="1004.0" y="877.8000000000001" font-size="11" fill="#7a3e00" text-anchor="start">Zugentlastung</text>
+<rect x="1223.6" y="712.2" width="93.60000000000001" height="61.2" fill="#1d3f8a"/>
+<text x="1270.3999999999999" y="748.2" font-size="11" fill="#fff" text-anchor="middle" font-weight="bold">PAM8302</text>
+<rect x="1067.0" y="1107.4018810288057" width="108.0" height="79.2" fill="#0f6e44"/>
+<text x="1121.0" y="1143.4018810288057" font-size="11" fill="#fff" text-anchor="middle" font-weight="bold">Vibration</text>
+<text x="1121.0" y="1161.4018810288057" font-size="10" fill="#fff" text-anchor="middle">unter PTT</text>
+<rect x="896.0" y="1117.794608341781" width="144.0" height="79.2" fill="none" stroke="#777" stroke-dasharray="5 3"/>
+<text x="968.0" y="1160.994608341781" font-size="10" fill="#555" text-anchor="middle">Gewicht (flach)</text>
+<rect x="1202.0" y="1117.794608341781" width="144.0" height="79.2" fill="none" stroke="#777" stroke-dasharray="5 3"/>
+<text x="1274.0" y="1160.994608341781" font-size="10" fill="#555" text-anchor="middle">Gewicht (flach)</text>
+<circle cx="888.8" cy="690.6" r="14.4" fill="#ddd" stroke="#555"/><circle cx="888.8" cy="690.6" r="6.48" fill="#fff" stroke="#555"/>
+<circle cx="1353.2" cy="690.6" r="14.4" fill="#ddd" stroke="#555"/><circle cx="1353.2" cy="690.6" r="6.48" fill="#fff" stroke="#555"/>
+<circle cx="888.8" cy="809.4" r="14.4" fill="#ddd" stroke="#555"/><circle cx="888.8" cy="809.4" r="6.48" fill="#fff" stroke="#555"/>
+<circle cx="1353.2" cy="809.4" r="14.4" fill="#ddd" stroke="#555"/><circle cx="1353.2" cy="809.4" r="6.48" fill="#fff" stroke="#555"/>
+<circle cx="888.8" cy="1211.394608341781" r="14.4" fill="#ddd" stroke="#555"/><circle cx="888.8" cy="1211.394608341781" r="6.48" fill="#fff" stroke="#555"/>
+<circle cx="1353.2" cy="1211.394608341781" r="14.4" fill="#ddd" stroke="#555"/><circle cx="1353.2" cy="1211.394608341781" r="6.48" fill="#fff" stroke="#555"/>
+<text x="1121.0" y="1262.194608341781" font-size="11" fill="#555" text-anchor="middle">Dome M3 mit Einschmelzmutter: 4 × Podestdeckel, 4 × Tastenplatte (2 hinten am Podest, 2 vorne)</text>
+<text x="30" y="1340" font-size="16" fill="#222" font-weight="bold">Hinweise Entwurf 2 (mit Caren ausprobieren):</text>
+<text x="30" y="1366" font-size="14" fill="#222">• Keilform: vorne 20 hoch (Handballen liegen flach auf dem Tisch), Tastenplatte 7° ansteigend, hinten Podest 52 hoch als tastbarer Anschlag.</text>
+<text x="30" y="1392" font-size="14" fill="#222">• Lautsprecher liegt im Podest unter dem Lochgitter und strahlt nach oben; darunter ca. 32 hoch Platz für Pico H, PAM8302, Verdrahtung, Kabelausgang hinten.</text>
+<text x="30" y="1418" font-size="14" fill="#222">• BOOTSEL: Podestdeckel abschrauben (Lautsprecher bleibt am Kabel) – kein Loch nötig. Druck: Unterteil ohne Stützen möglich, Tastenplatte und Podestdeckel flach drucken.</text>
+<text x="30" y="1444" font-size="14" fill="#222">• Tastenanordnung unverändert zu Entwurf 1; Winkel (5–10°) und Höhen sind Parameter für das OpenSCAD-Modell.</text>
 </svg>

@@ -11,7 +11,7 @@ Konzept und Verdrahtung: `docs/TASTENFELD_KONZEPT.md`.
 | `pins.py` | Pinbelegung (Tasten GP0–GP11, Audio GP16/GP17, Vibration GP18) |
 | `code.py` | Tasten lesen, an CarenDMR melden, Quittungston und Vibration |
 | `steckbrett.png` / `.svg` | Zeichnung des Steckbrett-Aufbaus |
-| `gehaeuse.png` / `.svg` | Maßzeichnung Gehäuse und Deckplatte (Entwurf 1) |
+| `gehaeuse.png` / `.svg` | Maßzeichnung Gehäuse (Entwurf 2: Keilform mit Lautsprecher-Podest) |
 
 ## Verdrahtung (Pico H, Stiftnummern 1–40)
 

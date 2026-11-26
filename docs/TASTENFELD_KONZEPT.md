@@ -92,22 +92,28 @@ Kompressor, weicher Limiter, ausdrücklich **keine** automatische
 Lautheitsnormalisierung). Eine TX-AGC wäre neu und müsste mit Papagei 9990 und
 dem AMBE-Loopback geprüft werden.
 
-## Gehäuse und Deckplatte (Entwurf 1, 26.11.2026)
-Zeichnung: `hardware/keypad/gehaeuse.png` (bzw. `.svg`). Kurzfassung:
-- Deckplatte 140 × 145 × 1,5, Gehäuse außen 145 × 150 × 32 (Wand 2,5, Boden 2,5,
-  innen 28), PETG; Deckplatte auf Absatz, 4 × M3 in Einschmelzmuttern.
-- Anordnung (Caren sitzt vorne): hinten Favorit 1–4, rechts abgesetzt Beenden;
-  Mitte TG zurück/vor | Leiser/Lauter; Verbinden links, Trennen rechts;
-  vorne breite PTT (Kappe 57,15, Taster 38 auseinander). Raster 19,05,
+## Gehäuse (Entwurf 2, 26.11.2026 – Keilform mit Lautsprecher-Podest)
+Zeichnung: `hardware/keypad/gehaeuse.png` (bzw. `.svg`). Entwurf 1 (flacher
+Kasten) ist ersetzt, steht noch in der Git-Historie.
+- Wunsch des Nutzers: ergonomisch, vorne flach, nach hinten ansteigend, oben
+  ein Podest für den Lautsprecher, darunter Platz für Pico und Co.
+- Außen 145 breit × 161 tief. Vorne 20 hoch, Tastenplatte (140 × 112 × 1,5)
+  steigt mit 7° auf 33,6, hinten Podest 45 tief und 52 hoch.
+- Podest: Lautsprecher liegt unter dem Lochgitter im Podestdeckel, Membran nach
+  oben; darunter ca. 32 hoch Platz für Pico H (USB nach hinten), PAM8302,
+  Verdrahtung; Kabelausgang Ø6 hinten mit Zugentlastung.
+- BOOTSEL: Podestdeckel abschrauben (Lautsprecher bleibt am Kabel) – kein Loch.
+- Tastenanordnung wie Entwurf 1: hinten Favorit 1–4, rechts abgesetzt Beenden;
+  Mitte TG zurück/vor | Leiser/Lauter; Verbinden links, Trennen rechts; vorne
+  breite PTT (Kappe 57,15, Taster 38 auseinander). Raster 19,05,
   Gruppenabstand 28,58, Reihenabstand 23,81.
-- Tastbare Kappen (Vorschlag): Favoriten mit Braille-Ziffer 1–4, TG ◀ ▶,
-  Leiser Steg, Lauter Kreuz, Verbinden Noppe, Trennen ✕, Beenden als Mulde;
-  Orientierungsnoppe vorne Mitte.
-- Innen: Lautsprecher hinten rechts unter Lochgitter, Pico H hinten links
-  (USB nach hinten, Kabelausgang Ø6 mit Kabelbinder-Steg), PAM8302 daneben,
-  Vibrationsmodul am Boden unter der PTT, zwei Gewichtstaschen vorne, 4 TPU-Füße.
-- Offen: BOOTSEL über abgeschraubte Deckplatte statt Loch? Modulmaße nachmessen;
-  Probedruck Ausschnitt 14,0 ± 0,1; Anordnung mit Caren testen.
+- Tastbare Kappen (Vorschlag): Braille-Ziffer 1–4, ◀ ▶, Steg, Kreuz, Noppe, ✕,
+  Beenden als Mulde; Orientierungsnoppe vorne Mitte.
+- Vibrationsmodul am Boden unter der PTT (nur ca. 3 Luft zu den Taster-Pins –
+  nach dem Nachmessen prüfen), zwei flache Gewichte vorne, 4 TPU-Füße.
+- Dome M3 mit Einschmelzmuttern: 4 für den Podestdeckel, 4 für die Tastenplatte.
+- Offen: Winkel (5–10°) mit Caren testen, Modulmaße nachmessen, Probedruck
+  Tasterausschnitt 14,0 ± 0,1.
 
 ## Offen
 - Belegung mit Caren ausprobieren
