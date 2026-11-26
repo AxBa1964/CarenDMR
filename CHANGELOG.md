@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1.94 – CAD-Modell für das Tastenfeld-Gehäuse
+
+- Neu: `hardware/keypad/cad/tastenfeld.py` – parametrisches Modell (CadQuery) des Tastenfelds, Entwurf 2: Keilform (vorne 20 hoch, Tastenplatte 7° ansteigend) mit Lautsprecher-Podest (52 hoch), Außenmaß 145 × 161.
+- Fertige Dateien in `hardware/keypad/cad/out/`: STEP zum Weiterbearbeiten im CAD-Programm (auch als Baugruppe) und STL für den Drucker – Unterteil, Tastenplatte, Podestdeckel, 11 Tastenkappen mit tastbaren Symbolen (Braille-Ziffern 1–4, Pfeile, Plus/Minus, Noppe, Kreuz, Mulde), PTT-Kappe für zwei Schalter, TPU-Füße und Probestreifen für den Schalterausschnitt (13,8–14,2).
+- Anleitung zu Druck und Montage in `hardware/keypad/cad/README.md`. CadQuery ist nur für das Modell nötig, nicht für CarenDMR.
+
 ## 0.2.1.93 – Bedien-Tastenfeld für CarenDMR Easy
 
 - Neu: Easy lässt sich mit einem USB-Tastenfeld (Raspberry Pi Pico H, USB-CDC seriell) bedienen – ohne PC-Tastatur und unabhängig davon, welches Fenster aktiv ist.

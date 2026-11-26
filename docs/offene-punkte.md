@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.93.
+Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.94.
 
 ## Stand
 
@@ -17,7 +17,8 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.93.
   dk7ee.de/download abgelegt; Projektseite dk7ee.de/carendmr.html bietet den
   Download direkt an, GitHub nur noch unten als Quellcode-Verweis.
 - 0.2.1.93: Bedien-Tastenfeld für Easy umgesetzt (`KeypadService`, USB-CDC,
-  Pico-2-H-Firmware in `hardware/keypad/`); mit echter Hardware noch ungetestet.
+  Pico-H-Firmware in `hardware/keypad/`); mit echter Hardware noch ungetestet.
+- 0.2.1.94: CAD-Modell Tastenfeld-Gehäuse (CadQuery, STEP/STL) in `hardware/keypad/cad/`.
 
 ## Nutzer-Handgriffe (offen)
 
@@ -39,13 +40,23 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.93.
 
 ## Tastenfeld (0.2.1.93) – Test mit Hardware
 
-- [ ] Pico H (RP2040): CircuitPython für den Pico (nicht Pico 2) aufspielen, `hardware/keypad/boot.py`, `pins.py`,
+- [x] Pico H (RP2040): CircuitPython für den Pico (nicht Pico 2) aufspielen (erledigt 26.11.2026); `hardware/keypad/boot.py`, `pins.py`,
       `code.py` kopieren (Anleitung `hardware/keypad/README.md`).
 - [ ] Testaufbau: Tasten zeigen im Terminal `KEY n DOWN/UP`, `ACK` gibt Ton.
 - [ ] Prüfen, ob 3,3 V vom Pico das Vibrationsmodul sicher schalten (sonst BC337).
 - [ ] Easy mit Tastenfeld: Favorit wählen (Ansage) → Verbinden → PTT halten;
       Trennen; Beenden nach 2 s; USB abziehen während PTT → Senden endet.
 - [ ] Lautsprecher und Vibrationsmodul nachmessen (Gehäuse).
+
+## Tastenfeld-Gehäuse (0.2.1.94) – Druck
+
+- [ ] Probestreifen drucken, passenden Ausschnitt (13,8–14,2) ermitteln und in
+      `hardware/keypad/cad/tastenfeld.py` (`cut`) eintragen.
+- [ ] Probekappe und PTT-Kappe drucken, auf Schalter stecken (klemmt die PTT?).
+- [ ] Unterteil, Tastenplatte, Podestdeckel, Kappen, TPU-Füße drucken.
+- [ ] Halterungen für Lautsprecher, Vibrationsmodul, PAM8302, Pico nach dem
+      Nachmessen ins Modell aufnehmen.
+- [ ] Winkel 7° und Tastenanordnung mit Caren ausprobieren.
 
 ## Offene Entscheidungen
 
@@ -61,8 +72,6 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.93.
 
 ## Ideen / später
 
-- Tastenfeld: Gehäuse und Deckplatte (PETG) konstruieren, Konzept in
-  `docs/TASTENFELD_KONZEPT.md`.
 - Quelltext-Tests schrittweise durch Verhaltenstests ersetzen; Tests kennzeichnen,
   die echte Audio-/Netzwerkgeräte brauchen.
 - Android-Prototyp (Branch `feature/android-arm64-prototype`, muss an die

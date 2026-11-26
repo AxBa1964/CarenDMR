@@ -93,7 +93,8 @@ Lautheitsnormalisierung). Eine TX-AGC wäre neu und müsste mit Papagei 9990 und
 dem AMBE-Loopback geprüft werden.
 
 ## Gehäuse (Entwurf 2, 26.11.2026 – Keilform mit Lautsprecher-Podest)
-Zeichnung: `hardware/keypad/gehaeuse.png` (bzw. `.svg`). Entwurf 1 (flacher
+Zeichnung: `hardware/keypad/gehaeuse.png` (bzw. `.svg`), CAD-Modell (CadQuery,
+STEP/STL) seit 0.2.1.94 in `hardware/keypad/cad/`. Entwurf 1 (flacher
 Kasten) ist ersetzt, steht noch in der Git-Historie.
 - Wunsch des Nutzers: ergonomisch, vorne flach, nach hinten ansteigend, oben
   ein Podest für den Lautsprecher, darunter Platz für Pico und Co.
@@ -117,7 +118,7 @@ Kasten) ist ersetzt, steht noch in der Git-Historie.
 
 ## Offen
 - Belegung mit Caren ausprobieren
-- Deckplatte und Gehäuse (PETG) für 12 Einzeltasten + breite PTT-Taste konstruieren
+- Halterungen für Module ins CAD-Modell, sobald nachgemessen
 - Nachmessen: Lautsprecher und Vibrationsmodul (Außenmaß, Lochabstand, Schraubengröße)
 
 ## Material (vollständig vorhanden, Stand 26.11.2026)

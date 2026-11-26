@@ -1,0 +1,2 @@
+# Nur für das CAD-Modell des Tastenfelds, nicht für CarenDMR selbst.
+cadquery>=2.4,<3
