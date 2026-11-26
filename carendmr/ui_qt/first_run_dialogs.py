@@ -46,6 +46,10 @@ from carendmr.application.station_settings_service import (
 from carendmr.ui_qt.accessibility import announce
 
 CUSTOM_SERVER_LABEL = "Anderer Server …"
+SERVER_LOCKED_HINT = (
+    "Adresse und Port sind durch die Serverauswahl festgelegt. "
+    "Zum Ändern bei Server „Anderer Server …“ wählen."
+)
 
 
 def _labeled(form: QFormLayout, text: str, widget: QWidget, accessible: str) -> None:
@@ -179,6 +183,10 @@ class StationSetupDialog(QDialog):
         self.port_spin.setRange(1, 65535)
         self.port_spin.setValue(int(draft["port"]))
         _labeled(form, "P&ort:", self.port_spin, "UDP-Port des BrandMeister-Servers")
+        self.server_hint = QLabel(SERVER_LOCKED_HINT)
+        self.server_hint.setWordWrap(True)
+        self.server_hint.setAccessibleName("Hinweis zu Adresse und Port")
+        form.addRow("", self.server_hint)
         layout.addLayout(form)
 
         known = settings.find_master(draft["host"], int(draft["port"]))
@@ -251,6 +259,10 @@ class StationSetupDialog(QDialog):
         custom = data is None
         self.host_edit.setEnabled(custom)
         self.port_spin.setEnabled(custom)
+        self.server_hint.setVisible(not custom)
+        # Gesperrte Felder sind per Tab nicht erreichbar; der Hinweis hängt
+        # deshalb auch an der Serverauswahl und wird dort mit angesagt.
+        self.server_combo.setAccessibleDescription("" if custom else SERVER_LOCKED_HINT)
         if not custom:
             host, port = data
             self.host_edit.setText(host)

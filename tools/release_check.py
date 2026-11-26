@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILE = ROOT / "carendmr" / "version.py"
-DOCUMENTS = ("README.md", "CHANGELOG.md", "DEPLOY.md", "RELEASE_INFO.md")
+DOCUMENTS = ("README.md", "CHANGELOG.md", "RELEASE_INFO.md")
 FORBIDDEN = (
     ROOT / "config" / "brandmeister.local.json",
     ROOT / "native" / "carendmr_mbe.dll",

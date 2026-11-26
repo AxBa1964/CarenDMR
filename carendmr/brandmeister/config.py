@@ -9,6 +9,10 @@ from pathlib import Path
 from typing import Any
 
 
+DEFAULT_PACKAGE_ID = "MMDVM_MMDVM_HS_Hat"
+LEGACY_PACKAGE_IDS = {"MMDVM_HS_Hat"}
+
+
 @dataclass(frozen=True, slots=True)
 class BrandMeisterConfig:
     host: str
@@ -104,6 +108,18 @@ class BrandMeisterConfigStore:
             raise ValueError(
                 "Die BrandMeister-Konfiguration muss ein JSON-Objekt sein."
             )
+        if data.get("package_id") in LEGACY_PACKAGE_IDS:
+            # 0.2.1.91: Mit dieser alten Vorgabe lehnt BrandMeister die direkte
+            # Anmeldung ab; einmalig korrigieren und speichern.
+            data["package_id"] = DEFAULT_PACKAGE_ID
+            try:
+                config = BrandMeisterConfig.from_dict(data)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"Die BrandMeister-Konfiguration ist ungültig: {exc}"
+                ) from exc
+            self.save(config)
+            return config
         try:
             return BrandMeisterConfig.from_dict(data)
         except (KeyError, TypeError, ValueError) as exc:

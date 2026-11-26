@@ -15,11 +15,9 @@ respektieren: ein zuverlässiger, barrierefreier BrandMeister-DMR-Client.
 
 ## Entwicklungsumgebung
 
-Die Installationsanleitungen liegen in:
-
-- [INSTALL_MACOS.md](INSTALL_MACOS.md)
-- [INSTALL_WINDOWS.md](INSTALL_WINDOWS.md)
-- [INSTALL_LINUX.md](INSTALL_LINUX.md)
+Die Anleitung für die Entwicklungsumgebung steht in
+[docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md), der Release-Bau in
+[docs/RELEASE_BUILD.md](docs/RELEASE_BUILD.md).
 
 Tests:
 

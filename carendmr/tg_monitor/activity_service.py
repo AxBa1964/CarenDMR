@@ -13,6 +13,29 @@ BRANDMEISTER_LASTHEARD_URL = "https://api.brandmeister.network"
 BRANDMEISTER_LASTHEARD_SOCKET_PATH = "/lh/socket.io"
 
 
+# 0.2.1.91: Die Diagnose-Datei wuchs unbegrenzt (bis über 200 MB).
+LOG_MAX_BYTES = 5 * 1024 * 1024
+LOG_BACKUPS = 3
+
+
+def rotate_log(path: Path, max_bytes: int = LOG_MAX_BYTES, backups: int = LOG_BACKUPS) -> bool:
+    """Benennt die Logdatei ab ``max_bytes`` um (``.1`` … ``.N``); älteste fällt weg."""
+    try:
+        if not path.exists() or path.stat().st_size < max_bytes:
+            return False
+        oldest = path.with_name(f"{path.name}.{backups}")
+        if oldest.exists():
+            oldest.unlink()
+        for index in range(backups - 1, 0, -1):
+            source = path.with_name(f"{path.name}.{index}")
+            if source.exists():
+                source.replace(path.with_name(f"{path.name}.{index + 1}"))
+        path.replace(path.with_name(f"{path.name}.1"))
+        return True
+    except OSError:
+        return False
+
+
 @dataclass(frozen=True, slots=True)
 class TalkgroupActivity:
     target: int
@@ -61,6 +84,7 @@ class TalkgroupActivityService:
             stamp = datetime.now().astimezone().isoformat(timespec="milliseconds")
             line = f"{stamp} {message}\n"
             with self._log_lock:
+                rotate_log(self._log_path)
                 with self._log_path.open("a", encoding="utf-8") as handle:
                     handle.write(line)
         except OSError:

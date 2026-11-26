@@ -47,6 +47,10 @@ AMBE+2 (DVSI) siehe `docs/UPSTREAM_PROVENANCE.md`.
 
 ## Bauen
 
+Am einfachsten per Doppelklick auf `build_setup.bat` im Projektordner
+(Tests, Exe, Installer, danach öffnet sich der Ordner mit dem Setup).
+Gleichwertig von Hand:
+
 ```powershell
 cd C:\ABDevelop\CarenDMR
 .\.venv\Scripts\python.exe -m pytest tests -q
@@ -89,6 +93,13 @@ Nutzerdaten (Einstellungen, Logbuch, Mitschnitte, Codec-Dateien) liegen in
   öffentliche Repository erfüllt; im Release auf den Tag verlinken.
 - **afu-software.de:** dieselbe Installationsdatei mit derselben
   SHA-256-Prüfsumme und einem Link auf das GitHub-Release anbieten.
+
+- **Update-Hinweis:** Erst nach dem Hochladen des Setups in der zentralen
+  `versionen.json` (Hauptkopie im Ordner `_AFUVersionen`) beim Schlüssel
+  `carendmr` `version`, `datum`, `neu` und `download` (direkter Link zur
+  Setup-Datei) eintragen und die Datei nach
+  `https://dk7ee.de/download/versionen.json` hochladen. CarenDMR liest nur
+  diese Adresse, und nur auf Knopfdruck.
 
 Die Exe ist nicht signiert. Windows SmartScreen zeigt deshalb beim ersten
 Start des Installers eine Warnung. Darauf in der Release-Beschreibung

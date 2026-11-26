@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from carendmr.application import RadioState
+from carendmr.application.channel_rules import required_call_type
 from carendmr.bootstrap import RadioCore, build_radio_core
 from carendmr.application.operating_preferences import OperatingPreferences, OperatingPreferencesStore
 from carendmr.ui_qt.accessibility_manager import AccessibilityManager
@@ -168,7 +169,8 @@ class EasyWindow(QMainWindow):
         help_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(help_label)
         setup_label = QLabel(
-            "Einrichtung: Strg+Umschalt+S Station · Strg+Umschalt+C Sprach-Codec · Strg+Umschalt+A Audio"
+            "Einrichtung: Strg+Umschalt+S Station · Strg+Umschalt+C Sprach-Codec · "
+            "Strg+Umschalt+A Audio · Strg+Umschalt+U Updates"
         )
         setup_label.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         layout.addWidget(setup_label)
@@ -252,6 +254,7 @@ class EasyWindow(QMainWindow):
             ("Ctrl+Shift+S", self._open_station_setup),
             ("Ctrl+Shift+C", self._open_codec_setup),
             ("Ctrl+Shift+A", self._open_audio_setup),
+            ("Ctrl+Shift+U", self._open_update_check),
         ):
             shortcut = QShortcut(QKeySequence(key), self)
             shortcut.activated.connect(handler)
@@ -286,6 +289,10 @@ class EasyWindow(QMainWindow):
     def _open_audio_setup(self) -> None:
         from carendmr.ui_qt.first_run_dialogs import AudioSetupDialog
         AudioSetupDialog(self._setup_services().audio_setup, self).exec()
+
+    def _open_update_check(self) -> None:
+        from carendmr.ui_qt.update_dialog import UpdateDialog
+        UpdateDialog(parent=self).exec()
 
     def _offer_station_setup_after_error(self, error: object) -> None:
         answer = QMessageBox.question(
@@ -365,6 +372,20 @@ class EasyWindow(QMainWindow):
             raise ValueError("Bitte eine gültige Talkgroup als Zahl eingeben.")
         return int(text), self._timeslot, self._call_type
 
+    def _apply_channel_rules(self) -> None:
+        """9990 (Papagei) braucht einen Privatruf; sonst bleibt alles unverändert."""
+        text = self.talkgroup_edit.text().strip().replace(" ", "")
+        if not text.isdigit():
+            return
+        call_type, notice = required_call_type(int(text), self._call_type)
+        if notice is None:
+            return
+        self._call_type = call_type
+        self._refresh_channel_label()
+        self.accessibility.announcer.announce(
+            self.status_label, notice, channel="easy-parrot-private", force=True
+        )
+
     def _save_preferences(self) -> None:
         tg, ts, call_type = self._target()
         self.preferences_store.save(
@@ -442,6 +463,7 @@ class EasyWindow(QMainWindow):
 
     def _connect(self) -> None:
         try:
+            self._apply_channel_rules()
             talkgroup, timeslot, call_type = self._target()
             self._save_preferences()
         except Exception as error:

@@ -38,7 +38,8 @@ UninstallDisplayName=CarenDMR
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Desktop-Verknüpfung für CarenDMR Easy anlegen"; GroupDescription: "Zusätzliche Verknüpfungen:"; Flags: unchecked
+Name: "desktopicon"; Description: "Desktop-Verknüpfung für CarenDMR anlegen"; GroupDescription: "Zusätzliche Verknüpfungen:"
+Name: "desktopicon_easy"; Description: "Desktop-Verknüpfung für CarenDMR Easy (barrierefrei) anlegen"; GroupDescription: "Zusätzliche Verknüpfungen:"; Flags: unchecked
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -48,10 +49,11 @@ Name: "{group}\CarenDMR"; Filename: "{app}\CarenDMR.exe"; Parameters: "--gui"; C
 Name: "{group}\CarenDMR Easy"; Filename: "{app}\CarenDMR.exe"; Parameters: "--easy"; Comment: "CarenDMR vereinfachte Bedienung"
 Name: "{group}\CarenDMR TG-Monitor"; Filename: "{app}\CarenDMR.exe"; Parameters: "--tg-monitor"
 Name: "{group}\CarenDMR deinstallieren"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\CarenDMR Easy"; Filename: "{app}\CarenDMR.exe"; Parameters: "--easy"; Tasks: desktopicon
+Name: "{autodesktop}\CarenDMR"; Filename: "{app}\CarenDMR.exe"; Parameters: "--gui"; Tasks: desktopicon
+Name: "{autodesktop}\CarenDMR Easy"; Filename: "{app}\CarenDMR.exe"; Parameters: "--easy"; Tasks: desktopicon_easy
 
 [Run]
-Filename: "{app}\CarenDMR.exe"; Parameters: "--easy"; Description: "CarenDMR Easy jetzt starten"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\CarenDMR.exe"; Parameters: "--gui"; Description: "CarenDMR jetzt starten"; Flags: nowait postinstall skipifsilent
 
 ; Hinweis: Einstellungen, Logbuch und Codec-Dateien liegen in
 ; %LOCALAPPDATA%\CarenDMR und bleiben bei der Deinstallation erhalten.

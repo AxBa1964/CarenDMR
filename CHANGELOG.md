@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.1.92 – Update-Prüfung auf Anfrage
+
+- Neu: „Nach Updates suchen …“ im Menü Programm des Hauptfensters, in Easy Strg+Umschalt+U. Es gibt keine automatische Prüfung.
+- Quelle ist wie bei den übrigen DK7EE-Tools `https://dk7ee.de/download/versionen.json`, Schlüssel `carendmr`; die Version wird Stelle für Stelle numerisch verglichen.
+- Ergebnis als Meldung mit Ansage; bei einer neuen Version öffnen „Download öffnen“ und „Projektseite öffnen“ den Browser. Es wird nichts automatisch heruntergeladen oder installiert. Ohne Verbindung erscheint ein Hinweis, CarenDMR läuft normal weiter.
+
+## 0.2.1.91 – Setup per Doppelklick, kleinere Exe, Aufräumen
+
+- Neu: `build_setup.bat` führt die Tests aus, baut Exe und Installer und öffnet den Ordner mit dem Setup.
+- Exe verkleinert: QML, Qt Quick 3D, Charts, Multimedia und weitere ungenutzte Qt-Teile werden nicht mehr mitgeliefert. `packaging/check_dependencies.py` prüft nach jedem Bau mit objdump, dass keine benötigte DLL fehlt.
+- Installer startet nach der Installation das **Hauptfenster**; Desktop-Verknüpfung „CarenDMR“ (vorausgewählt) und optional „CarenDMR Easy (barrierefrei)“.
+- Talkgroup 9990 (Papagei) schaltet beim Verbinden automatisch auf Privatruf und sagt das an (Easy und Hauptfenster).
+- Audio-Einrichtung: „Windows-Standardgerät (empfohlen)“ (Microsoft Soundmapper) steht oben und ist beim ersten Einrichten vorausgewählt.
+- Stationsdialog erklärt, warum Adresse und Port bei bekannten Servern gesperrt sind (sichtbar und für den Screenreader).
+- Gespeicherte `package_id` `MMDVM_HS_Hat` wird beim Laden einmalig auf `MMDVM_MMDVM_HS_Hat` korrigiert.
+- `tg_monitor.log` wird ab 5 MB umbenannt (höchstens drei ältere Dateien).
+- Aufgeräumt: `INSTALL_*.md`, `DEPLOY.md` und alte Werkzeuge entfernt; neue Anleitung `docs/ENTWICKLUNG.md`; Verweise angepasst.
+
 ## 0.2.1.90 – Ersteinrichtung vollständig und ohne Sackgasse
 
 - „Station einrichten“ mit **Verbindungstest**: meldet sich einmal bei BrandMeister an und wieder ab (ohne Senden) und sagt das Ergebnis im Klartext an. Speichern ohne erfolgreichen Test nur nach Rückfrage.

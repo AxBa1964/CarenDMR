@@ -11,6 +11,10 @@ TEST_TONE_HZ = 1000.0
 TEST_TONE_SECONDS = 0.8
 TEST_TONE_AMPLITUDE = 0.25
 TEST_TONE_RATE = 48000
+# Windows-Standardweg (MME „Microsoft Soundmapper“): folgt immer dem in
+# Windows eingestellten Gerät; bewährt in der Entwicklungsumgebung.
+SOUNDMAPPER_PREFIX = "microsoft soundmapper"
+RECOMMENDED_LABEL = "Windows-Standardgerät (empfohlen)"
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,17 +40,44 @@ class AudioSetupService:
     def scan(self) -> tuple[list[AudioChoice], list[AudioChoice]]:
         manager = self.manager
         manager.scan()
-        inputs = [
-            AudioChoice(device.stable_key, device.display_name(AudioDirection.INPUT))
-            for device in manager.list_devices(AudioDirection.INPUT)
-        ]
-        outputs = [
-            AudioChoice(device.stable_key, device.display_name(AudioDirection.OUTPUT))
-            for device in manager.list_devices(AudioDirection.OUTPUT)
-        ]
-        return inputs, outputs
+        return (
+            self._choices(AudioDirection.INPUT),
+            self._choices(AudioDirection.OUTPUT),
+        )
+
+    @staticmethod
+    def _is_soundmapper(device) -> bool:
+        return (
+            device.host_api.strip().casefold() == "mme"
+            and device.name.strip().casefold().startswith(SOUNDMAPPER_PREFIX)
+        )
+
+    def _choices(self, direction: AudioDirection) -> list[AudioChoice]:
+        recommended: list[AudioChoice] = []
+        others: list[AudioChoice] = []
+        for device in self.manager.list_devices(direction):
+            if self._is_soundmapper(device):
+                recommended.append(AudioChoice(device.stable_key, RECOMMENDED_LABEL))
+            else:
+                others.append(AudioChoice(device.stable_key, device.display_name(direction)))
+        return recommended[:1] + others
+
+    def recommended_keys(self) -> tuple[str | None, str | None]:
+        keys: list[str | None] = []
+        for direction in (AudioDirection.INPUT, AudioDirection.OUTPUT):
+            key = next(
+                (d.stable_key for d in self.manager.list_devices(direction) if self._is_soundmapper(d)),
+                None,
+            )
+            keys.append(key)
+        return keys[0], keys[1]
 
     def current_keys(self) -> tuple[str | None, str | None]:
+        """Gespeicherte Auswahl; beim ersten Einrichten der empfohlene Weg."""
+        if self.needs_setup():
+            recommended = self.recommended_keys()
+            if recommended[0] and recommended[1]:
+                return recommended
         keys: list[str | None] = []
         for direction in (AudioDirection.INPUT, AudioDirection.OUTPUT):
             try:

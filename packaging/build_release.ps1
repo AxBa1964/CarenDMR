@@ -18,7 +18,7 @@ Set-Location $root
 
 $python = Join-Path $root ".venv\Scripts\python.exe"
 if (-not (Test-Path $python)) {
-    throw "Virtuelle Umgebung .venv nicht gefunden. Bitte zuerst einrichten (siehe INSTALL_WINDOWS.md)."
+    throw "Virtuelle Umgebung .venv nicht gefunden. Bitte zuerst einrichten (siehe docs\ENTWICKLUNG.md)."
 }
 
 & $python -m PyInstaller --version *> $null
@@ -72,6 +72,14 @@ $exe = Join-Path $dist "CarenDMR\CarenDMR.exe"
 if (-not (Test-Path $exe)) { throw "CarenDMR.exe wurde nicht erzeugt." }
 Write-Host "Exe gebaut: $exe"
 
+# Fehlt nach dem Weglassen nicht benötigter Qt-Teile eine Abhängigkeit,
+# soll der Build hier scheitern und nicht erst beim Nutzer.
+$objdump = Join-Path $msysBin "objdump.exe"
+& $python (Join-Path $root "packaging\check_dependencies.py") (Join-Path $dist "CarenDMR") $objdump
+if ($LASTEXITCODE -ne 0) { throw "Abhängigkeitsprüfung fehlgeschlagen (siehe Liste oben)." }
+$sizeMb = [math]::Round((Get-ChildItem (Join-Path $dist "CarenDMR") -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)
+Write-Host "Größe des Programmordners: $sizeMb MB"
+
 if ($SkipInstaller) { return }
 
 # --- Installer bauen ------------------------------------------------------
@@ -89,5 +97,14 @@ if ($LASTEXITCODE -ne 0) { throw "Inno Setup ist fehlgeschlagen." }
 
 $setup = Join-Path $root "release\installer\CarenDMR-Setup-$version.exe"
 Write-Host "Installer gebaut: $setup"
-$hash = (Get-FileHash -Algorithm SHA256 $setup).Hash
+# SHA-256 über .NET statt Get-FileHash: Wird Windows PowerShell aus PowerShell 7
+# gestartet, fehlt Get-FileHash dort mitunter (geerbter Modulpfad).
+$sha = [System.Security.Cryptography.SHA256]::Create()
+$stream = [System.IO.File]::OpenRead($setup)
+try {
+    $hash = ([System.BitConverter]::ToString($sha.ComputeHash($stream))).Replace("-", "")
+} finally {
+    $stream.Dispose()
+    $sha.Dispose()
+}
 Write-Host "SHA-256: $hash"

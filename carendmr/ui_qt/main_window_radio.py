@@ -92,6 +92,7 @@ class MainWindowRadioMixin:
 
     def _connect(self) -> None:
         try:
+            self._apply_channel_rules()
             tg, ts, call_type = self._target()
             self._save_preferences()
         except Exception as error:
@@ -111,6 +112,22 @@ class MainWindowRadioMixin:
         self.connection_indicator.set_state("busy")
         self.statusBar().showMessage("Verbindung wird hergestellt …")
         self._set_controls_for_state(self.radio_state.state)
+
+    def _apply_channel_rules(self) -> None:
+        """9990 (Papagei) braucht einen Privatruf; sonst bleibt alles unverändert."""
+        from carendmr.application.channel_rules import required_call_type
+
+        text = self.current_tg_label.text().strip()
+        if not text.isdigit():
+            return
+        call_type, notice = required_call_type(int(text), self._selected_call_type)
+        if notice is None:
+            return
+        self._select_call_type(call_type)
+        self.accessibility.announcer.announce(
+            self.connection_label, notice, channel="parrot-private", force=True
+        )
+        self.statusBar().showMessage(notice, 5000)
 
     def _disconnect(self) -> None:
         self._stop_qso_recording("Mitschnitt wegen Trennen beendet")

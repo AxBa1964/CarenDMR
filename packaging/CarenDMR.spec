@@ -35,6 +35,44 @@ a = Analysis(
     excludes=["tkinter", "librosa", "pytest", "tests", "tools"],
     noarchive=False,
 )
+# --- Nicht benötigte Qt-Bestandteile weglassen (0.2.1.91) -----------------
+# CarenDMR nutzt QtCore/Gui/Widgets/Network und QtWebEngine (QRZ-Karte), aber
+# kein QML, Qt Quick 3D, Charts, Multimedia usw. Die PySide6-Hooks sammeln
+# diese trotzdem ein (über den QML-Ordner). Ob nach dem Filtern alle
+# Abhängigkeiten vorhanden sind, prüft packaging/check_dependencies.py.
+_QT_UNUSED_PREFIXES = (
+    "qt63d", "qt6charts", "qt6datavisualization", "qt6graphs", "qt6labs",
+    "qt6location", "qt6multimedia", "qt6quick3d", "qt6quickcontrols2",
+    "qt6quickdialogs2", "qt6quickeffects", "qt6quickparticles", "qt6quickshapes",
+    "qt6quicktest", "qt6quicktimeline", "qt6quickvectorimage", "qt6quicklayouts",
+    "qt6remoteobjects", "qt6scxml", "qt6sensors", "qt6spatialaudio",
+    "qt6statemachine", "qt6test", "qt6virtualkeyboard", "qt6shadertools",
+    "qt6texttospeech", "qt6serialport", "qt6sql", "qt6webview", "qt6pdfquick",
+    "qt6webenginequick", "qt6webchannelquick", "qt6qmllocalstorage",
+    "qt6qmlxmllistmodel", "qt6positioningquick", "qt6sensorsquick",
+    "qt6chartsqml", "qt6datavisualizationqml",
+)
+
+
+# Qt-Plugins, die nur die weggelassenen Module brauchen (gemeldet von
+# check_dependencies.py beim ersten Bau von 0.2.1.91).
+_QT_UNUSED_PLUGIN_DIRS = ("pyside6/plugins/qmltooling/",)
+_QT_UNUSED_PLUGINS = ("qtvirtualkeyboardplugin", "qtposition_nmea")
+
+
+def _keep(entry) -> bool:
+    dest = str(entry[0]).replace("\\", "/").lower()
+    if "pyside6/qml/" in dest or any(part in dest for part in _QT_UNUSED_PLUGIN_DIRS):
+        return False
+    name = dest.rsplit("/", 1)[-1]
+    if name.startswith(_QT_UNUSED_PLUGINS):
+        return False
+    return not name.startswith(_QT_UNUSED_PREFIXES)
+
+
+a.binaries = [entry for entry in a.binaries if _keep(entry)]
+a.datas = [entry for entry in a.datas if _keep(entry)]
+
 pyz = PYZ(a.pure)
 
 icon = ROOT / "packaging" / "CarenDMR.ico"

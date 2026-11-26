@@ -48,6 +48,10 @@ class MainWindowWindowsMixin:
         tg_monitor_action = QAction("TG-Monitor starten", self)
         tg_monitor_action.triggered.connect(self._start_tg_monitor)
         program_menu.addAction(tg_monitor_action)
+        program_menu.addSeparator()
+        update_action = QAction("Nach Updates suchen …", self)
+        update_action.triggered.connect(self._open_update_check)
+        program_menu.addAction(update_action)
 
         self.window_menu = self.menuBar().addMenu("Fenster")
         self.window_menu.aboutToShow.connect(self._rebuild_window_menu)
@@ -62,6 +66,10 @@ class MainWindowWindowsMixin:
                 RadioState.TRANSMITTING, RadioState.DISCONNECTING,
             },
         ).exec()
+
+    def _open_update_check(self) -> None:
+        from carendmr.ui_qt.update_dialog import UpdateDialog
+        UpdateDialog(parent=self).exec()
 
     def _offer_station_setup_after_error(self, error: object) -> None:
         answer = QMessageBox.question(

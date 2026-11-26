@@ -43,7 +43,7 @@ class DroidStarPluginEncoder(AmbeEncoder):
         if not self.bridge_path.is_file():
             raise EncoderUnavailableError(
                 "Die native CarenDMR-Vocoder-Bridge ist nicht gebaut. "
-                "Bitte den Build-Schritt aus DEPLOY.md ausführen."
+                "Bitte den Build-Schritt aus docs/ENTWICKLUNG.md ausführen."
             )
         try:
             self._library = ctypes.CDLL(str(self.bridge_path))
