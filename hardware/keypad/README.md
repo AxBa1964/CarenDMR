@@ -11,6 +11,40 @@ Konzept und Verdrahtung: `docs/TASTENFELD_KONZEPT.md`.
 | `pins.py` | Pinbelegung (Tasten GP0–GP11, Audio GP16/GP17, Vibration GP18) |
 | `code.py` | Tasten lesen, an CarenDMR melden, Quittungston und Vibration |
 
+## Verdrahtung (Pico H, Stiftnummern 1–40)
+
+Stift 1 ist neben der USB-Buchse (siehe Pinout im offiziellen Datenblatt,
+Abschnitt 2.1: https://datasheets.raspberrypi.com/pico/pico-datasheet.pdf,
+interaktiv: https://pico.pinout.xyz). GND-Stifte haben eckige Lötaugen:
+3, 8, 13, 18, 23, 28, 33, 38.
+
+Jeder Taster: ein Kontakt an den GPIO-Stift, der andere an GND
+(gemeinsame GND-Leitung). Kein Widerstand nötig, der Pull-up ist im Pico.
+
+| Teil | Anschluss | Pico-Stift |
+|---|---|---|
+| PTT (beide Taster parallel) | GP0 | 1 |
+| Lauter | GP1 | 2 |
+| Leiser | GP2 | 4 |
+| TG vor | GP3 | 5 |
+| TG zurück | GP4 | 6 |
+| Favorit 1 | GP5 | 7 |
+| Favorit 2 | GP6 | 9 |
+| Favorit 3 | GP7 | 10 |
+| Favorit 4 | GP8 | 11 |
+| Verbinden | GP9 | 12 |
+| Trennen | GP10 | 14 |
+| Beenden | GP11 | 15 |
+| Taster, zweiter Kontakt | GND | 3, 8, 13 oder 18 |
+| PAM8302 A+ | GP16 | 21 |
+| PAM8302 SD | GP17 | 22 |
+| PAM8302 A− und GND | GND | 23 |
+| PAM8302 Vin | VBUS (5 V vom USB) | 40 |
+| PAM8302 Lautsprecher +/− | Lautsprecher | – |
+| Vibrationsmodul IN | GP18 | 24 |
+| Vibrationsmodul GND | GND | 28 oder 38 |
+| Vibrationsmodul VCC | VBUS (5 V vom USB) | 40 |
+
 ## Aufspielen
 
 1. BOOTSEL-Taste am Pico gedrückt halten und USB einstecken. Es erscheint ein

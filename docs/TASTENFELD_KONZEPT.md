@@ -3,7 +3,7 @@
 Ziel: kleines USB-Tastenfeld, mit dem Caren (blind) die wichtigsten Funktionen von CarenDMR bedient – TG wechseln, Lautstärke, Status, PTT – mit Ton- und Vibrationsquittung.
 
 ## Entschieden
-- **Mikrocontroller: Raspberry Pi Pico H (RP2040)** (entschieden 26.11.2026; laut Foto vom 26.11.2026 ist das vorhandene Board ein Pico H, kein Pico 2 H – gleiche Pinbelegung; ersetzt den RP2040-Zero). Grund: genug GPIOs für 12 Tasten + Audio + Vibration, Erfahrung vorhanden. Micro-USB → **fest eingebautes USB-Kabel mit Zugentlastung**, Caren steckt nur am PC ein. Stiftleisten bestückt → gesteckt in zwei 1×20-Buchsenleisten (vorhanden). Onboard-LED GP25 (einfarbig) als Statusanzeige für Sehende.
+- **Mikrocontroller: Raspberry Pi Pico H (RP2040)** (entschieden 26.11.2026; beide vorhandenen Boards sind Pico H, keine Pico 2 H – gleiche Pinbelegung; ersetzt den RP2040-Zero). Grund: genug GPIOs für 12 Tasten + Audio + Vibration, Erfahrung vorhanden. Micro-USB → **fest eingebautes USB-Kabel mit Zugentlastung**, Caren steckt nur am PC ein. Stiftleisten bestückt → gesteckt in zwei 1×20-Buchsenleisten (vorhanden). Onboard-LED GP25 (einfarbig) als Statusanzeige für Sehende.
 - **Taster: Gateron Brown, taktil, 55 gf**, 3-Pin-Plattenmontage (2 Metallkontakte + Mittelzapfen) → rasten in gedruckter Deckplatte ein (MX-Ausschnitt 14 × 14 mm, Platte 1,5 mm, Raster 19,05 mm; per Probedruck justieren), Litze direkt angelötet, keine Platine.
 - **PTT: breite Taste wie Leertaste, zwei Taster parallel** (ein GPIO), ca. 3 Tastenbreiten (~57 mm), Tasterabstand parametrisch (Start 38 mm). Doppelte Kraft in der Mitte = Schutz gegen versehentliches Senden; mit Caren testen.
 - **Braille nach Standardmaßen:** Punktabstand 2,5 mm, Zellenabstand 6,0 mm, Zeilenabstand 10,0 mm, Punkthöhe 0,5 mm, Basisdurchmesser 1,5 mm – als Parameter im Modell. Zusätzlich unterschiedliche Kappenformen + Orientierungsnoppen.
@@ -13,7 +13,9 @@ Ziel: kleines USB-Tastenfeld, mit dem Caren (blind) die wichtigsten Funktionen v
 - **Firmware: CircuitPython**, Pin-Belegung in eigener Datei (Board austauschbar).
 - **Drucker:** Bambu Lab H2S; Gehäuse **PETG** (kein PLA), TPU-Füße, Zusatzgewicht, Lochgitter für Lautsprecher, Loch für BOOTSEL, Kabelausgang (fest eingebautes USB-Kabel) mit Zugentlastung, Einschmelzmuttern für den Deckel.
 
-## Pin-Belegung (Pico H, gilt auch für Pico 2 H; Vorschlag – beim Aufbau prüfen)
+## Pin-Belegung (Pico H, gilt auch für Pico 2 H)
+Verdrahtungsplan mit Stiftnummern: `hardware/keypad/README.md`.
+
 Frei nutzbar sind GP0–GP22 und GP26–GP28 (GP23/24/25/29 sind auf dem Board
 intern belegt). Alle Tasten mit internem Pull-up gegen GND.
 
@@ -99,7 +101,7 @@ dem AMBE-Loopback geprüft werden.
 - Lautsprecher Zuahaly 3 W / 8 Ω: vorhanden
 - PAM8302-Modul (mit Trimmpoti + SD-Pin): vorhanden
 - Vibrationsmodul DAOKAI 5 V: vorhanden
-- Pico H (RP2040): vorhanden (2 Stück laut Nutzer, eines per Foto bestätigt)
+- Pico H (RP2040): vorhanden (2 Stück, beide Pico H)
 - Gateron Brown: vorhanden (30 Stück)
 - USB-**Daten**kabel Micro-USB → PC-Seite, fest eingebaut, mit Zugentlastung: vorhanden
 - Buchsenleisten RM 2,54 (2 × 1×20) für den Pico: vorhanden
