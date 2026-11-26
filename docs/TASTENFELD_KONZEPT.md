@@ -92,6 +92,23 @@ Kompressor, weicher Limiter, ausdrücklich **keine** automatische
 Lautheitsnormalisierung). Eine TX-AGC wäre neu und müsste mit Papagei 9990 und
 dem AMBE-Loopback geprüft werden.
 
+## Gehäuse und Deckplatte (Entwurf 1, 26.11.2026)
+Zeichnung: `hardware/keypad/gehaeuse.png` (bzw. `.svg`). Kurzfassung:
+- Deckplatte 140 × 145 × 1,5, Gehäuse außen 145 × 150 × 32 (Wand 2,5, Boden 2,5,
+  innen 28), PETG; Deckplatte auf Absatz, 4 × M3 in Einschmelzmuttern.
+- Anordnung (Caren sitzt vorne): hinten Favorit 1–4, rechts abgesetzt Beenden;
+  Mitte TG zurück/vor | Leiser/Lauter; Verbinden links, Trennen rechts;
+  vorne breite PTT (Kappe 57,15, Taster 38 auseinander). Raster 19,05,
+  Gruppenabstand 28,58, Reihenabstand 23,81.
+- Tastbare Kappen (Vorschlag): Favoriten mit Braille-Ziffer 1–4, TG ◀ ▶,
+  Leiser Steg, Lauter Kreuz, Verbinden Noppe, Trennen ✕, Beenden als Mulde;
+  Orientierungsnoppe vorne Mitte.
+- Innen: Lautsprecher hinten rechts unter Lochgitter, Pico H hinten links
+  (USB nach hinten, Kabelausgang Ø6 mit Kabelbinder-Steg), PAM8302 daneben,
+  Vibrationsmodul am Boden unter der PTT, zwei Gewichtstaschen vorne, 4 TPU-Füße.
+- Offen: BOOTSEL über abgeschraubte Deckplatte statt Loch? Modulmaße nachmessen;
+  Probedruck Ausschnitt 14,0 ± 0,1; Anordnung mit Caren testen.
+
 ## Offen
 - Belegung mit Caren ausprobieren
 - Deckplatte und Gehäuse (PETG) für 12 Einzeltasten + breite PTT-Taste konstruieren
