@@ -55,7 +55,8 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.96.
 - [x] Probestreifen gedruckt (27.11.2026): 14,0 (Mitte, 3 Kerben) passt perfekt –
       entspricht der Vorgabe `cut` in `hardware/keypad/cad/tastenfeld.py`.
 - [ ] Flache Kappe und PTT-Kappe auf dem Kopf drucken, auf Schalter stecken (klemmt die PTT?).
-- [ ] Plättchen zweifarbig drucken, eins aufkleben, mit Caren Fühlbarkeit prüfen
+- [x] Plättchen zweifarbig gedruckt (27.11.2026): Druck passt.
+- [ ] Plättchen aufkleben, mit Caren Fühlbarkeit prüfen
       (Braille 0,5 hoch, Symbole 0,8 hoch – bei Bedarf in `tastenfeld.py` ändern).
 - [ ] Unterteil, Tastenplatte, Podestdeckel, Kappen, TPU-Füße drucken.
 - [ ] Halterungen für Lautsprecher, Vibrationsmodul, PAM8302, Pico nach dem
