@@ -300,7 +300,10 @@ Vorschlag zur Umsetzung (später):
 
 Vor der Umsetzung zu klären:
 
-- Zugang beim FM-Funknetz beantragen; fragen, ob ein eigener Client (Box)
+- **Zugang beantragt** (Stand 27.11.2026) mit Rufzeichen `DK7EE-TRX`; Antwort
+  steht aus. Passwort später nur in `config/fm_funknetz.local.json` (gitignored),
+  nie in Chat oder Repository.
+- Beim Netzbetreiber nachfragen, ob ein eigener Client (Box)
   zugelassen ist, welches Rufzeichen-Suffix und welche Protokollversion
   (2 oder 3 mit Zertifikat) gilt.
 - Wiki `wiki.fm-funknetz.de` war aus der Cloud-Umgebung nicht erreichbar –

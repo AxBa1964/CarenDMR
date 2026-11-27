@@ -64,7 +64,8 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.93.
   Konzept in `docs/CARENDMR_BOX_KONZEPT.md`. Bestellt (27.11.2026): Pi 4 mit Lüfter,
   UGREEN-Soundkarte, Elektret-Kapseln. Erster Schritt: Codec-Messung auf ARM64.
 - FM-Funknetz (SvxReflector, Opus) zusätzlich zu DMR in Box und Client; Recherche
-  im Box-Konzept. Vorher Zugang und erlaubte Protokollversion beim Netzbetreiber klären.
+  im Box-Konzept. Zugang als `DK7EE-TRX` beantragt (27.11.2026), Antwort steht aus;
+  erlaubte Protokollversion (2 oder 3 mit Zertifikat) beim Netzbetreiber klären.
 - Quelltext-Tests schrittweise durch Verhaltenstests ersetzen; Tests kennzeichnen,
   die echte Audio-/Netzwerkgeräte brauchen.
 - Android-Prototyp (Branch `feature/android-arm64-prototype`, muss an die
