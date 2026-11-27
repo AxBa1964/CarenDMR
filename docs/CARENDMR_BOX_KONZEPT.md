@@ -143,10 +143,11 @@ funktionieren auch ohne JavaScript.
 | Raspberry Pi 4 B, 1 GB, mit Lüfter | bestellt |
 | Netzteil 5,1 V / 3 A, USB-C | Stromversorgung |
 | microSD 16–32 GB (Markenkarte, A1) | System |
-| USB-Soundkarte mit C-Media-Chip (CM108/CM119), z. B. Sabrent AU-MMSA | Ein- und Ausgabe; Pi 4 hat keinen Mikrofoneingang |
+| USB-Soundkarte Delock 63926 (C-Media CM6533, Mikrofoneingang, Linux ab Kernel 5.8 laut Datenblatt) | Ein- und Ausgabe; Pi 4 hat keinen Mikrofoneingang |
 | Verstärker PAM8302 (vorhanden/bestellt, 5 V, mono) | an den Kopfhörerausgang der Soundkarte |
 | Lautsprecher Zuahaly 3 W / 8 Ω (vorhanden/bestellt) | Empfang, Ansagen, Quittungstöne |
-| Elektret-Mikrofonkapsel (Kugel) mit 3,5-mm-Kabel | an den Mikrofoneingang der Soundkarte |
+| Erste Tests: BerryBase „USB Mini Mikrofon“ (Art. 125147) | Mikrofon direkt per USB, ohne Löten |
+| Endausbau: Elektret-Kapsel CUI CMA-4544PF-W + Kabel mit 3,5-mm-Monostecker | im Gehäuse, an den Mikrofoneingang der Soundkarte |
 | Taster Gateron Brown (5–6 Funktionstasten) | an GPIO (Pull-up, gegen GND) |
 | PTT-Leiste (2 Taster parallel) | ein GPIO |
 | Dreh-/Drückschalter (Encoder mit Taster) | Menü, drei GPIO |
@@ -163,6 +164,9 @@ funktionieren auch ohne JavaScript.
   Speisespannung für Elektret). Kapsel vorne hinter Lochgitter, in Gummi gelagert,
   mit Abstand zu Lüfter und Lautsprecher.
 - Nicht den analogen 3,5-mm-Ausgang des Pi 4 nutzen (rauscht).
+- Keine Handy-Mikrofone mit 4-poligem Stecker (CTIA/TRRS) an den 3-poligen
+  Mikrofoneingang der Soundkarte – Pinbelegung passt nicht.
+- Nach dem Anstecken prüfen: `lsusb` und `arecord -l` zeigen die Soundkarte.
 - Zu prüfen: Brummen/Pfeifen durch gemeinsame 5-V-Versorgung (Klasse-D-Verstärker
   und USB-Soundkarte). Abhilfe bei Bedarf: Ferrit, kurzes geschirmtes Kabel,
   Masse sternförmig.
