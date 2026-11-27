@@ -51,9 +51,23 @@ def _build_parser() -> argparse.ArgumentParser:
         type=float,
         metavar="SEKUNDEN",
         help=(
-            "begrenzt --listen auf 1 bis 3600 Sekunden; "
+            "begrenzt --listen bzw. --fm-listen auf 1 bis 3600 Sekunden; "
             "ohne Angabe endet der Empfang mit Strg+C"
         ),
+    )
+    parser.add_argument(
+        "--fm-listen",
+        action="store_true",
+        help=(
+            "FM-Funknetz: anmelden und empfangen (nur Empfang, sendet nichts); "
+            "Zugang in config/fm_funknetz.local.json"
+        ),
+    )
+    parser.add_argument(
+        "--tg",
+        type=int,
+        metavar="TALKGROUP",
+        help="Talkgroup für --fm-listen (Vorgabe aus der Konfiguration, sonst 20)",
     )
     parser.add_argument(
         "--codec-benchmark",
@@ -201,8 +215,14 @@ def run(argv: Sequence[str] | None = None) -> int:
     if (args.gui or args.easy) and args.listen:
         print("Eine GUI und --listen können nicht gleichzeitig verwendet werden.", file=sys.stderr)
         return 2
-    if args.duration is not None and not args.listen:
-        print("--duration ist nur zusammen mit --listen zulässig.", file=sys.stderr)
+    if args.fm_listen and (args.gui or args.easy or args.listen or args.tg_monitor):
+        print("--fm-listen kann nicht mit einer anderen Betriebsart kombiniert werden.", file=sys.stderr)
+        return 2
+    if args.tg is not None and not args.fm_listen:
+        print("--tg ist nur zusammen mit --fm-listen zulässig.", file=sys.stderr)
+        return 2
+    if args.duration is not None and not (args.listen or args.fm_listen):
+        print("--duration ist nur zusammen mit --listen oder --fm-listen zulässig.", file=sys.stderr)
         return 2
     if args.duration is not None and not 1 <= args.duration <= MAX_LISTEN_SECONDS:
         print(
@@ -228,6 +248,12 @@ def run(argv: Sequence[str] | None = None) -> int:
             wav=args.wav,
             setup_codec=args.setup_codec,
         )
+    if args.fm_listen:
+        if args.tg is not None and args.tg < 1:
+            print("--tg muss eine positive Zahl sein.", file=sys.stderr)
+            return 2
+        from carendmr.svxreflector.listen import run_fm_listen
+        return run_fm_listen(project_root, seconds=args.duration, talkgroup=args.tg)
     if args.tg_monitor:
         from carendmr.tg_monitor.window import run_tg_monitor
         return run_tg_monitor(project_root)

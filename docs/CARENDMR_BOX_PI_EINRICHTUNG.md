@@ -26,7 +26,7 @@ Alle weiteren Befehle laufen auf dem Pi.
 
 ```bash
 sudo apt update
-sudo apt install -y git cmake ninja-build g++ libboost-dev python3-venv alsa-utils
+sudo apt install -y git cmake ninja-build g++ libboost-dev python3-venv alsa-utils libopus0
 git clone https://github.com/AxBa1964/CarenDMR.git
 cd CarenDMR
 python3 -m venv .venv

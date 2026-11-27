@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1.95 – FM-Funknetz: anmelden und empfangen
+
+- Neu: Client für das FM-Funknetz (SvxLink-Reflektor, Protokoll 2.0) in `carendmr/svxreflector/` (Qt-frei): Anmeldung per HMAC-SHA1-Challenge (Key geht nie über das Netz), Talkgroup-Wahl, Mithören weiterer Talkgroups, Heartbeats (TCP 10 s, UDP 15 s), Sprechermeldungen, Opus-Empfang mit Verschleierung verlorener Pakete.
+- Neu: `python main.py --fm-listen` mit `--tg` (Vorgabe 20 „Testarea“) und `--duration` – nur Empfang, sendet nichts.
+- Zugang in `config/fm_funknetz.local.json` (gitignored), Vorlage `config/fm_funknetz.example.json` (Server `fm-funknetz.de`, Port 5308).
+- Opus über die Systembibliothek libopus per ctypes (Windows: MSYS2 `mingw-w64-ucrt-x86_64-opus`, Pi: `libopus0`); kein neues Python-Paket.
+- Anleitung `docs/FM_FUNKNETZ.md`. Tests gegen einen lokalen Test-Reflektor (Anmeldung, falscher Key, Talkgroup, Audio, verlorenes Paket, Flush).
+
 ## 0.2.1.94 – QSO-Verlauf: stabile Reihenfolge bei gleicher Endzeit
 
 - Behoben: Enden zwei Durchgänge mit genau derselben Zeit (unter Windows wegen der gröberen Uhr möglich), war zufällig, welcher als „zuletzt gehört“ galt; Stationsübersicht zeigte dann ggf. die falsche letzte Talkgroup. Bei gleicher Endzeit entscheidet jetzt die Speicherreihenfolge (`ORDER BY ended_at DESC, id DESC`, Export `ORDER BY ended_at, id`).

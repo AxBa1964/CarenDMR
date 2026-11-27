@@ -1,0 +1,9 @@
+{
+  "callsign": "RUFZEICHEN-APP",
+  "auth_key": "KEY_VOM_NETZBETREIBER",
+  "host": "fm-funknetz.de",
+  "port": 5308,
+  "talkgroup": 20,
+  "monitor_talkgroups": [],
+  "timeout_seconds": 10.0
+}

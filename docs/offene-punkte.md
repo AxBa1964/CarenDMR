@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.94.
+Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.95.
 
 ## Stand
 
@@ -18,6 +18,8 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.94.
   Probelauf unter Linux x86_64 erfolgreich (11 % eines 20-ms-Rahmens).
 - 0.2.1.94: QSO-Verlauf sortiert bei gleicher Endzeit stabil (Testfehler unter
   Windows auf dem Laptop).
+- 0.2.1.95: FM-Funknetz Schritt 1 – anmelden und empfangen (`--fm-listen`),
+  `docs/FM_FUNKNETZ.md`; lokal gegen Test-Reflektor geprüft, echter Server noch offen.
 - Setup 0.2.1.92 gebaut und als `CarenDMR-Setup-0.2.1.92.zip` unter
   dk7ee.de/download abgelegt; Projektseite dk7ee.de/carendmr.html bietet den
   Download direkt an, GitHub nur noch unten als Quellcode-Verweis.
@@ -33,6 +35,14 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.94.
       download `https://dk7ee.de/download/CarenDMR-Setup-0.2.1.92.zip`; hochladen.
 - [ ] Neue `carendmr.html` per FTP hochladen und Download-Knopf prüfen.
 - [ ] BrandMeister-Testpasswort ändern (wurde im Chat gezeigt).
+
+## FM-Funknetz (Nutzer-Test)
+
+- [ ] Opus installieren und `config\fm_funknetz.local.json` anlegen
+      (`docs/FM_FUNKNETZ.md`), dann `main.py --fm-listen` auf TG 20; Ausgabe
+      zurückmelden (Anmeldung, Sprecher, Ton).
+- [ ] Danach: Senden (zuerst Papagei TG 9990/9998), Einbindung in
+      Hauptfenster/Easy/Box, FM-Favoriten, `libopus-0.dll` ins Windows-Setup.
 
 ## CarenDMR.box (nach Lieferung des Pi 4)
 
