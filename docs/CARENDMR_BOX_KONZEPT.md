@@ -310,8 +310,18 @@ FUNKAMATEUR-Ergänzung zu FA 2/26 „HamLink und Latry“, Latry-Projektseite):
     Ersteinrichtung im Web-Tool angelegt und dort gepflegt.
   - Die **Hotliste** hat 4 Plätze auf den **Tasten 1–4**. Kurz drücken = diese
     Talkgroup wählen.
-  - **Pfeiltasten** blättern die Favoritenliste in ihrer Reihenfolge durch; jeder
-    Eintrag wird angesagt (Name, Nummer, Position).
+  - **Pfeiltasten links/rechts** blättern die Favoritenliste in ihrer Reihenfolge
+    durch; jeder Eintrag wird angesagt (Name, Nummer, Position). Blättern wählt
+    noch nicht.
+  - **Doppelklick** auf einen Pfeil (zweimal schnell) **wählt** den zuletzt
+    angesagten Eintrag – ohne weiterzublättern. Bestätigung mit eigenem Ton
+    (anders als der Blätterton), Vibration und Ansage „Deutschland, 262 gewählt“.
+  - Technik: Nach einem Klick wartet die Box kurz (Vorgabe 400 ms, im Web-Tool
+    einstellbar 250–800 ms), ob ein zweiter folgt. Erst dann wird geblättert und
+    angesagt.
+  - Nebenwirkung: Wer schnell blättern will, darf nicht schneller als das
+    Doppelklick-Fenster drücken, sonst wird gewählt. Mit Caren testen; bei Bedarf
+    Fenster verkürzen.
   - **Taste 1–4 lang drücken** übernimmt den gerade angesagten Favoriten auf diesen
     Platz; Quittungston (+ Vibration) und Ansage bestätigen
     („Taste 2: Deutschland, 262 gespeichert“).
@@ -319,9 +329,8 @@ FUNKAMATEUR-Ergänzung zu FA 2/26 „HamLink und Latry“, Latry-Projektseite):
     - DMR: 91 World-wide, 9990 Papagei (privat), 262 Deutschland, 2623 Niedersachsen/Bremen.
     - FM: 20 Testarea, 9990 Papagei, 9998 Papagei, vierte noch offen.
   - Hotliste wird sofort gespeichert und übersteht Neustarts.
-  - Offen: Wählt Blättern die Talkgroup sofort oder erst nach Bestätigung
-    (z. B. Drücken des Drehknopfs)? Sind die „Pfeile“ eigene Tasten oder der
-    Drehknopf? Dauer „lang drücken“ (Vorschlag 1,5 s).
+  - Offen: Dauer „lang drücken“ (Vorschlag 1,5 s). Wird der Drehknopf neben den
+    Pfeiltasten noch gebraucht (z. B. für Lautstärke) oder entfällt er?
 - Web-Verwaltung: Einstellungen für DMR und FM, Favoriten beider Netze bearbeiten,
   **importieren und exportieren** (Datei-Format offen, z. B. JSON wie
   `favorites.local.json`), auf Vorgaben zurücksetzen.
