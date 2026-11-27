@@ -113,8 +113,8 @@ Kasten) ist ersetzt, steht noch in der Git-Historie.
 - Vibrationsmodul am Boden unter der PTT (nur ca. 3 Luft zu den Taster-Pins –
   nach dem Nachmessen prüfen), zwei flache Gewichte vorne, 4 TPU-Füße.
 - Dome M3 mit Einschmelzmuttern: 4 für den Podestdeckel, 4 für die Tastenplatte.
-- Offen: Winkel (5–10°) mit Caren testen, Modulmaße nachmessen, Probedruck
-  Tasterausschnitt 14,0 ± 0,1.
+- Tasterausschnitt 14,0 per Probestreifen bestätigt (27.11.2026, PETG, Bambu H2S).
+- Offen: Winkel (5–10°) mit Caren testen, Modulmaße nachmessen.
 
 ## Offen
 - Belegung mit Caren ausprobieren

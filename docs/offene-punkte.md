@@ -50,8 +50,8 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.94.
 
 ## Tastenfeld-Gehäuse (0.2.1.94) – Druck
 
-- [ ] Probestreifen drucken, passenden Ausschnitt (13,8–14,2) ermitteln und in
-      `hardware/keypad/cad/tastenfeld.py` (`cut`) eintragen.
+- [x] Probestreifen gedruckt (27.11.2026): 14,0 (Mitte, 3 Kerben) passt perfekt –
+      entspricht der Vorgabe `cut` in `hardware/keypad/cad/tastenfeld.py`.
 - [ ] Probekappe und PTT-Kappe drucken, auf Schalter stecken (klemmt die PTT?).
 - [ ] Unterteil, Tastenplatte, Podestdeckel, Kappen, TPU-Füße drucken.
 - [ ] Halterungen für Lautsprecher, Vibrationsmodul, PAM8302, Pico nach dem

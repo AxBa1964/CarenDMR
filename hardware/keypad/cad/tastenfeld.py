@@ -38,7 +38,7 @@ class Params:
     fit: float = 0.2                 # Spiel je Seite für Einlegeteile
     # Tasten
     unit: float = 19.05
-    cut: float = 14.0                # Ausschnitt (per Probestreifen ermitteln)
+    cut: float = 14.0                # Ausschnitt; Probestreifen 27.11.2026: 14,0 passt
     cap: float = 18.0
     row_first: float = 17.0          # erste Reihe: Abstand Mitte ↔ Hinterkante Platte
     ptt_width: float = 57.15
