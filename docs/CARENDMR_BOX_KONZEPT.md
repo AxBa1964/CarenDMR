@@ -143,7 +143,7 @@ funktionieren auch ohne JavaScript.
 | Raspberry Pi 4 B, 1 GB, mit Lüfter | bestellt |
 | Netzteil 5,1 V / 3 A, USB-C | Stromversorgung |
 | microSD 16–32 GB (Markenkarte, A1) | System |
-| USB-Soundkarte UGREEN USB Sound Adapter (Amazon B016CU2PEU, getrennte Buchsen Kopfhörer/Mikrofon, Raspberry Pi genannt); Alternative Delock 63926 (Amazon B07GVL4BHC, C-Media CM6533) | Ein- und Ausgabe; Pi 4 hat keinen Mikrofoneingang |
+| USB-Soundkarte UGREEN Externe USB Soundkarte (Amazon B016CU2PEU, C-Media HS-100B, getrennte Buchsen Kopfhörer grün / Mikrofon rot, Mono-Mikrofon mit 3-poligem TRS-Stecker) – entschieden, beim Nutzer ggf. schon vorhanden (gekauft 02/2023) | Ein- und Ausgabe; Pi 4 hat keinen Mikrofoneingang |
 | Verstärker PAM8302 (vorhanden/bestellt, 5 V, mono) | an den Kopfhörerausgang der Soundkarte |
 | Lautsprecher Zuahaly 3 W / 8 Ω (vorhanden/bestellt) | Empfang, Ansagen, Quittungstöne |
 | Erste Tests: BerryBase „USB Mini Mikrofon“ (Art. 125147) | Mikrofon direkt per USB, ohne Löten |
