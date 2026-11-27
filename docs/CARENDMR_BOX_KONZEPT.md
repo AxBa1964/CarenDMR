@@ -261,3 +261,48 @@ Messwerte Pi 4 / Zero 2 W: offen.
 - GPIO-Belegung festlegen (Pins für Lüfter und ggf. späteres I2S-Audio freihalten).
 - Soll die Web-Verwaltung später auch Gegenstationen anzeigen (aktuell: nein,
   kein Monitoring)?
+
+## Idee: FM-Funknetz zusätzlich (gesammelt 27.11.2026, nicht entschieden)
+
+Ziel: dieselbe Box wahlweise im BrandMeister-DMR-Netz oder im FM-Funknetz
+(SvxLink/SvxReflector). Hardware und Bedienung bleiben gleich (Mikrofon,
+Lautsprecher, PTT, Talkgroup-Wahl, Ansagen).
+
+Recherche (Quellen: SvxLink `src/svxlink/reflector/ReflectorMsg.h`,
+FUNKAMATEUR-Ergänzung zu FA 2/26 „HamLink und Latry“, Latry-Projektseite):
+
+- Zugang für Apps: Host `fm-funknetz.de`, **Port 5308** (nicht 5300),
+  Rufzeichen mit Zusatz (Beispiel im Artikel: `DL1YBL-APP`), persönliches
+  Passwort vom Netzbetreiber, Talkgroup z. B. 262 (Deutschland).
+- Protokoll: TCP für Steuerung, UDP für Sprache. Anmeldung per
+  Challenge/Response mit HMAC-SHA1 (Passwort geht nicht im Klartext über das Netz).
+  Nachrichten u. a. `SelectTG` (106), `TgMonitor` (107), `TalkerStart/Stop`
+  (104/105), Heartbeat auf TCP und UDP.
+- Aktuelle SvxLink-Quellen sprechen Protokoll **3.0** mit TLS und
+  Client-Zertifikaten (Zertifikatsanfrage, vom Reflektor-Admin signiert); ältere
+  Version 2 mit Passwort. Welche Version das FM-Funknetz verlangt: offen.
+- Sprach-Codec: **Opus** – frei, ohne Firmware-Emulation; auf dem Pi über
+  `libopus` verfügbar. Deutlich einfacher als der DMR-Codec.
+- Vorbild: **Latry** (YO6SAY), quelloffen unter GPLv3, C++/Qt
+  (github.com/s1lviu/Latry) – Lizenz passt zu CarenDMR; Protokoll in Python
+  nachbauen.
+- Betrieb: nach PTT ca. 1 s warten, bis die Relais aufgetastet haben.
+
+Vorschlag zur Umsetzung (später):
+
+- Zweiter Netz-Adapter neben `carendmr/brandmeister/`, z. B.
+  `carendmr/svxreflector/`; der `OperatingController` bedient beide gleich.
+- Immer **nur ein Netz aktiv**, Umschalten per Menü („Netz: DMR / FM“),
+  getrennte Favoriten je Netz, Ansage des aktiven Netzes.
+- **Keine Kopplung** zwischen DMR und FM (kein Gateway) – das wäre eine
+  Netzkopplung mit eigenen Regeln der Netzbetreiber.
+- Zuerst im Windows-Client testbar, dann in der Box.
+
+Vor der Umsetzung zu klären:
+
+- Zugang beim FM-Funknetz beantragen; fragen, ob ein eigener Client (Box)
+  zugelassen ist, welches Rufzeichen-Suffix und welche Protokollversion
+  (2 oder 3 mit Zertifikat) gilt.
+- Wiki `wiki.fm-funknetz.de` war aus der Cloud-Umgebung nicht erreichbar –
+  Regeln und Talkgroup-Liste dort nachlesen.
+
