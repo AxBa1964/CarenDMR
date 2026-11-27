@@ -208,6 +208,34 @@ funktionieren auch ohne JavaScript.
 - Updates: zunächst per Web-Seite (Paket von dk7ee.de, Prüfung per SHA-256);
   später ggf. fertiges SD-Karten-Abbild zum Download.
 
+## Ablage im Repository (entschieden)
+
+Gleiches Repository `AxBa1964/CarenDMR`, weil die Box Domain, Application-Services,
+BrandMeister, Audio und Vocoder unverändert mitnutzt. Ein eigenes Repository würde
+diesen Kern verdoppeln.
+
+```text
+carendmr/box/                       Python: Box-Oberfläche ohne Qt
+  app.py                            Start, Ablauf, Menü
+  gpio_input.py                     Tasten, PTT, Drehknopf, Vibration
+  speech_linux.py                   Sprachausgabe (espeak-ng/Piper, WAV-Ansagen)
+  web/                              Web-Verwaltung (Seiten, Vorlagen)
+box/                                Pi-spezifisch, kein Python-Paket
+  install.sh                        Einrichtung auf Raspberry Pi OS Lite
+  systemd/carendmr-box.service      Autostart
+  hotspot/                          Einrichtungsmodus (eigenes WLAN, Captive Portal)
+  sounds/                           vorab erzeugte Ansagen (WAV)
+native/build_md380_dynarmic_linux_arm64.sh   Bridge für den Pi
+requirements-box.txt                schlanke Abhängigkeiten (ohne PySide6 u. a.)
+tests/test_box_*.py                 Tests der Box (laufen auch unter Windows)
+```
+
+- Windows-Build und Setup bleiben unberührt; `carendmr/box/` wird dort nicht
+  gestartet.
+- Entwicklung auf eigenem Zweig `feature/carendmr-box`, Versionen weiter im
+  Schema 0.2.1.x mit CHANGELOG-Eintrag.
+- Start zum Testen: `python main.py --box`.
+
 ## Messplan Codec (vor weiterer Hardware)
 
 1. Bridge für Linux ARM64 bauen (Grundlage Android-ARM64-Build).
