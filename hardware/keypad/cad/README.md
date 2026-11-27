@@ -12,6 +12,7 @@ Maßzeichnung: `../gehaeuse.png`, Konzept: `docs/TASTENFELD_KONZEPT.md`.
 |---|---|---|
 | `out/step/` | STEP | CAD-Programm öffnen und weiterbearbeiten |
 | `out/stl/` | STL | Slicer (Bambu Studio) und Drucker |
+| `out/3mf/` | 3MF | Plättchen: Platte und Zeichen als ein Objekt mit zwei Teilen |
 
 `out/step/baugruppe.step` enthält alle Teile in Einbaulage.
 
@@ -22,7 +23,7 @@ Maßzeichnung: `../gehaeuse.png`, Konzept: `docs/TASTENFELD_KONZEPT.md`.
 | `podestdeckel` | 1 | PETG | flach |
 | `kappe` | **11** | PETG | **auf dem Kopf** (flache Oberseite auf dem Druckbett), keine Stützen |
 | `kappe_ptt` | 1 | PETG | auf dem Kopf, keine Stützen |
-| Plättchen (siehe unten) | 11 | PLA schwarz + weiß | flach, Zeichen nach oben, keine Stützen |
+| Plättchen (siehe unten) | 12 | PLA schwarz + weiß | flach, Zeichen nach oben, keine Stützen |
 | `fuss_tpu` | 4 | TPU | flach |
 | `probestreifen_ausschnitt` | 1 | PETG | flach |
 
@@ -34,15 +35,25 @@ Die Kappen sind oben flach und alle gleich. Die Kennzeichnung ist ein
 Plättchen 14,3 × 14,3 × 1,2 (Beenden 2,0), das auf die Kappe geklebt wird
 (Sekundenkleber oder doppelseitiges Klebeband, Kanten bündig).
 
-Jedes Plättchen besteht aus **zwei Teilen**: `…_basis.stl` (Grundplatte, z. B.
-schwarz) und `…_zeichen.stl` (erhabenes Zeichen, z. B. weiß).
+Jedes Plättchen besteht aus **zwei Teilen**: der schwarzen **Grundplatte**
+(„basis“) und dem weißen, erhabenen **Zeichen** („zeichen“). Die Datei
+`…_zeichen.stl` allein enthält **nur** die weißen Zeichen ohne Platte – immer
+beide Teile zusammen drucken.
 
-**Alle 11 auf einmal drucken:**
+**Einfachster Weg – eine Datei für alle 12 Plättchen:**
+
+1. In Bambu Studio `out/3mf/plaettchen_alle.3mf` öffnen. Platten und Zeichen
+   sind darin schon **ein Objekt mit zwei Teilen** („basis“ und „zeichen“).
+2. In der Objektliste dem Teil „basis“ Schwarz und dem Teil „zeichen“ Weiß zuweisen.
+3. Flach liegen lassen (Zeichen oben), ohne Stützen drucken.
+
+Einzelne Plättchen: `out/3mf/plaettchen_<name>.3mf`.
+
+**Falls die 3MF-Datei nicht als ein Objekt erscheint** (die 3MF-Dateien sind
+hier erzeugt und nicht in Bambu Studio getestet): die beiden STL-Dateien
 `out/stl/plaettchen_alle_basis.stl` und `out/stl/plaettchen_alle_zeichen.stl`
-**gleichzeitig** in Bambu Studio importieren. Auf die Frage, ob die Dateien
-**ein Objekt mit mehreren Teilen** sind, mit **Ja** antworten. Dann in der
-Objektliste dem Teil „basis“ Schwarz und dem Teil „zeichen“ Weiß zuweisen.
-Einzelne Plättchen liegen in `out/stl/plaettchen/`.
+**gleichzeitig** importieren und die Frage nach „einem Objekt mit mehreren
+Teilen“ mit **Ja** beantworten. Einzelne Paare liegen in `out/stl/plaettchen/`.
 
 | Plättchen | Taste | Zeichen |
 |---|---|---|
@@ -52,8 +63,7 @@ Einzelne Plättchen liegen in `out/stl/plaettchen/`.
 | `verbinden` | Verbinden | Noppe (Ø4, 1,2 hoch) |
 | `trennen` | Trennen | ✕ |
 | `beenden` | Beenden | Mulde (1,0 tief, weißer Boden) |
-
-Die PTT braucht kein Plättchen – sie ist die einzige breite Taste.
+| `ptt` | PTT | langes Plättchen 53,4 × 14,3 mit weißer Längsrippe (40 × 2,4, 0,8 hoch) – zeigt die Mitte der Taste |
 
 ## Reihenfolge
 

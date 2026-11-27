@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1.96 – PTT-Plättchen und Plättchen als 3MF
+
+- Neu: Plättchen für die PTT-Taste, 53,4 × 14,3, mit erhabener weißer Längsrippe (40 × 2,4, 0,8 hoch) in der Mitte – Caren fühlt, wo sie mittig drücken soll, damit beide Schalter gleichmäßig auslösen.
+- Neu: Plättchen zusätzlich als 3MF (`hardware/keypad/cad/out/3mf/`), Grundplatte und Zeichen schon als **ein Objekt mit zwei Teilen** – in Bambu Studio muss man nicht mehr zwei Dateien zusammen laden. `plaettchen_alle.3mf` enthält alle 12 Plättchen.
+- Anleitung klarer: `…_zeichen.stl` enthält nur die weißen Zeichen ohne Platte.
+
 ## 0.2.1.95 – Flache Tastenkappen und zweifarbige Kennzeichnungs-Plättchen
 
 - Tastenkappen sind oben flach und alle gleich (`kappe.stl`, 11 Stück, PTT eigene Datei). Gedruckt auf dem Kopf brauchen sie keine Stützen mehr; beim Probedruck hatten die Stützen die Braille-Punkte auf der Kappe unbrauchbar gemacht.

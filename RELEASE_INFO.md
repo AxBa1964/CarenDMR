@@ -1,4 +1,4 @@
-# CarenDMR 0.2.1.95
+# CarenDMR 0.2.1.96
 
 Vorbereitung für die Windows-Exe mit Installer:
 
@@ -22,6 +22,9 @@ Neu in 0.2.1.94: CAD-Modell des Tastenfeld-Gehäuses (STEP und STL) in
 
 Neu in 0.2.1.95: flache Tastenkappen (ohne Stützen druckbar) und zweifarbige
 Kennzeichnungs-Plättchen mit Braille und Symbolen zum Aufkleben.
+
+Neu in 0.2.1.96: PTT-Plättchen mit Längsrippe; alle Plättchen auch als 3MF
+(Platte und Zeichen als ein Objekt).
 
 Setup bauen: `build_setup.bat` (Tests, Exe, Installer in einem Schritt).
 

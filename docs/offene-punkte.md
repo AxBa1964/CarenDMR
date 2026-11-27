@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.95.
+Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.96.
 
 ## Stand
 
@@ -20,6 +20,7 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.95.
   Pico-H-Firmware in `hardware/keypad/`); mit echter Hardware noch ungetestet.
 - 0.2.1.94: CAD-Modell Tastenfeld-Gehäuse (CadQuery, STEP/STL) in `hardware/keypad/cad/`.
 - 0.2.1.95: flache Kappen + zweifarbige Kennzeichnungs-Plättchen (PLA schwarz/weiß).
+- 0.2.1.96: PTT-Plättchen mit Längsrippe; Plättchen als 3MF (ein Objekt, zwei Teile).
 
 ## Nutzer-Handgriffe (offen)
 
@@ -63,15 +64,15 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.95.
 - [x] Probekappe (27.11.2026): Sitz auf dem Schalter passt perfekt. Braille auf
       der Kappe wird beim Druck mit Stützen unbrauchbar (nicht sauber fühlbar).
 
-## Wunsch (noch nicht umgesetzt): Plättchen für die PTT-Taste
+## Plättchen für die PTT-Taste (umgesetzt in 0.2.1.96)
 
 - Entschieden 27.11.2026: Variante 1 – langes Plättchen ca. 53 × 14 über fast
   die ganze PTT-Kappe, zweifarbig wie die übrigen (Grundplatte schwarz), mit
   erhabener weißer **Längsrippe** in der Mitte. Caren fühlt die Mitte der Taste
   und drückt dort, damit beide Schalter gleichmäßig auslösen.
 - Flach mit Rippe nach oben drucken, ohne Stützen; aufkleben wie die anderen.
-- Optional: zusätzliche Datei mit Platte und Zeichen als ein Objekt (3MF), damit
-  in Bambu Studio nicht zwei Dateien zusammen geladen werden müssen.
+- 3MF mit Platte und Zeichen als ein Objekt: umgesetzt, aber noch **nicht in
+  Bambu Studio geprüft** – bitte testen (`out/3mf/plaettchen_alle.3mf`).
 
 ## Kappen ohne Zeichen + aufgeklebte Plättchen (umgesetzt in 0.2.1.95)
 

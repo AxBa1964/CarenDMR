@@ -356,15 +356,33 @@ def label_plate(symbol: str) -> tuple[cq.Workplane, cq.Workplane]:
     return base, sign
 
 
+PTT_RIB_LEN, PTT_RIB_W = 40.0, 2.4
+
+
+def ptt_label(p: Params) -> tuple[cq.Workplane, cq.Workplane]:
+    """Langes Plättchen für die PTT-Kappe mit erhabener Längsrippe in der Mitte."""
+    w = p.ptt_width - 3.5 - (CAP_TOP - LABEL_SIZE)        # wie Kappenoberseite, etwas kleiner
+    base = (cq.Workplane("XY").rect(w, LABEL_SIZE).extrude(LABEL_T).edges("|Z").fillet(1.0))
+    rib = (cq.Workplane("XY").rect(PTT_RIB_LEN, PTT_RIB_W).extrude(RELIEF)
+           .edges("|Z").fillet(PTT_RIB_W / 2 - 0.01).translate((0, 0, LABEL_T)))
+    return base, rib
+
+
 def labels(p: Params) -> dict[str, tuple[cq.Workplane, cq.Workplane]]:
-    return {name: label_plate(symbol) for name, _, _, symbol in p.keys()}
+    result = {name: label_plate(symbol) for name, _, _, symbol in p.keys()}
+    result["ptt"] = ptt_label(p)
+    return result
 
 
 def labels_sheet(p: Params, pitch: float = 20.0, columns: int = 4) -> tuple[cq.Workplane, cq.Workplane]:
     """Alle Plättchen nebeneinander für einen Druckauftrag."""
     base_all = sign_all = None
-    for i, (base, sign) in enumerate(labels(p).values()):
-        dx, dy = (i % columns) * pitch, -(i // columns) * pitch
+    items = list(labels(p).items())
+    small = [item for item in items if item[0] != "ptt"]
+    rows = (len(small) + columns - 1) // columns
+    placed = [(item, (i % columns) * pitch, -(i // columns) * pitch) for i, item in enumerate(small)]
+    placed += [(item, (columns - 1) * pitch / 2, -rows * pitch) for item in items if item[0] == "ptt"]
+    for (_, (base, sign)), dx, dy in placed:
         b, s = base.translate((dx, dy, 0)), sign.translate((dx, dy, 0))
         base_all = b if base_all is None else base_all.union(b)
         sign_all = s if sign_all is None else sign_all.union(s)
@@ -426,7 +444,77 @@ def assembly(p: Params, built: dict[str, cq.Workplane]) -> cq.Assembly:
         asm.add(sign, name=f"plaettchen_{name}_zeichen", loc=top, color=cq.Color(1, 1, 1))
     ptt_loc = slope * cq.Location((p.plate_w / 2, p.key_rows()[3], p.plate_t + 5.0))
     asm.add(built["kappe_ptt"], name="kappe_ptt", loc=ptt_loc, color=cq.Color(1.0, 0.85, 0.6))
+    base, sign = plates["ptt"]
+    top = ptt_loc * cq.Location((0, 0, CAP_H))
+    asm.add(base, name="plaettchen_ptt_basis", loc=top, color=cq.Color(0.1, 0.1, 0.1))
+    asm.add(sign, name="plaettchen_ptt_zeichen", loc=top, color=cq.Color(1, 1, 1))
     return asm
+
+
+def _mesh(part: cq.Workplane, tolerance: float = 0.02) -> tuple[list[tuple[float, float, float]], list[tuple[int, int, int]]]:
+    """Dreiecksnetz mit zusammengeführten Eckpunkten (für 3MF)."""
+    vertices: list[tuple[float, float, float]] = []
+    index: dict[tuple[float, float, float], int] = {}
+    triangles: list[tuple[int, int, int]] = []
+    for solid in part.solids().vals():
+        points, faces = solid.tessellate(tolerance, 0.2)
+        remap = []
+        for point in points:
+            key = (round(point.x, 4), round(point.y, 4), round(point.z, 4))
+            if key not in index:
+                index[key] = len(vertices)
+                vertices.append(key)
+            remap.append(index[key])
+        for a, b, c in faces:
+            tri = (remap[a], remap[b], remap[c])
+            if len(set(tri)) == 3:
+                triangles.append(tri)
+    return vertices, triangles
+
+
+def write_3mf(path: Path, name: str, parts_: list[tuple[str, cq.Workplane, str]]) -> Path:
+    """Ein Objekt aus mehreren Teilen (je Teil eine Farbe) als 3MF.
+
+    ``parts_``: (Teilname, Körper, Anzeigefarbe #RRGGBB). Slicer laden das als
+    ein Objekt mit mehreren Teilen; die Filamente weist man im Slicer zu.
+    """
+    import zipfile
+    from xml.sax.saxutils import escape
+
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<model unit="millimeter" xml:lang="de-DE" '
+             'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">',
+             '<resources>', '<basematerials id="1">']
+    for _, _, colour in parts_:
+        lines.append(f'<base name="{colour}" displaycolor="{colour}FF"/>')
+    lines.append('</basematerials>')
+    for i, (part_name, body, _) in enumerate(parts_):
+        vertices, triangles = _mesh(body)
+        lines.append(f'<object id="{i + 2}" type="model" name="{escape(part_name)}" pid="1" pindex="{i}"><mesh><vertices>')
+        lines += [f'<vertex x="{x}" y="{y}" z="{z}"/>' for x, y, z in vertices]
+        lines.append('</vertices><triangles>')
+        lines += [f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in triangles]
+        lines.append('</triangles></mesh></object>')
+    group = len(parts_) + 2
+    lines.append(f'<object id="{group}" type="model" name="{escape(name)}"><components>')
+    lines += [f'<component objectid="{i + 2}"/>' for i in range(len(parts_))]
+    lines += ['</components></object>', '</resources>',
+              f'<build><item objectid="{group}"/></build>', '</model>']
+    content_types = ('<?xml version="1.0" encoding="UTF-8"?>'
+                     '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+                     '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+                     '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>'
+                     '</Types>')
+    rels = ('<?xml version="1.0" encoding="UTF-8"?>'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Target="/3D/3dmodel.model" Id="rel0" '
+            'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
+    path = Path(path)
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types)
+        archive.writestr("_rels/.rels", rels)
+        archive.writestr("3D/3dmodel.model", "\n".join(lines))
+    return path
 
 
 def _export(part: cq.Workplane, step: Path | None, stl: Path | None) -> list[Path]:
@@ -443,11 +531,11 @@ def _export(part: cq.Workplane, step: Path | None, stl: Path | None) -> list[Pat
 def export_all(out: Path, p: Params | None = None) -> list[Path]:
     p = p or Params()
     out = Path(out)
-    dirs = [out / "step", out / "stl", out / "step" / "plaettchen", out / "stl" / "plaettchen"]
+    dirs = [out / "step", out / "stl", out / "step" / "plaettchen", out / "stl" / "plaettchen", out / "3mf"]
     for folder in dirs:
         folder.mkdir(parents=True, exist_ok=True)
         # alte, nicht mehr erzeugte Dateien entfernen
-        for old in list(folder.glob("*.step")) + list(folder.glob("*.stl")):
+        for old in list(folder.glob("*.step")) + list(folder.glob("*.stl")) + list(folder.glob("*.3mf")):
             old.unlink()
     built = parts(p)
     written: list[Path] = []
@@ -463,9 +551,13 @@ def export_all(out: Path, p: Params | None = None) -> list[Path]:
         step = out / "step" / "plaettchen" / f"{stem}.step"
         label_asm.export(str(step))
         written.append(step)
+        written.append(write_3mf(out / "3mf" / f"{stem}.3mf", stem,
+                                 [("basis", base, "#1A1A1A"), ("zeichen", sign, "#FFFFFF")]))
     base_all, sign_all = labels_sheet(p)
     written += _export(base_all, None, out / "stl" / "plaettchen_alle_basis.stl")
     written += _export(sign_all, None, out / "stl" / "plaettchen_alle_zeichen.stl")
+    written.append(write_3mf(out / "3mf" / "plaettchen_alle.3mf", "plaettchen_alle",
+                             [("basis", base_all, "#1A1A1A"), ("zeichen", sign_all, "#FFFFFF")]))
     asm_path = out / "step" / "baugruppe.step"
     assembly(p, built).export(str(asm_path))
     written.append(asm_path)

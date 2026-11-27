@@ -51,8 +51,9 @@ def test_caps_have_flat_top_for_upside_down_printing(model):
 def test_labels_two_parts_touch_without_overlap(model):
     p = model.Params()
     plates = model.labels(p)
-    assert sorted(plates) == sorted(NAMES)
-    for name, (base, sign) in plates.items():
+    assert set(NAMES) <= set(plates)
+    for name in NAMES:
+        base, sign = plates[name]
         assert base.val().isValid() and sign.val().isValid(), name
         common = base.intersect(sign)
         volume = sum(solid.Volume() for solid in common.solids().vals())
