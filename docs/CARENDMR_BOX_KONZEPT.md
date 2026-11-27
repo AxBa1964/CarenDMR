@@ -143,11 +143,11 @@ funktionieren auch ohne JavaScript.
 | Raspberry Pi 4 B, 1 GB, mit Lüfter | bestellt |
 | Netzteil 5,1 V / 3 A, USB-C | Stromversorgung |
 | microSD 16–32 GB (Markenkarte, A1) | System |
-| USB-Soundkarte Delock 63926 (C-Media CM6533, Mikrofoneingang, Linux ab Kernel 5.8 laut Datenblatt) | Ein- und Ausgabe; Pi 4 hat keinen Mikrofoneingang |
+| USB-Soundkarte UGREEN USB Sound Adapter (Amazon B016CU2PEU, getrennte Buchsen Kopfhörer/Mikrofon, Raspberry Pi genannt); Alternative Delock 63926 (Amazon B07GVL4BHC, C-Media CM6533) | Ein- und Ausgabe; Pi 4 hat keinen Mikrofoneingang |
 | Verstärker PAM8302 (vorhanden/bestellt, 5 V, mono) | an den Kopfhörerausgang der Soundkarte |
 | Lautsprecher Zuahaly 3 W / 8 Ω (vorhanden/bestellt) | Empfang, Ansagen, Quittungstöne |
 | Erste Tests: BerryBase „USB Mini Mikrofon“ (Art. 125147) | Mikrofon direkt per USB, ohne Löten |
-| Endausbau: Elektret-Kapsel CUI CMA-4544PF-W + Kabel mit 3,5-mm-Monostecker | im Gehäuse, an den Mikrofoneingang der Soundkarte |
+| Endausbau: Elektret-Kapsel 6 mm mit Anschlussdrähten (z. B. Amazon B00OK619WS, 3 Stück) + Kabel mit 3,5-mm-Stecker | im Gehäuse, an den Mikrofoneingang der Soundkarte; keine MAX9814/MAX4466-Module (Linepegel) |
 | Taster Gateron Brown (5–6 Funktionstasten) | an GPIO (Pull-up, gegen GND) |
 | PTT-Leiste (2 Taster parallel) | ein GPIO |
 | Dreh-/Drückschalter (Encoder mit Taster) | Menü, drei GPIO |
