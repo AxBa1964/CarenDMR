@@ -49,6 +49,9 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.92.
 - Bedien-Tastenfeld für Caren (USB-CDC): Konzept in `docs/TASTENFELD_KONZEPT.md`;
   CarenDMR-Seite: Qt-freier `KeypadService`, Belegung `config/keypad.local.json`.
 - Easy-Oberfläche für das Tastenfeld umbauen.
+- CarenDMR.box: eigenständiger Client auf dem Raspberry Pi (Pi 4 bestellt, Ziel ggf.
+  Zero 2 W), Web-Verwaltung im Heimnetz, nur Betrieb (kein QRZ/Logbuch/Monitoring).
+  Konzept in `docs/CARENDMR_BOX_KONZEPT.md`. Erster Schritt: Codec-Messung auf ARM64.
 - Quelltext-Tests schrittweise durch Verhaltenstests ersetzen; Tests kennzeichnen,
   die echte Audio-/Netzwerkgeräte brauchen.
 - Android-Prototyp (Branch `feature/android-arm64-prototype`, muss an die
