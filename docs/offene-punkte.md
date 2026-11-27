@@ -70,6 +70,13 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.94.
   ohne Stützen; Braille 1–4 bzw. Symbole ◀ ▶ − + Noppe ✕, Beenden als Mulde.
 - Plättchen aufkleben (Sekundenkleber oder doppelseitiges Klebeband);
   austauschbar, ohne Kappen neu zu drucken.
+- Plättchen **zweifarbig in PLA**: Grundplatte schwarz, Zeichen weiß und
+  erhaben (gut fühlbar) – für Caren egal, aber Sehende erkennen die Belegung.
+  Dafür Grundplatte und Zeichen als getrennte Teile exportieren, in Bambu Studio
+  als ein Objekt mit zwei Teilen laden und je eine Farbe zuweisen.
+- Offene Frage: Bei Favorit 1–4 zusätzlich eine kleine weiße Ziffer für Sehende
+  (flach, nur Farbe, damit sie beim Tasten nicht stört)? Braille-Punkte allein
+  kann ein Sehender meist nicht lesen.
 
 ## Offene Entscheidungen
 
