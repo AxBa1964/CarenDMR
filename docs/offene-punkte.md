@@ -74,9 +74,9 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.94.
   erhaben (gut fühlbar) – für Caren egal, aber Sehende erkennen die Belegung.
   Dafür Grundplatte und Zeichen als getrennte Teile exportieren, in Bambu Studio
   als ein Objekt mit zwei Teilen laden und je eine Farbe zuweisen.
-- Offene Frage: Bei Favorit 1–4 zusätzlich eine kleine weiße Ziffer für Sehende
-  (flach, nur Farbe, damit sie beim Tasten nicht stört)? Braille-Punkte allein
-  kann ein Sehender meist nicht lesen.
+- Entschieden (27.11.2026): **keine** zusätzliche Ziffer für Sehende auf
+  Favorit 1–4 – die Reihenfolge links → rechts = 1–4 reicht. Fokus auf gute
+  Fühlbarkeit für Caren (Braille nach Standardmaß, klare erhabene Symbole).
 
 ## Offene Entscheidungen
 
