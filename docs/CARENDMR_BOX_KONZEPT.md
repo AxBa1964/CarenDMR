@@ -262,7 +262,7 @@ Messwerte Pi 4 / Zero 2 W: offen.
 - Soll die Web-Verwaltung später auch Gegenstationen anzeigen (aktuell: nein,
   kein Monitoring)?
 
-## Idee: FM-Funknetz zusätzlich (gesammelt 27.11.2026, nicht entschieden)
+## FM-Funknetz zusätzlich (Stand 27.11.2026)
 
 Ziel: dieselbe Box wahlweise im BrandMeister-DMR-Netz oder im FM-Funknetz
 (SvxLink/SvxReflector). Hardware und Bedienung bleiben gleich (Mikrofon,
@@ -287,6 +287,31 @@ FUNKAMATEUR-Ergänzung zu FA 2/26 „HamLink und Latry“, Latry-Projektseite):
   (github.com/s1lviu/Latry) – Lizenz passt zu CarenDMR; Protokoll in Python
   nachbauen.
 - Betrieb: nach PTT ca. 1 s warten, bis die Relais aufgetastet haben.
+
+### Zusammenfassung DMR + FM (entschieden 27.11.2026)
+
+**PC-Client CarenDMR**
+- Zwei Netze: BrandMeister (DMR) und FM-Funknetz (SvxReflector). Immer nur eins
+  aktiv, Umschalten im Programm, Ansage des aktiven Netzes.
+- Einstellungen getrennt je Netz: DMR (Rufzeichen, DMR-ID, Hotspot-Passwort,
+  Server) und FM (Rufzeichen `DK7EE-APP`, Key, Server, Port).
+- **Zwei Favoritenlisten:** eine für DMR, eine für FM.
+- QRZ, Logbuch, ADIF und QSO-Sync bleiben und gelten für **beide** Netze; das
+  Netz wird im QSO vermerkt (ADIF: DMR bzw. FM).
+- Besonderheit FM: Der Reflektor meldet das Rufzeichen des **Knotens**. Spricht
+  jemand über ein Relais, erscheint das Relais-Rufzeichen, nicht der Sprecher.
+  QRZ-Abfrage und Log-Vorschlag nur bei Personen-Rufzeichen; Zusätze wie `-APP`
+  oder `-TRX` werden für QRZ abgeschnitten.
+
+**CarenDMR-Box**
+- Ebenfalls DMR und FM-Funknetz, abgespeckt (kein QRZ, kein ADIF, kein Logbuch).
+- Zwei Favoritenlisten, jede auf Knopfdruck auf ihre Vorgaben zurücksetzbar:
+  - DMR: 91 World-wide, 9990 Papagei (privat), 262 Deutschland, 2623 Niedersachsen/Bremen.
+  - FM: 20 Testarea, 9990 Papagei, 9998 Papagei, vierte noch offen.
+- Web-Verwaltung: Einstellungen für DMR und FM, Favoriten beider Netze bearbeiten,
+  **importieren und exportieren** (Datei-Format offen, z. B. JSON wie
+  `favorites.local.json`), auf Vorgaben zurücksetzen.
+- Rufzeichen FM: `DK7EE-TRX`.
 
 Vorschlag zur Umsetzung (später):
 

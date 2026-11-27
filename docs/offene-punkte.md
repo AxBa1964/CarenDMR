@@ -63,8 +63,9 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.93.
   Zero 2 W), Web-Verwaltung im Heimnetz, nur Betrieb (kein QRZ/Logbuch/Monitoring).
   Konzept in `docs/CARENDMR_BOX_KONZEPT.md`. Bestellt (27.11.2026): Pi 4 mit Lüfter,
   UGREEN-Soundkarte, Elektret-Kapseln. Erster Schritt: Codec-Messung auf ARM64.
-- FM-Funknetz (SvxReflector, Opus) zusätzlich zu DMR in Box und Client; Recherche
-  im Box-Konzept. Zugang erhalten (27.11.2026), Rufzeichen `DK7EE-APP`/`DK7EE-TRX`; Test nur in
+- FM-Funknetz (SvxReflector, Opus) zusätzlich zu DMR in Box und Client: getrennte
+  Einstellungen und Favoriten je Netz, QRZ/ADIF im PC-Client für beide Netze,
+  Box ohne QRZ/ADIF, Favoriten-Import/-Export im Web. Details im Box-Konzept. Zugang erhalten (27.11.2026), Rufzeichen `DK7EE-APP`/`DK7EE-TRX`; Test nur in
   TG 20, Papageien TG 9990/9998;
   erlaubte Protokollversion (2 oder 3 mit Zertifikat) beim Netzbetreiber klären.
 - Quelltext-Tests schrittweise durch Verhaltenstests ersetzen; Tests kennzeichnen,
