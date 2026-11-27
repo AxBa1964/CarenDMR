@@ -115,7 +115,8 @@ Kasten) ist ersetzt, steht noch in der Git-Historie.
 - Dome M3 mit Einschmelzmuttern: 4 für den Podestdeckel, 4 für die Tastenplatte.
 - Kappen (Probedruck 27.11.2026): Sitz passt; Braille direkt auf der Kappe ist
   wegen Stützen nicht sauber druckbar → Wunsch: flache Kappen + aufgeklebte
-  Kennzeichnungs-Plättchen (siehe `docs/offene-punkte.md`).
+  Kennzeichnungs-Plättchen – umgesetzt in 0.2.1.95: Kappen flach (auf dem Kopf
+  ohne Stützen), Plättchen 14,3 × 14,3 zweifarbig (PLA schwarz, Zeichen weiß).
 - Tasterausschnitt 14,0 per Probestreifen bestätigt (27.11.2026, PETG, Bambu H2S).
 - Offen: Winkel (5–10°) mit Caren testen, Modulmaße nachmessen.
 

@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.94.
+Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.95.
 
 ## Stand
 
@@ -19,6 +19,7 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.94.
 - 0.2.1.93: Bedien-Tastenfeld für Easy umgesetzt (`KeypadService`, USB-CDC,
   Pico-H-Firmware in `hardware/keypad/`); mit echter Hardware noch ungetestet.
 - 0.2.1.94: CAD-Modell Tastenfeld-Gehäuse (CadQuery, STEP/STL) in `hardware/keypad/cad/`.
+- 0.2.1.95: flache Kappen + zweifarbige Kennzeichnungs-Plättchen (PLA schwarz/weiß).
 
 ## Nutzer-Handgriffe (offen)
 
@@ -52,7 +53,9 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.94.
 
 - [x] Probestreifen gedruckt (27.11.2026): 14,0 (Mitte, 3 Kerben) passt perfekt –
       entspricht der Vorgabe `cut` in `hardware/keypad/cad/tastenfeld.py`.
-- [ ] Probekappe und PTT-Kappe drucken, auf Schalter stecken (klemmt die PTT?).
+- [ ] Flache Kappe und PTT-Kappe auf dem Kopf drucken, auf Schalter stecken (klemmt die PTT?).
+- [ ] Plättchen zweifarbig drucken, eins aufkleben, mit Caren Fühlbarkeit prüfen
+      (Braille 0,5 hoch, Symbole 0,8 hoch – bei Bedarf in `tastenfeld.py` ändern).
 - [ ] Unterteil, Tastenplatte, Podestdeckel, Kappen, TPU-Füße drucken.
 - [ ] Halterungen für Lautsprecher, Vibrationsmodul, PAM8302, Pico nach dem
       Nachmessen ins Modell aufnehmen.
@@ -60,7 +63,7 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.94.
 - [x] Probekappe (27.11.2026): Sitz auf dem Schalter passt perfekt. Braille auf
       der Kappe wird beim Druck mit Stützen unbrauchbar (nicht sauber fühlbar).
 
-## Wunsch (noch nicht umgesetzt): Kappen ohne Zeichen + aufgeklebte Plättchen
+## Kappen ohne Zeichen + aufgeklebte Plättchen (umgesetzt in 0.2.1.95)
 
 - Kappen oben **flach, ohne Vertiefung**: auf dem Kopf gedruckt liegt die
   Oberseite vollflächig auf der Platte, Stößel und Wände wachsen nach oben –

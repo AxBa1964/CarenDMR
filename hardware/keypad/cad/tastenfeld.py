@@ -284,41 +284,91 @@ def _braille(text: str, z: float, dot: float = 2.5, cell: float = 6.0) -> cq.Wor
     return result
 
 
-def keycap(symbol: str) -> cq.Workplane:
+def keycap() -> cq.Workplane:
+    """Kappe mit flacher Oberseite, ohne Zeichen.
+
+    Druck auf dem Kopf (Oberseite auf dem Druckbett): Stößel und Wände wachsen
+    nach oben, es sind keine Stützen nötig. Die Kennzeichnung kommt als
+    aufgeklebtes Plättchen dazu (``label_plate``).
+    """
     cap = _shell(18.0, 18.0, CAP_TOP, CAP_TOP, CAP_H)
     stem, cross = _stem(0, 0, CAP_H - 1.4)
-    cap = cap.union(stem).cut(cross)
-    z = CAP_H
-    relief = 0.8
-    if symbol.startswith("braille"):
-        cap = cap.union(_braille("#" + symbol[-1], z))
-    elif symbol == "links":
-        cap = cap.union(cq.Workplane("XY").polyline([(-4, 0), (3, 4), (3, -4)]).close().extrude(relief).translate((0, 0, z)))
-    elif symbol == "rechts":
-        cap = cap.union(cq.Workplane("XY").polyline([(4, 0), (-3, 4), (-3, -4)]).close().extrude(relief).translate((0, 0, z)))
-    elif symbol == "minus":
-        cap = cap.union(_box(-4.5, 4.5, -1, 1, z, z + relief))
-    elif symbol == "plus":
-        cap = cap.union(_box(-4.5, 4.5, -1, 1, z, z + relief)).union(_box(-1, 1, -4.5, 4.5, z, z + relief))
-    elif symbol == "noppe":
-        # Kugelkappe: Ø ca. 4, 1,2 hoch
-        cap = cap.union(cq.Workplane("XY").sphere(2.3).translate((0, 0, z - 1.1)).intersect(_box(-3, 3, -3, 3, z, z + 3)))
-    elif symbol == "kreuz":
-        bar = _box(-5, 5, -0.9, 0.9, z, z + relief)
-        cap = cap.union(bar.rotate((0, 0, 0), (0, 0, 1), 45)).union(bar.rotate((0, 0, 0), (0, 0, 1), -45))
-    elif symbol == "mulde":
-        cap = cap.cut(cq.Workplane("XY").sphere(12).translate((0, 0, z + 12 - 1.2)))
-    return cap
+    return cap.union(stem).cut(cross)
 
 
 def ptt_cap(p: Params) -> cq.Workplane:
+    """Breite PTT-Kappe für zwei Schalter, oben flach (Druck auf dem Kopf)."""
     cap = _shell(p.ptt_width, 18.0, p.ptt_width - 3.5, CAP_TOP, CAP_H)
     for dx in (-p.ptt_switch_gap / 2, p.ptt_switch_gap / 2):
         stem, cross = _stem(dx, 0, CAP_H - 1.4)
         cap = cap.union(stem).cut(cross)
-    # tastbare Längsrille als Erkennung
-    cap = cap.cut(_box(-p.ptt_width / 2 + 8, p.ptt_width / 2 - 8, -0.8, 0.8, CAP_H - 0.6, CAP_H + 1))
     return cap
+
+
+# ---------------------------------------------------------------- Kennzeichnungs-Plättchen
+
+LABEL_SIZE = 14.3          # etwas kleiner als die Kappenoberseite (14,5)
+LABEL_T = 1.2              # Grundplatte
+LABEL_T_DISH = 2.0         # „Beenden“: dicker wegen der Mulde
+RELIEF = 0.8               # Höhe der Symbole
+
+
+def _label_base(thickness: float) -> cq.Workplane:
+    return (cq.Workplane("XY").rect(LABEL_SIZE, LABEL_SIZE).extrude(thickness)
+            .edges("|Z").fillet(1.0))
+
+
+def label_plate(symbol: str) -> tuple[cq.Workplane, cq.Workplane]:
+    """Plättchen als (Grundplatte, Zeichen) – zwei Teile für zwei Farben.
+
+    Gedruckt flach mit dem Zeichen nach oben, ohne Stützen. Grundplatte z. B.
+    schwarz, Zeichen weiß. Braille nach Standardmaß (Punkt Ø1,5, 0,5 hoch,
+    Abstand 2,5, Zellenabstand 6,0).
+    """
+    z = LABEL_T
+    if symbol == "mulde":
+        base = _label_base(LABEL_T_DISH)
+        insert_z = 0.6
+        pocket = cq.Workplane("XY").circle(5.0).extrude(LABEL_T_DISH).translate((0, 0, insert_z))
+        base = base.cut(pocket)
+        sign = cq.Workplane("XY").circle(5.0).extrude(LABEL_T_DISH - insert_z).translate((0, 0, insert_z))
+        sign = sign.cut(cq.Workplane("XY").sphere(12).translate((0, 0, LABEL_T_DISH + 12 - 1.0)))
+        return base, sign
+    base = _label_base(LABEL_T)
+    if symbol.startswith("braille"):
+        sign = _braille("#" + symbol[-1], z)
+    elif symbol == "links":
+        sign = cq.Workplane("XY").polyline([(-4, 0), (3, 4), (3, -4)]).close().extrude(RELIEF).translate((0, 0, z))
+    elif symbol == "rechts":
+        sign = cq.Workplane("XY").polyline([(4, 0), (-3, 4), (-3, -4)]).close().extrude(RELIEF).translate((0, 0, z))
+    elif symbol == "minus":
+        sign = _box(-4.5, 4.5, -1, 1, z, z + RELIEF)
+    elif symbol == "plus":
+        sign = _box(-4.5, 4.5, -1, 1, z, z + RELIEF).union(_box(-1, 1, -4.5, 4.5, z, z + RELIEF))
+    elif symbol == "noppe":
+        # Kugelkappe: Ø ca. 4, 1,2 hoch
+        sign = cq.Workplane("XY").sphere(2.3).translate((0, 0, z - 1.1)).intersect(_box(-3, 3, -3, 3, z, z + 3))
+    elif symbol == "kreuz":
+        bar = _box(-5, 5, -0.9, 0.9, z, z + RELIEF)
+        sign = bar.rotate((0, 0, 0), (0, 0, 1), 45).union(bar.rotate((0, 0, 0), (0, 0, 1), -45))
+    else:
+        raise ValueError(f"Unbekanntes Symbol: {symbol}")
+    return base, sign
+
+
+def labels(p: Params) -> dict[str, tuple[cq.Workplane, cq.Workplane]]:
+    return {name: label_plate(symbol) for name, _, _, symbol in p.keys()}
+
+
+def labels_sheet(p: Params, pitch: float = 20.0, columns: int = 4) -> tuple[cq.Workplane, cq.Workplane]:
+    """Alle Plättchen nebeneinander für einen Druckauftrag."""
+    base_all = sign_all = None
+    for i, (base, sign) in enumerate(labels(p).values()):
+        dx, dy = (i % columns) * pitch, -(i // columns) * pitch
+        b, s = base.translate((dx, dy, 0)), sign.translate((dx, dy, 0))
+        base_all = b if base_all is None else base_all.union(b)
+        sign_all = s if sign_all is None else sign_all.union(s)
+    return base_all, sign_all
 
 
 # ---------------------------------------------------------------- Kleinteile
@@ -346,17 +396,15 @@ def foot(p: Params) -> cq.Workplane:
 # ---------------------------------------------------------------- Export
 
 def parts(p: Params) -> dict[str, cq.Workplane]:
-    result = {
+    return {
         "unterteil": housing(p),
         "tastenplatte": key_plate(p),
         "podestdeckel": lid(p),
+        "kappe": keycap(),
         "kappe_ptt": ptt_cap(p),
         "probestreifen_ausschnitt": test_strip(p),
         "fuss_tpu": foot(p),
     }
-    for name, _, _, symbol in p.keys():
-        result[f"kappe_{name}"] = keycap(symbol)
-    return result
 
 
 def assembly(p: Params, built: dict[str, cq.Workplane]) -> cq.Assembly:
@@ -364,35 +412,60 @@ def assembly(p: Params, built: dict[str, cq.Workplane]) -> cq.Assembly:
     asm.add(built["unterteil"], name="unterteil", color=cq.Color(0.85, 0.88, 0.92))
     # Tastenplatte auf die Schräge setzen
     seat_drop = p.plate_t / p.cos
-    loc = cq.Location((p.wall, p.wall, p.top_z(p.wall) - seat_drop), (1, 0, 0), p.angle)
-    asm.add(built["tastenplatte"], name="tastenplatte", loc=loc, color=cq.Color(0.55, 0.65, 0.78))
+    slope = cq.Location((p.wall, p.wall, p.top_z(p.wall) - seat_drop), (1, 0, 0), p.angle)
+    asm.add(built["tastenplatte"], name="tastenplatte", loc=slope, color=cq.Color(0.55, 0.65, 0.78))
     asm.add(built["podestdeckel"], name="podestdeckel",
             loc=cq.Location((0, 0, p.h_pod - p.lid_t)), color=cq.Color(0.6, 0.7, 0.8))
+    plates = labels(p)
     for name, u, v, _ in p.keys():
-        cap_loc = cq.Location((p.wall, p.wall, p.top_z(p.wall) - seat_drop), (1, 0, 0), p.angle) * \
-            cq.Location((u, v, p.plate_t + 5.0))
-        asm.add(built[f"kappe_{name}"], name=f"kappe_{name}", loc=cap_loc, color=cq.Color(0.95, 0.95, 0.95))
-    pu = p.plate_w / 2
-    pv = p.key_rows()[3]
-    ptt_loc = cq.Location((p.wall, p.wall, p.top_z(p.wall) - seat_drop), (1, 0, 0), p.angle) * \
-        cq.Location((pu, pv, p.plate_t + 5.0))
+        cap_loc = slope * cq.Location((u, v, p.plate_t + 5.0))
+        asm.add(built["kappe"], name=f"kappe_{name}", loc=cap_loc, color=cq.Color(0.95, 0.95, 0.95))
+        base, sign = plates[name]
+        top = cap_loc * cq.Location((0, 0, CAP_H))
+        asm.add(base, name=f"plaettchen_{name}_basis", loc=top, color=cq.Color(0.1, 0.1, 0.1))
+        asm.add(sign, name=f"plaettchen_{name}_zeichen", loc=top, color=cq.Color(1, 1, 1))
+    ptt_loc = slope * cq.Location((p.plate_w / 2, p.key_rows()[3], p.plate_t + 5.0))
     asm.add(built["kappe_ptt"], name="kappe_ptt", loc=ptt_loc, color=cq.Color(1.0, 0.85, 0.6))
     return asm
+
+
+def _export(part: cq.Workplane, step: Path | None, stl: Path | None) -> list[Path]:
+    written = []
+    if step is not None:
+        cq.exporters.export(part, str(step))
+        written.append(step)
+    if stl is not None:
+        cq.exporters.export(part, str(stl), tolerance=0.05, angularTolerance=0.2)
+        written.append(stl)
+    return written
 
 
 def export_all(out: Path, p: Params | None = None) -> list[Path]:
     p = p or Params()
     out = Path(out)
-    (out / "step").mkdir(parents=True, exist_ok=True)
-    (out / "stl").mkdir(parents=True, exist_ok=True)
+    dirs = [out / "step", out / "stl", out / "step" / "plaettchen", out / "stl" / "plaettchen"]
+    for folder in dirs:
+        folder.mkdir(parents=True, exist_ok=True)
+        # alte, nicht mehr erzeugte Dateien entfernen
+        for old in list(folder.glob("*.step")) + list(folder.glob("*.stl")):
+            old.unlink()
     built = parts(p)
-    written = []
+    written: list[Path] = []
     for name, part in built.items():
-        step = out / "step" / f"{name}.step"
-        stl = out / "stl" / f"{name}.stl"
-        cq.exporters.export(part, str(step))
-        cq.exporters.export(part, str(stl), tolerance=0.05, angularTolerance=0.2)
-        written += [step, stl]
+        written += _export(part, out / "step" / f"{name}.step", out / "stl" / f"{name}.stl")
+    for name, (base, sign) in labels(p).items():
+        stem = f"plaettchen_{name}"
+        written += _export(base, None, out / "stl" / "plaettchen" / f"{stem}_basis.stl")
+        written += _export(sign, None, out / "stl" / "plaettchen" / f"{stem}_zeichen.stl")
+        label_asm = cq.Assembly(name=stem)
+        label_asm.add(base, name="basis", color=cq.Color(0.1, 0.1, 0.1))
+        label_asm.add(sign, name="zeichen", color=cq.Color(1, 1, 1))
+        step = out / "step" / "plaettchen" / f"{stem}.step"
+        label_asm.export(str(step))
+        written.append(step)
+    base_all, sign_all = labels_sheet(p)
+    written += _export(base_all, None, out / "stl" / "plaettchen_alle_basis.stl")
+    written += _export(sign_all, None, out / "stl" / "plaettchen_alle_zeichen.stl")
     asm_path = out / "step" / "baugruppe.step"
     assembly(p, built).export(str(asm_path))
     written.append(asm_path)

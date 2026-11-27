@@ -1,4 +1,4 @@
-# CarenDMR 0.2.1.94
+# CarenDMR 0.2.1.95
 
 Vorbereitung für die Windows-Exe mit Installer:
 
@@ -19,6 +19,9 @@ Neu in 0.2.1.93: Bedien-Tastenfeld für CarenDMR Easy (Pico H über USB,
 
 Neu in 0.2.1.94: CAD-Modell des Tastenfeld-Gehäuses (STEP und STL) in
 `hardware/keypad/cad/`.
+
+Neu in 0.2.1.95: flache Tastenkappen (ohne Stützen druckbar) und zweifarbige
+Kennzeichnungs-Plättchen mit Braille und Symbolen zum Aufkleben.
 
 Setup bauen: `build_setup.bat` (Tests, Exe, Installer in einem Schritt).
 

@@ -21,11 +21,8 @@ def test_model_source_parses_and_has_parameters():
 
 
 def test_exported_files_present_for_every_part():
-    expected = {"unterteil", "tastenplatte", "podestdeckel", "kappe_ptt",
+    expected = {"unterteil", "tastenplatte", "podestdeckel", "kappe", "kappe_ptt",
                 "probestreifen_ausschnitt", "fuss_tpu"}
-    expected |= {f"kappe_{n}" for n in ("favorit_1", "favorit_2", "favorit_3", "favorit_4",
-                                         "beenden", "tg_zurueck", "tg_vor", "leiser",
-                                         "lauter", "verbinden", "trennen")}
     for name in expected:
         assert (CAD / "out" / "step" / f"{name}.step").is_file(), name
         assert (CAD / "out" / "stl" / f"{name}.stl").is_file(), name
@@ -49,7 +46,7 @@ def model():
 
 def test_all_parts_are_single_valid_solids(model):
     built = model.parts(model.Params())
-    assert len(built) == 17
+    assert len(built) == 7
     for name, part in built.items():
         assert part.val().isValid(), name
         assert len(part.solids().vals()) == 1, name

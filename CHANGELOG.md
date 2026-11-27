@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1.95 – Flache Tastenkappen und zweifarbige Kennzeichnungs-Plättchen
+
+- Tastenkappen sind oben flach und alle gleich (`kappe.stl`, 11 Stück, PTT eigene Datei). Gedruckt auf dem Kopf brauchen sie keine Stützen mehr; beim Probedruck hatten die Stützen die Braille-Punkte auf der Kappe unbrauchbar gemacht.
+- Neu: Kennzeichnungs-Plättchen 14,3 × 14,3 zum Aufkleben, zweifarbig als getrennte Teile (Grundplatte schwarz, erhabenes Zeichen weiß, PLA): Braille-Ziffern 1–4 nach Standardmaß, ◀ ▶, −, +, Noppe, ✕ und Mulde für Beenden. Flach mit dem Zeichen nach oben gedruckt, ohne Stützen.
+- Alle 11 Plättchen auch als ein Druckauftrag (`plaettchen_alle_basis.stl` + `plaettchen_alle_zeichen.stl`); Anleitung für Bambu Studio in `hardware/keypad/cad/README.md`.
+
 ## 0.2.1.94 – CAD-Modell für das Tastenfeld-Gehäuse
 
 - Neu: `hardware/keypad/cad/tastenfeld.py` – parametrisches Modell (CadQuery) des Tastenfelds, Entwurf 2: Keilform (vorne 20 hoch, Tastenplatte 7° ansteigend) mit Lautsprecher-Podest (52 hoch), Außenmaß 145 × 161.
