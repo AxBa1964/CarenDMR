@@ -71,7 +71,7 @@ Zusätzlich sagt die Box ihre Adresse auf Tastendruck an
   (Kennwort steht auf dem Gehäuse, auch in Braille) → Ansage „Einrichtungsmodus“.
 - Einrichtungsseite: Heim-WLAN wählen und Kennwort eingeben → Box verbindet sich
   und sagt die neue Adresse an.
-- Manuell erreichbar über eine Tastenkombination am Tastenfeld (z. B. lang drücken
+- Manuell erreichbar über eine Tastenkombination an der Box (z. B. lang drücken
   beim Einschalten), falls das WLAN gewechselt werden muss.
 - Rückfall ohne Handy: USB-Stick mit `carendmr-box.local.json` (WLAN, Station);
   die Box liest ihn beim Einstecken ein und bestätigt per Ansage.
@@ -143,14 +143,32 @@ funktionieren auch ohne JavaScript.
 | Raspberry Pi 4 B, 1 GB, mit Lüfter | bestellt |
 | Netzteil 5,1 V / 3 A, USB-C | Stromversorgung |
 | microSD 16–32 GB (Markenkarte, A1) | System |
-| USB-Soundkarte mit Mikrofoneingang, im Gehäuse | Pi 4 hat keinen Mikrofoneingang |
-| Lautsprecher + kleiner Verstärker, im Gehäuse | Empfang und Ansagen |
-| Mikrofon (Elektret), im Gehäuse | Senden |
+| USB-Soundkarte mit C-Media-Chip (CM108/CM119), z. B. Sabrent AU-MMSA | Ein- und Ausgabe; Pi 4 hat keinen Mikrofoneingang |
+| Verstärker PAM8302 (vorhanden/bestellt, 5 V, mono) | an den Kopfhörerausgang der Soundkarte |
+| Lautsprecher Zuahaly 3 W / 8 Ω (vorhanden/bestellt) | Empfang, Ansagen, Quittungstöne |
+| Elektret-Mikrofonkapsel (Kugel) mit 3,5-mm-Kabel | an den Mikrofoneingang der Soundkarte |
 | Taster Gateron Brown (5–6 Funktionstasten) | an GPIO (Pull-up, gegen GND) |
 | PTT-Leiste (2 Taster parallel) | ein GPIO |
 | Dreh-/Drückschalter (Encoder mit Taster) | Menü, drei GPIO |
 | Vibrationsmodul DAOKAI 5 V | Quittung, ein GPIO |
 | Headset (optional) | USB oder Bluetooth |
+
+### Audio-Verkabelung
+
+- Soundkarte steckt per kurzem USB-Kabel (oder Winkeladapter) am Pi im Gehäuse.
+- Kopfhörerausgang → PAM8302 (A+ an Signal, A− an Masse) → Lautsprecher.
+  PAM8302 an 5 V des Pi, SD-Pin an GPIO (stumm, wenn nichts ausgegeben wird).
+  Lautstärke per Trimmpoti grob begrenzen, fein in der Software.
+- Mikrofonkapsel an den Mikrofoneingang (die Soundkarte liefert die
+  Speisespannung für Elektret). Kapsel vorne hinter Lochgitter, in Gummi gelagert,
+  mit Abstand zu Lüfter und Lautsprecher.
+- Nicht den analogen 3,5-mm-Ausgang des Pi 4 nutzen (rauscht).
+- Zu prüfen: Brummen/Pfeifen durch gemeinsame 5-V-Versorgung (Klasse-D-Verstärker
+  und USB-Soundkarte). Abhilfe bei Bedarf: Ferrit, kurzes geschirmtes Kabel,
+  Masse sternförmig.
+- Alternative: Audio-Aufsteckplatine mit WM8960 (Mikrofone und Verstärker an Bord,
+  z. B. Waveshare WM8960 Audio HAT) – kompakter, aber Treiber muss bei
+  Kernel-Updates passen. Zunächst USB-Soundkarte.
 
 ### Audio-Wege
 
