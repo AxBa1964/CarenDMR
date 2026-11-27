@@ -42,9 +42,12 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.96.
       erfolgreich (Protokoll 2.0, HMAC passt). Danach trennt der Server:
       „Software/Version nicht zugelassen: CarenDMR 0.2.1.95“ – der Reflektor
       prüft die Software-Angabe (NodeInfo `sw`/`swVer`) gegen eine Freigabeliste.
-- [ ] 0.2.1.96: Kennung jetzt „CarenFM“ (so beim Admin-Team beantragt) – mit
-      `--fm-listen` prüfen, ob freigeschaltet. Sonst Freigabe nachfragen.
+- [ ] **CarenFM wartet auf Antwort von Jens (DJ1JAY)**: welcher Name und welches
+      Versionsformat für die Freischaltung. Code (0.2.1.96) fertig, Kennung „CarenFM“.
+      Sobald die Antwort da ist: Name/Version in `fm_funknetz.local.json` eintragen
+      (ggf. `software_version` noch einstellbar machen) und mit `--fm-listen` prüfen.
       Keine fremde Software-Kennung vortäuschen.
+      (Der Monitor-Screenshot mit DK7EE-APP stammte von JayTRX, nicht von CarenFM.)
 - [ ] Danach: Senden (zuerst Papagei TG 9990/9998), Einbindung in
       Hauptfenster/Easy/Box, FM-Favoriten, `libopus-0.dll` ins Windows-Setup.
 
