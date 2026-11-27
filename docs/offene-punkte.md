@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.96.
+Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.97.
 
 ## Stand
 
@@ -50,6 +50,15 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.96.
       (Der Monitor-Screenshot mit DK7EE-APP stammte von JayTRX, nicht von CarenFM.)
 - [ ] Danach: Senden (zuerst Papagei TG 9990/9998), Einbindung in
       Hauptfenster/Easy/Box, FM-Favoriten, `libopus-0.dll` ins Windows-Setup.
+
+## CarenDMR-Box: Web-Verwaltung (begonnen 0.2.1.97)
+
+- [x] Gerüst, Verwaltungskennwort, Übersicht, DMR-Station mit Verbindungstest
+      (`python main.py --box-web`).
+- [ ] Weitere Seiten: WLAN, Sprach-Codec, Audio, Talkgroups/Favoriten (Import/Export,
+      Hotliste 1–4), FM-Funknetz, System (Update, Neustand, Sicherung).
+- [ ] Einrichtungsassistent (abbrechbar, Schritt für Schritt).
+- [ ] Erst auf dem Pi testen; mDNS-Name carendmr-box.local einrichten.
 
 ## CarenDMR.box (nach Lieferung des Pi 4)
 

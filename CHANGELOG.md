@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1.97 – CarenDMR-Box: Web-Verwaltung (Übersicht und DMR-Station)
+
+- Neu: barrierefreie Web-Verwaltung der Box, nur Python-Standardbibliothek, in `carendmr/box/web/` (Qt-frei). Start: `python main.py --box-web` (Vorgabe Port 8080, Option `--port`).
+- Verwaltungskennwort beim Erststart; nur als PBKDF2-Hash in `config/box_admin.local.json` gespeichert (gitignored), Sitzung per Cookie, CSRF-Schutz.
+- Seite **Übersicht**: Version und Status der DMR-Station. Seite **DMR-Station**: Rufzeichen, DMR-ID, Hotspot-Passwort (nur schreibbar, nie angezeigt), Standort, Server, Port – mit Speichern und Verbindungstest über die bestehenden Application-Dienste.
+- Seiten sind schlichtes, semantisches HTML (Überschriften, beschriftete Felder, Fehler als Text), ohne Maus bedienbar, funktionieren ohne JavaScript.
+- Noch offen: WLAN, Sprach-Codec, Audio, Talkgroups/Favoriten, FM-Funknetz, System; Einrichtungsassistent.
+
 ## 0.2.1.96 – FM-Funknetz: Software-Kennung „CarenFM“
 
 - Der Reflektor des FM-Funknetzes prüft die Software-Kennung und lehnte „CarenDMR 0.2.1.95“ ab („Software/Version nicht zugelassen“). Beantragt war die Freischaltung als „CarenFM“.

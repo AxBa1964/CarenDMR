@@ -1,4 +1,4 @@
-# CarenDMR 0.2.1.96
+# CarenDMR 0.2.1.97
 
 Vorbereitung für die Windows-Exe mit Installer:
 
@@ -22,6 +22,9 @@ QSO-Verlauf: stabile Reihenfolge bei gleicher Endzeit (0.2.1.94).
 
 FM-Funknetz: anmelden und empfangen mit `python main.py --fm-listen`
 (nur Empfang), Anleitung in `docs/FM_FUNKNETZ.md`; Software-Kennung „CarenFM“.
+
+CarenDMR-Box: Web-Verwaltung angefangen (Übersicht, DMR-Station)
+mit `python main.py --box-web`.
 
 Setup bauen: `build_setup.bat` (Tests, Exe, Installer in einem Schritt).
 

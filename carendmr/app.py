@@ -56,6 +56,17 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--box-web",
+        action="store_true",
+        help="startet die Web-Verwaltung der CarenDMR-Box (Übersicht, DMR-Station)",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        metavar="PORT",
+        help="Port für --box-web (Vorgabe 8080)",
+    )
+    parser.add_argument(
         "--fm-listen",
         action="store_true",
         help=(
@@ -248,6 +259,19 @@ def run(argv: Sequence[str] | None = None) -> int:
             wav=args.wav,
             setup_codec=args.setup_codec,
         )
+    if args.box_web:
+        if any((args.gui, args.easy, args.listen, args.tg_monitor, args.fm_listen, args.codec_benchmark)):
+            print("--box-web kann nicht mit einer anderen Betriebsart kombiniert werden.", file=sys.stderr)
+            return 2
+        port = args.port or 8080
+        if not 1 <= port <= 65535:
+            print("--port muss zwischen 1 und 65535 liegen.", file=sys.stderr)
+            return 2
+        from carendmr.box.web.server import run_box_web
+        return run_box_web(project_root, port=port)
+    if args.port is not None and not args.box_web:
+        print("--port ist nur zusammen mit --box-web zulässig.", file=sys.stderr)
+        return 2
     if args.fm_listen:
         if args.tg is not None and args.tg < 1:
             print("--tg muss eine positive Zahl sein.", file=sys.stderr)
