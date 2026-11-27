@@ -189,8 +189,8 @@ funktionieren auch ohne JavaScript.
   Lautsprecher stumm (Halbduplex), daher keine Rückkopplung.
 - **USB-Headset:** wird beim Einstecken erkannt und automatisch genutzt, Ansage
   „Headset verbunden“; beim Abziehen zurück auf eingebaut.
-- **Bluetooth-Headset:** Kopplung über die Web-Verwaltung (Seite Audio) oder per
-  Menü am Drehschalter. Freisprechprofil (HFP) mit 8 bzw. 16 kHz reicht, weil DMR
+- **Bluetooth-Headset:** Kopplung über die Web-Verwaltung (Seite Audio).
+  Freisprechprofil (HFP) mit 8 bzw. 16 kHz reicht, weil DMR
   ohnehin nur 8 kHz überträgt. Zu testen: zusätzliche Verzögerung, und dass
   Bluetooth und WLAN auf dem Pi 4 denselben Funkchip teilen – WLAN möglichst auf
   5 GHz.
