@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1420" height="1288" viewBox="0 0 1420 1288" font-family="Arial, Helvetica, sans-serif">
-<rect width="1420" height="1288" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="1288" viewBox="0 0 1500 1288" font-family="Arial, Helvetica, sans-serif">
+<rect width="1500" height="1288" fill="#ffffff"/>
 <text x="30" y="45" font-size="28" font-weight="bold" fill="#111">CarenDMR-Tastenfeld – Steckbrett-Aufbau (Raspberry Pi Pico H)</text>
 <text x="30" y="78" font-size="17" fill="#333">Draufsicht, USB-Buchse oben. Pico-Stift 1 oben links, Stift 40 oben rechts. Reihe n = Pico-Stift n (links) bzw. 41 − n (rechts).</text>
 <text x="30" y="102" font-size="17" fill="#333">Jeder Taster: ein Kontakt an die Reihe des GPIO, der andere an die GND-Schiene (blau). Keine Widerstände nötig.</text>
@@ -547,28 +547,32 @@
 <circle cx="284" cy="695.0" r="4" fill="#2457c5"/><circle cx="425" cy="695.0" r="4" fill="#2457c5"/>
 <path d="M284,680.0 L330,680.0 L330,686 L470,686" stroke="#b71c1c" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="284" cy="680.0" r="4" fill="#b71c1c"/><circle cx="470" cy="686" r="4" fill="#b71c1c"/>
-<rect x="924" y="652" width="190" height="210" rx="6" fill="#1d3f8a" stroke="#0c2357" stroke-width="2"/>
-<text x="1019" y="680" font-size="17" fill="#fff" text-anchor="middle" font-weight="bold">PAM8302</text>
-<circle cx="924" cy="712" r="6" fill="#e8c76a"/><text x="938" y="717" font-size="14" fill="#fff">Vin</text>
-<circle cx="924" cy="742" r="6" fill="#e8c76a"/><text x="938" y="747" font-size="14" fill="#fff">GND</text>
-<circle cx="924" cy="772" r="6" fill="#e8c76a"/><text x="938" y="777" font-size="14" fill="#fff">SD</text>
-<circle cx="924" cy="802" r="6" fill="#e8c76a"/><text x="938" y="807" font-size="14" fill="#fff">A−</text>
-<circle cx="924" cy="832" r="6" fill="#e8c76a"/><text x="938" y="837" font-size="14" fill="#fff">A+</text>
-<path d="M779,712 L884,712 L884,712 L924,712" stroke="#d1342b" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="779" cy="712" r="4" fill="#d1342b"/><circle cx="924" cy="712" r="4" fill="#d1342b"/>
-<path d="M804,742 L869,742 L869,742 L924,742" stroke="#2457c5" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="804" cy="742" r="4" fill="#2457c5"/><circle cx="924" cy="742" r="4" fill="#2457c5"/>
-<path d="M734,822 L899,822 L899,772 L924,772" stroke="#7cb342" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="734" cy="822" r="4" fill="#7cb342"/><circle cx="924" cy="772" r="4" fill="#7cb342"/>
-<path d="M804,802 L869,802 L869,802 L924,802" stroke="#2457c5" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="804" cy="802" r="4" fill="#2457c5"/><circle cx="924" cy="802" r="4" fill="#2457c5"/>
-<path d="M734,856 L914,856 L914,832 L924,832" stroke="#f57c00" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="734" cy="856" r="4" fill="#f57c00"/><circle cx="924" cy="832" r="4" fill="#f57c00"/>
-<circle cx="1019" cy="927" r="42" fill="#444" stroke="#111" stroke-width="3"/><circle cx="1019" cy="927" r="18" fill="#777"/>
-<text x="1019" y="992" font-size="14" text-anchor="middle" fill="#111">Lautsprecher 3 W / 8 Ω</text>
-<path d="M1094,862 L1094,902 L1054,914" stroke="#d1342b" stroke-width="3" fill="none"/>
-<path d="M1074,862 L1074,892 L1049,904" stroke="#111" stroke-width="3" fill="none"/>
-<text x="1124" y="857" font-size="13" fill="#333">Lautsprecher-Ausgang</text>
+<rect x="924" y="696" width="190" height="210" rx="6" fill="#1d3f8a" stroke="#0c2357" stroke-width="2"/>
+<text x="1019" y="724" font-size="17" fill="#fff" text-anchor="middle" font-weight="bold">PAM8302</text>
+<text x="1019" y="742" font-size="11" fill="#cfd8ff" text-anchor="middle">Reihenfolge wie auf dem Modul</text>
+<circle cx="924" cy="766" r="6" fill="#e8c76a"/><text x="938" y="771" font-size="14" fill="#fff">A+</text>
+<circle cx="924" cy="793" r="6" fill="#e8c76a"/><text x="938" y="798" font-size="14" fill="#fff">A−</text>
+<circle cx="924" cy="820" r="6" fill="#e8c76a"/><text x="938" y="825" font-size="14" fill="#fff">SD</text>
+<circle cx="924" cy="847" r="6" fill="#e8c76a"/><text x="938" y="852" font-size="14" fill="#fff">Vin</text>
+<circle cx="924" cy="874" r="6" fill="#e8c76a"/><text x="938" y="879" font-size="14" fill="#fff">GND</text>
+<path d="M779,847 L884,847 L884,847 L924,847" stroke="#d1342b" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="779" cy="847" r="4" fill="#d1342b"/><circle cx="924" cy="847" r="4" fill="#d1342b"/>
+<path d="M804,874 L869,874 L869,874 L924,874" stroke="#2457c5" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="804" cy="874" r="4" fill="#2457c5"/><circle cx="924" cy="874" r="4" fill="#2457c5"/>
+<path d="M734,822 L899,822 L899,820 L924,820" stroke="#7cb342" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="734" cy="822" r="4" fill="#7cb342"/><circle cx="924" cy="820" r="4" fill="#7cb342"/>
+<path d="M804,793 L869,793 L869,793 L924,793" stroke="#2457c5" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="804" cy="793" r="4" fill="#2457c5"/><circle cx="924" cy="793" r="4" fill="#2457c5"/>
+<path d="M734,856 L914,856 L914,766 L924,766" stroke="#f57c00" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="734" cy="856" r="4" fill="#f57c00"/><circle cx="924" cy="766" r="4" fill="#f57c00"/>
+<circle cx="1019" cy="971" r="42" fill="#444" stroke="#111" stroke-width="3"/><circle cx="1019" cy="971" r="18" fill="#777"/>
+<text x="1019" y="1036" font-size="14" text-anchor="middle" fill="#111">Lautsprecher 3 W / 8 Ω</text>
+<circle cx="1114" cy="771" r="7" fill="#e8c76a"/><text x="1100" y="776" font-size="15" fill="#fff" text-anchor="end">⊕</text>
+<circle cx="1114" cy="871" r="7" fill="#e8c76a"/><text x="1100" y="876" font-size="15" fill="#fff" text-anchor="end">⊖</text>
+<path d="M1114,771 L1149,771 L1149,958 L1056,958" stroke="#d1342b" stroke-width="3" fill="none"/>
+<path d="M1114,871 L1136,871 L1136,946 L1052,948" stroke="#111" stroke-width="3" fill="none"/>
+<text x="1159" y="776" font-size="13" fill="#d1342b">+ Lautsprecher (rot)</text>
+<text x="1159" y="876" font-size="13" fill="#111">− Lautsprecher</text>
 <rect x="924" y="346" width="190" height="130" rx="6" fill="#0f6e44" stroke="#08402a" stroke-width="2"/>
 <text x="1019" y="372" font-size="16" fill="#fff" text-anchor="middle" font-weight="bold">Vibrationsmodul 5 V</text>
 <circle cx="924" cy="401" r="6" fill="#e8c76a"/><text x="938" y="406" font-size="14" fill="#fff">VCC</text>
@@ -587,7 +591,7 @@
 <text x="30" y="1024" font-size="18" font-weight="bold" fill="#111">Anschlüsse</text>
 <text x="30" y="1054" font-size="15" fill="#222">PTT (2 Taster parallel) → Stift 1 (GP0) · Lauter → 2 (GP1) · Leiser → 4 (GP2) · TG vor → 5 (GP3) · TG zurück → 6 (GP4)</text>
 <text x="30" y="1080" font-size="15" fill="#222">Favorit 1–4 → 7, 9, 10, 11 (GP5–GP8) · Verbinden → 12 (GP9) · Trennen → 14 (GP10) · Beenden → 15 (GP11)</text>
-<text x="30" y="1106" font-size="15" fill="#222">PAM8302: A+ → 21 (GP16) · SD → 22 (GP17) · A− und GND → GND · Vin → 5 V (VBUS, Stift 40)</text>
+<text x="30" y="1106" font-size="15" fill="#222">PAM8302 (Reihenfolge wie auf dem Modul): A+ → 21 (GP16) · A− → GND · SD → 22 (GP17) · Vin → 5 V (VBUS, Stift 40) · Gnd → GND · ⊕/⊖ → Lautsprecher</text>
 <text x="30" y="1132" font-size="15" fill="#222">Vibrationsmodul: IN → 24 (GP18) · GND → GND · VCC → 5 V (VBUS, Stift 40)</text>
 <text x="30" y="1158" font-size="15" fill="#222">GND-Stifte (eckige Lötaugen): 3, 8, 13, 18, 23, 28, 33, 38.  Vor dem Löten am offiziellen Pinout prüfen (Datenblatt Abschnitt 2.1).</text>
 </svg>
