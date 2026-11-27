@@ -19,12 +19,16 @@ Umsetzung erst nach „jetzt umsetzen“. Bis dahin werden hier Wünsche gesamme
   **nicht** ausgeliefert, sondern bei der Einrichtung von der Box selbst
   heruntergeladen (gleiche Quellen und SHA-256 wie in `CLAUDE.md`).
   Grundlage für den ARM64-Build: Branch `feature/android-arm64-prototype`.
-- **Bedienung an der Box:** Tastenfeld (RP2040, USB-CDC, Protokoll aus dem
-  Tastenfeld-Konzept) plus Dreh-/Drückschalter direkt an GPIO.
+- **Bedienung: das RP2040-Tastenfeld mit allen Funktionen** (Funktionstasten,
+  PTT, Lautsprecher für Quittungstöne, Vibration) bleibt in seinem schon gebauten
+  Gehäuse und hängt per USB an der Box (USB-CDC, Protokoll aus
+  `docs/TASTENFELD_KONZEPT.md`). Dasselbe Tastenfeld funktioniert am PC und an
+  der Box.
 - **Verwaltung:** Web-Oberfläche im Heimnetz, kein Bildschirm an der Box.
-- **Ein Gehäuse für alles:** Pi, Tasten, Dreh-/Drückschalter, Lautsprecher und
-  Mikrofon. Headset wahlweise per USB oder Bluetooth.
-- **Gerätename im Netz: `carendmr-box`.**
+- **Box-Gehäuse:** Pi, USB-Soundkarte, Lautsprecher und Mikrofon. Headset
+  wahlweise per USB oder Bluetooth.
+- **Gerätename im Netz: `carendmr-box`**, Web-Verwaltung unter
+  `http://carendmr-box.local`.
 - **Web-Verwaltung über HTTP** (kein HTTPS) – nur im Heimnetz, Begründung unter
   „Sicherheit“.
 - **Umfang: nur Betrieb.** Kein QRZ, kein Logbuch, kein ADIF, kein TG-Monitor,
@@ -117,7 +121,8 @@ funktionieren auch ohne JavaScript.
   Position angesagt („Talkgruppe Deutschland, 3 von 5“). Kurz drücken = auswählen,
   lang drücken = zurück. Im Betrieb: Drehen = Talkgroup wechseln oder Lautstärke
   (Belegung mit Caren abstimmen).
-- **Tastenfeld:** PTT, Funktionstasten wie im Tastenfeld-Konzept.
+- **Tastenfeld (RP2040):** PTT, Funktionstasten, Quittungston und Vibration wie im
+  Tastenfeld-Konzept; die Box schickt `TONE`/`VIB`-Befehle als Quittung.
 - **„Wo bin ich?“-Taste:** sagt Menü, Punkt, Talkgroup und Verbindungszustand an.
 - **Ansagen beim Einschalten:** „CarenDMR startet“ → „WLAN verbunden“ →
   „BrandMeister angemeldet, Talkgruppe Deutschland“. Fehler werden klar benannt
@@ -138,9 +143,8 @@ funktionieren auch ohne JavaScript.
 | USB-Soundkarte mit Mikrofoneingang, im Gehäuse | Pi 4 hat keinen Mikrofoneingang |
 | Lautsprecher + kleiner Verstärker, im Gehäuse | Empfang und Ansagen |
 | Mikrofon (Elektret), im Gehäuse | Senden |
-| Dreh-/Drückschalter (Encoder mit Taster) | Menü, an GPIO |
-| Taster (Gateron Brown wie im Tastenfeld-Konzept), PTT-Leiste | an GPIO oder RP2040 (offen) |
-| Vibrationsmodul 5 V | Quittung, an GPIO |
+| RP2040-Tastenfeld (vorhanden, eigenes Gehäuse) | Tasten, PTT, Quittung, per USB |
+| Dreh-/Drückschalter (Encoder mit Taster) | Menü; Einbauort offen |
 | Headset (optional) | USB oder Bluetooth |
 
 ### Audio-Wege
@@ -187,9 +191,9 @@ funktionieren auch ohne JavaScript.
 
 - Web-Technik: nur Python-Standardbibliothek oder kleines Framework.
 - Belegung Dreh-/Drückschalter und Tastenfeld im Betrieb (mit Caren testen).
-- Tasten direkt an die GPIO-Pins des Pi (einfacher, kein RP2040 nötig) oder das
-  RP2040-Tastenfeld per USB im Gehäuse (gleiche Firmware wie für den PC)?
-- Gehäuse (3D-Druck, Bambu Lab H2S): Maße nach Lieferung von Pi, Lüfter,
+- Dreh-/Drückschalter: an die Box (GPIO des Pi) oder ins Tastenfeld (braucht drei
+  freie RP2040-Pins und eine Firmware-Erweiterung, z. B. `ENC +1/-1`, `ENC PUSH`)?
+- Box-Gehäuse (3D-Druck, Bambu Lab H2S): Maße nach Lieferung von Pi, Lüfter,
   Lautsprecher und Soundkarte.
 - Soll die Web-Verwaltung später auch Gegenstationen anzeigen (aktuell: nein,
   kein Monitoring)?

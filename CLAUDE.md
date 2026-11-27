@@ -139,5 +139,6 @@ per dynarmic emulieren; Firmware **nicht** ausliefern, sondern zur Laufzeit lade
 
 ## Git
 
-- Commits und Pushes macht der Nutzer selbst.
+- Commits und Pushes macht Claude selbstständig, wenn notwendig und sinnvoll
+  (in Cloud-Sitzungen auf den vorgegebenen Arbeitszweig, nicht auf `main`).
 - Commit-Nachrichten im Stil `0.2.1.xx: Kurzbeschreibung`.
