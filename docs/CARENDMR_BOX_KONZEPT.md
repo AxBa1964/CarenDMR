@@ -76,6 +76,31 @@ Zusätzlich sagt die Box ihre Adresse auf Tastendruck an
 - Rückfall ohne Handy: USB-Stick mit `carendmr-box.local.json` (WLAN, Station);
   die Box liest ihn beim Einstecken ein und bestätigt per Ansage.
 
+## Einrichtungsassistent (Web-App, entschieden 27.11.2026)
+
+Beim ersten Aufruf der Web-App führt ein Assistent Schritt für Schritt durch die
+Erstinstallation. Er ist **jederzeit abbrechbar**: Erledigte Schritte bleiben
+gespeichert, beim nächsten Aufruf geht es an derselben Stelle weiter
+(„Einrichtung fortsetzen“). Einzelne Schritte lassen sich überspringen, z. B. nur
+FM ohne DMR. Später über „System → Einrichtung erneut starten“ wiederholbar.
+
+1. **Verwaltungskennwort** festlegen.
+2. **WLAN** (im Einrichtungsmodus): Heimnetz wählen, Kennwort.
+3. **Netze wählen:** DMR, FM-Funknetz oder beide.
+4. **DMR:** Rufzeichen, DMR-ID, Hotspot-Passwort, Server; Verbindungstest.
+5. **Sprach-Codec (nur DMR):** Firmware herunterladen und prüfen.
+6. **FM-Funknetz:** Rufzeichen (`DK7EE-TRX`), Key, Server, Port; Verbindungstest.
+7. **Audio:** Lautsprecher-Probeton, Mikrofon-Probeaufnahme mit Wiedergabe.
+8. **Favoriten je Netz:** Liste anlegen (aus Talkgroup-Katalog, Vorschlägen oder
+   Import), Reihenfolge festlegen.
+9. **FAV 1–4 je Netz:** aus der Favoritenliste belegen (darf leer bleiben).
+10. **Zusammenfassung:** alles auf einer Seite, „Fertig“; die Box sagt
+    „Einrichtung abgeschlossen“ an.
+
+Barrierefrei wie die übrige Web-App: jeder Schritt eine Seite mit Überschrift
+„Schritt 3 von 10“, Fehler als Text am Feld, „Zurück“, „Weiter“, „Überspringen“,
+„Abbrechen“.
+
 ## Seiten der Web-Verwaltung
 
 1. **Übersicht** – Verbindungsstatus (WLAN, BrandMeister), aktuelle Talkgroup,
@@ -346,14 +371,18 @@ FUNKAMATEUR-Ergänzung zu FA 2/26 „HamLink und Latry“, Latry-Projektseite):
   - **Taste 1–4 lang drücken** übernimmt den gerade angesagten Favoriten auf diesen
     Platz; Quittungston (+ Vibration) und Ansage bestätigen
     („Taste 2: Deutschland, 262 gespeichert“).
-  - Vorgaben der Hotliste, im Web-Tool wiederherstellbar:
-    - DMR: 91 World-wide, 9990 Papagei (privat), 262 Deutschland, 2623 Niedersachsen/Bremen.
-    - FM: 20 Testarea, 9990 Papagei, 9998 Papagei, vierte noch offen.
+  - **Keine Vorbelegung:** Die Box startet mit leerer Hotliste. Favoritenliste und
+    FAV 1–4 (je Netz) werden im Einrichtungsassistenten der Web-App belegt und
+    sind später jederzeit änderbar – im Web oder per Taste lang drücken.
+  - Leerer Platz: Ansage „Platz 2 ist frei. Zum Belegen einen Favoriten ansagen
+    lassen und Taste 2 lang drücken.“
+  - Im Assistenten als Vorschlag anklickbar (nicht vorbelegt): DMR 91, 9990
+    (Papagei, privat), 262, 2623; FM 20 (Testarea), 9990, 9998.
   - Hotliste wird sofort gespeichert und übersteht Neustarts.
   - Offen: Dauer „lang drücken“ (Vorschlag 1,5 s).
 - Web-Verwaltung: Einstellungen für DMR und FM, Favoriten beider Netze bearbeiten,
   **importieren und exportieren** (Datei-Format offen, z. B. JSON wie
-  `favorites.local.json`), auf Vorgaben zurücksetzen.
+  `favorites.local.json`).
 - Rufzeichen FM: `DK7EE-TRX`.
 
 Vorschlag zur Umsetzung (später):
