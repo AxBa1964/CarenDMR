@@ -300,8 +300,20 @@ Vorschlag zur Umsetzung (später):
 
 Vor der Umsetzung zu klären:
 
-- **Zugang beantragt** (Stand 27.11.2026) mit Rufzeichen `DK7EE-TRX`; Antwort
-  steht aus. Passwort später nur in `config/fm_funknetz.local.json` (gitignored),
+- **Zugang erhalten** (Mail des FM-Funknetz-Admin-Teams, 27.11.2026): vergebenes
+  Rufzeichen `DO1DPL-TRX` (beantragt war `DK7EE-TRX` – klären) und ein Key.
+  Betriebsregeln aus der Mail:
+  - Erste Tests **nicht** in TG 2, 262, 777 u. ä., sondern in **TG 20 „Testarea“**.
+  - Modulation prüfen über die Sprachpapageien **TG 9990 und TG 9998** und
+    https://lh.fm-funknetz.de/parrot_widget.html – nicht in laufenden QSOs fragen.
+  - Jede Aussendung ist auch über weitreichende Relais per HF hörbar; nie „Test,
+    Test“ ohne Rufzeichen.
+  - Regeln: https://fm-funknetz.de/rules/ (Verstöße → Sperrung);
+    svxlink.conf-Hilfe: https://fm-funknetz.de/zugangseinrichtung/ (beide Seiten
+    aus der Cloud-Umgebung nicht abrufbar, HTTP 404).
+  - Freischaltung kann bis zu 60 Minuten dauern.
+  - Für CarenDMR: Papagei-Talkgroups 9990/9998 und Test-TG 20 als Vorgabe-Favoriten
+    für FM; TG 2/262/777 erst nach erfolgreichem Test. Passwort später nur in `config/fm_funknetz.local.json` (gitignored),
   nie in Chat oder Repository.
 - Beim Netzbetreiber nachfragen, ob ein eigener Client (Box)
   zugelassen ist, welches Rufzeichen-Suffix und welche Protokollversion
