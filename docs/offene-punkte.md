@@ -63,6 +63,16 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.95.
 - [x] Probekappe (27.11.2026): Sitz auf dem Schalter passt perfekt. Braille auf
       der Kappe wird beim Druck mit Stützen unbrauchbar (nicht sauber fühlbar).
 
+## Wunsch (noch nicht umgesetzt): Plättchen für die PTT-Taste
+
+- Entschieden 27.11.2026: Variante 1 – langes Plättchen ca. 53 × 14 über fast
+  die ganze PTT-Kappe, zweifarbig wie die übrigen (Grundplatte schwarz), mit
+  erhabener weißer **Längsrippe** in der Mitte. Caren fühlt die Mitte der Taste
+  und drückt dort, damit beide Schalter gleichmäßig auslösen.
+- Flach mit Rippe nach oben drucken, ohne Stützen; aufkleben wie die anderen.
+- Optional: zusätzliche Datei mit Platte und Zeichen als ein Objekt (3MF), damit
+  in Bambu Studio nicht zwei Dateien zusammen geladen werden müssen.
+
 ## Kappen ohne Zeichen + aufgeklebte Plättchen (umgesetzt in 0.2.1.95)
 
 - Kappen oben **flach, ohne Vertiefung**: auf dem Kopf gedruckt liegt die
