@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.92.
+Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.93.
 
 ## Stand
 
@@ -13,6 +13,9 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.92.
 - 0.2.1.91: Projektordner aufgeräumt, `build_setup.bat`, Setup verschlankt
   (164,5 MB statt 183), Erststart öffnet das Hauptfenster, Log-Rotation TG-Monitor.
 - 0.2.1.92: Update-Prüfung auf Anfrage über `versionen.json` (Variante A).
+- 0.2.1.93: CarenDMR.box Schritt 1 – Codec-Bridge für Linux/aarch64
+  (`native/build_md380_dynarmic_linux.sh`) und `python main.py --codec-benchmark`;
+  Probelauf unter Linux x86_64 erfolgreich (11 % eines 20-ms-Rahmens).
 - Setup 0.2.1.92 gebaut und als `CarenDMR-Setup-0.2.1.92.zip` unter
   dk7ee.de/download abgelegt; Projektseite dk7ee.de/carendmr.html bietet den
   Download direkt an, GitHub nur noch unten als Quellcode-Verweis.
@@ -28,6 +31,13 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.92.
       download `https://dk7ee.de/download/CarenDMR-Setup-0.2.1.92.zip`; hochladen.
 - [ ] Neue `carendmr.html` per FTP hochladen und Download-Knopf prüfen.
 - [ ] BrandMeister-Testpasswort ändern (wurde im Chat gezeigt).
+
+## CarenDMR.box (nach Lieferung des Pi 4)
+
+- [ ] Pi einrichten und Codec messen nach `docs/CARENDMR_BOX_PI_EINRICHTUNG.md`;
+      Ausgabe von `--codec-benchmark` zurückmelden.
+- [ ] Soundkarte und Mikrofonkapsel mit `arecord`/`aplay` prüfen.
+- [ ] Danach Messung auf dem Zero 2 W (entscheidet über das Zielgerät).
 
 ## Tests in der installierten Exe 0.2.1.92
 

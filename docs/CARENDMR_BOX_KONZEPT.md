@@ -238,6 +238,11 @@ tests/test_box_*.py                 Tests der Box (laufen auch unter Windows)
 
 ## Messplan Codec (vor weiterer Hardware)
 
+Umgesetzt in 0.2.1.93: `native/build_md380_dynarmic_linux.sh` und
+`python main.py --codec-benchmark`; Anleitung `docs/CARENDMR_BOX_PI_EINRICHTUNG.md`.
+Probelauf Linux x86_64: 2,2 ms (99 %) für Kodieren + Dekodieren = 11 % des Rahmens.
+Messwerte Pi 4 / Zero 2 W: offen.
+
 1. Bridge für Linux ARM64 bauen (Grundlage Android-ARM64-Build).
 2. Test-WAV kodieren und dekodieren, Zeit pro 20-ms-Sprachrahmen messen,
    getrennt für Kodieren und Dekodieren, mit CPU-Last und Temperatur.

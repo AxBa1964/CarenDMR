@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1.93 – CarenDMR.box: Codec-Bridge für Linux und Codec-Messung
+
+- Neu: `native/build_md380_dynarmic_linux.sh` baut die MD380-Bridge für Linux (Raspberry Pi OS 64 Bit/aarch64 und x86_64) als `native/libcarendmr_md380_bridge.so` – wie unter Windows und macOS ohne Firmware, gleicher Upstream-Commit 55c9a2c.
+- Neu: `python main.py --codec-benchmark` misst Kodieren und Dekodieren pro 20-ms-Rahmen (Mittel, Median, 95 %, 99 %, Maximum, CPU-Temperatur) und bewertet die Reserve (gut bis 25 %, knapp bis 50 % des Rahmens). Optionen `--frames`, `--wav` (8 kHz, mono, 16 Bit) und `--setup-codec` (lädt die Firmware wie „Sprach-Codec einrichten“).
+- Neues Paket `carendmr/box/` (Qt-frei) als Grundlage der Box; `requirements-box.txt` mit schlanken Abhängigkeiten (derzeit nur numpy).
+- Anleitung `docs/CARENDMR_BOX_PI_EINRICHTUNG.md`: SD-Karte, Pakete, Bridge bauen, Codec messen, Soundkarte prüfen.
+- Probelauf unter Linux x86_64: Bridge gebaut, Firmware geladen, Kodieren + Dekodieren 2,2 ms (99 %) = 11 % eines Rahmens; Ein- und Ausgangspegel stimmen überein.
+
 ## 0.2.1.92 – Update-Prüfung auf Anfrage
 
 - Neu: „Nach Updates suchen …“ im Menü Programm des Hauptfensters, in Easy Strg+Umschalt+U. Es gibt keine automatische Prüfung.

@@ -55,6 +55,28 @@ def _build_parser() -> argparse.ArgumentParser:
             "ohne Angabe endet der Empfang mit Strg+C"
         ),
     )
+    parser.add_argument(
+        "--codec-benchmark",
+        action="store_true",
+        help="misst die Rechenzeit des Sprach-Codecs (CarenDMR.box, Raspberry Pi)",
+    )
+    parser.add_argument(
+        "--frames",
+        type=int,
+        metavar="ANZAHL",
+        help="Anzahl der 20-ms-Rahmen für --codec-benchmark (Vorgabe 1500 = 30 s)",
+    )
+    parser.add_argument(
+        "--wav",
+        type=Path,
+        metavar="DATEI",
+        help="eigenes Testsignal für --codec-benchmark (WAV, 8000 Hz, mono, 16 Bit)",
+    )
+    parser.add_argument(
+        "--setup-codec",
+        action="store_true",
+        help="lädt für --codec-benchmark die MD380-Firmware, falls sie fehlt",
+    )
     return parser
 
 
@@ -188,6 +210,24 @@ def run(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    benchmark_options = args.frames is not None or args.wav is not None or args.setup_codec
+    if benchmark_options and not args.codec_benchmark:
+        print("--frames, --wav und --setup-codec gehören zu --codec-benchmark.", file=sys.stderr)
+        return 2
+    if args.codec_benchmark:
+        if args.gui or args.easy or args.listen or args.tg_monitor:
+            print("--codec-benchmark kann nicht mit einer anderen Betriebsart kombiniert werden.", file=sys.stderr)
+            return 2
+        if args.frames is not None and not 100 <= args.frames <= 30000:
+            print("--frames muss zwischen 100 und 30000 liegen.", file=sys.stderr)
+            return 2
+        from carendmr.box.codec_benchmark import DEFAULT_FRAMES, run_codec_benchmark_cli
+        return run_codec_benchmark_cli(
+            project_root,
+            frames=args.frames or DEFAULT_FRAMES,
+            wav=args.wav,
+            setup_codec=args.setup_codec,
+        )
     if args.tg_monitor:
         from carendmr.tg_monitor.window import run_tg_monitor
         return run_tg_monitor(project_root)

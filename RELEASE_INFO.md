@@ -1,4 +1,4 @@
-# CarenDMR 0.2.1.92
+# CarenDMR 0.2.1.93
 
 Vorbereitung für die Windows-Exe mit Installer:
 
@@ -12,6 +12,11 @@ Vorbereitung für die Windows-Exe mit Installer:
   Laufzeit; „Sprach-Codec einrichten“ lädt sie auf Wunsch herunter.
 
 Update-Prüfung auf Anfrage (Menü Programm bzw. Strg+Umschalt+U).
+
+CarenDMR.box (Raspberry Pi): Codec-Bridge für Linux
+(`native/build_md380_dynarmic_linux.sh`) und Codec-Messung
+(`python main.py --codec-benchmark`), Anleitung in
+`docs/CARENDMR_BOX_PI_EINRICHTUNG.md`.
 
 Setup bauen: `build_setup.bat` (Tests, Exe, Installer in einem Schritt).
 

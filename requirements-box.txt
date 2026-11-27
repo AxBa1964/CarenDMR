@@ -1,0 +1,4 @@
+# CarenDMR.box (Raspberry Pi OS Lite 64 Bit) – schlanke Abhängigkeiten ohne Qt.
+# Stand 0.2.1.93: reicht für die Codec-Messung (python main.py --codec-benchmark).
+# Audio, Sprachausgabe und Web-Verwaltung ergänzen spätere Versionen.
+numpy>=2.0,<3
