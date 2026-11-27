@@ -119,55 +119,43 @@ funktionieren auch ohne JavaScript.
 
 ## Bedienung an der Box
 
-- **Tastenbelegung (entschieden 27.11.2026, kein Drehknopf):**
-
-  | Taste | kurz | lang (1,5 s) | doppelt |
-  |---|---|---|---|
-  | 1–4 | Hotlist-Platz wählen | angesagten Favoriten auf diesen Platz speichern | – |
-  | Pfeil links | zurückblättern, ansagen | Vorschlag: Netz wechseln (DMR/FM) | angesagten Eintrag wählen |
-  | Pfeil rechts | vorblättern, ansagen | Vorschlag: Status ansagen („Wo bin ich?“) | angesagten Eintrag wählen |
-  | Lautstärke + | Empfang lauter, Pegel ansagen | – | – |
-  | Lautstärke − | Empfang leiser, Pegel ansagen | – | – |
-  | Aus | Vorschlag: Status ansagen | ausschalten (3 s, Ansage „Box fährt herunter“) | – |
-  | PTT | senden, solange gedrückt | – | – |
-
-  Zusammen 9 Tasten + PTT, alle an GPIO des Pi. Die Vorschläge (Netz wechseln,
-  Status) sind mit dem Nutzer abzustimmen.
-
-- **Tastatur neu gedacht (Vorschlag 27.11.2026, nicht entschieden):** Die Box ist
-  ein eigenständiger Client, daher eigene Tasten statt Doppelbelegungen:
+- **Tastatur (entschieden 27.11.2026):** eigenständiger Client, jede Funktion mit
+  eigener Taste, kein Drehknopf, keine externe PTT-Buchse.
 
   ```text
-  [Ein/Aus]  [Info]   [Netz]   [Wer war das?]
+  [Ein/Aus]  [Info]   [Netz]   [Wer war das?]  [Wiederholen]
   [  1  ]    [  2  ]  [  3  ]  [  4  ]
   [  ◀  ]    [  ▶  ]  [  −  ]  [  +  ]
-  [============== PTT ==============]
+  [================== PTT ==================]
   ```
 
-  - **Ein/Aus:** an GPIO3 – der Pi 4 startet aus dem heruntergefahrenen Zustand,
-    wenn GPIO3 auf Masse gezogen wird (Overlay `gpio-shutdown`). Im Betrieb 3 s
-    halten = herunterfahren mit Ansage. Ganz stromlos nur durch Ziehen des Netzteils.
-  - **Info:** kurz = „Wo bin ich?“ (Netz, Talkgroup, Lautstärke); lang = voller
-    Status (WLAN, Anmeldung, Adresse der Web-Verwaltung, Version).
-  - **Netz:** wechselt DMR ↔ FM-Funknetz mit Ansage.
-  - **Wer war das?:** sagt die zuletzt gehörte Station an (Rufzeichen, Name aus den
-    Kontaktdaten, Talkgroup, vor wie vielen Sekunden); lang = die letzten fünf.
-  - Jeder Tastendruck unterbricht eine laufende Ansage; PTT immer sofort.
-  - Optional: 3,5-mm-Buchse für externe PTT (Handmikrofon, Fußtaster).
-  - Optional: Taste „Wiederholen“ für die letzte Ansage.
-  - Mit Pfeil links/rechts lang bleiben Funktionen frei (Reserve).
-  - Zusammen 12 Tasten + PTT; GPIO des Pi reicht.
-- **Tasten an der Box:** PTT, Funktionstasten wie im Tastenfeld-Konzept; kurzer
+  | Taste | kurz | lang | doppelt |
+  |---|---|---|---|
+  | Ein/Aus | aus: Box startet · an: – | 3 s: herunterfahren mit Ansage | – |
+  | Info | „Wo bin ich?“: Netz, Talkgroup, Lautstärke | voller Status: WLAN, Anmeldung, Web-Adresse, Version | – |
+  | Netz | DMR ↔ FM-Funknetz wechseln, Ansage | – | – |
+  | Wer war das? | zuletzt gehörte Station: Rufzeichen, Name, Talkgroup, vor wie vielen Sekunden | die letzten fünf Stationen | – |
+  | Wiederholen | letzte Ansage wiederholen | – | – |
+  | 1–4 | Hotlist-Platz wählen | 1,5 s: angesagten Favoriten speichern | – |
+  | ◀ / ▶ | blättern, Eintrag ansagen | Reserve | angesagten Eintrag wählen |
+  | − / + | Empfang leiser/lauter, Pegel ansagen | – | – |
+  | PTT | senden, solange gedrückt | – | – |
+
+  - Ein/Aus an **GPIO3**: Der Pi 4 startet aus dem heruntergefahrenen Zustand,
+    wenn GPIO3 auf Masse gezogen wird (Overlay `gpio-shutdown`). Ganz stromlos nur
+    durch Ziehen des Netzteils.
+  - Jeder Tastendruck unterbricht eine laufende Ansage; PTT wirkt immer sofort.
+  - Zusammen 13 Tasten + PTT, alle an GPIO des Pi.
+- **Quittung:** kurzer
   Vibrationsimpuls bei jedem Tastendruck, Quittung (hoch = OK, tiefer Doppelton +
   lange Vibration = Fehler) über Box-Lautsprecher und Vibrationsmodul.
-- **Status („Wo bin ich?“):** sagt Netz, Talkgroup, Lautstärke und Verbindungszustand an.
 - **Ansagen beim Einschalten:** „CarenDMR startet“ → „WLAN verbunden“ →
   „BrandMeister angemeldet, Talkgruppe Deutschland“. Fehler werden klar benannt
   („Kein WLAN – Einrichtungsmodus aktiv“).
 - **Sprachausgabe:** Feste Texte (Menüpunkte, Statusmeldungen) als vorab erzeugte
   WAV-Dateien in guter Stimme; nur veränderliche Texte (Rufzeichen, Namen) live
   über espeak-ng bzw. Piper (auf dem Pi 4 ausreichend schnell).
-- **Herunterfahren:** lange Tastenkombination → Ansage „Box fährt herunter“, damit
+- **Herunterfahren:** Ein/Aus 3 s halten → Ansage „Box fährt herunter“, damit
   die SD-Karte nicht beschädigt wird.
 
 ## Hardware (Entwicklung)
@@ -182,7 +170,7 @@ funktionieren auch ohne JavaScript.
 | Lautsprecher Zuahaly 3 W / 8 Ω (vorhanden/bestellt) | Empfang, Ansagen, Quittungstöne |
 | Erste Tests: BerryBase „USB Mini Mikrofon“ (Art. 125147) | Mikrofon direkt per USB, ohne Löten |
 | Endausbau: Elektret-Kapsel 6 mm mit Anschlussdrähten (z. B. Amazon B00OK619WS, 3 Stück) + Kabel mit 3,5-mm-Stecker | im Gehäuse, an den Mikrofoneingang der Soundkarte; keine MAX9814/MAX4466-Module (Linepegel) |
-| Taster Gateron Brown (9 Tasten: 1–4, Pfeil links/rechts, +, −, Aus) | an GPIO (Pull-up, gegen GND) |
+| Taster Gateron Brown (13 Tasten: Ein/Aus, Info, Netz, Wer war das?, Wiederholen, 1–4, ◀, ▶, −, +) | an GPIO (Pull-up, gegen GND) |
 | PTT-Leiste (2 Taster parallel) | ein GPIO |
 | Vibrationsmodul DAOKAI 5 V | Quittung, ein GPIO |
 | Headset (optional) | USB oder Bluetooth |
