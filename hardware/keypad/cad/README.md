@@ -20,10 +20,34 @@ Maßzeichnung: `../gehaeuse.png`, Konzept: `docs/TASTENFELD_KONZEPT.md`.
 | `unterteil` | 1 | PETG | Boden auf dem Druckbett, keine Stützen nötig |
 | `tastenplatte` | 1 | PETG | Unterseite auf dem Druckbett (flach, Noppe oben) |
 | `podestdeckel` | 1 | PETG | flach |
-| `kappe_*` (11 Stück) | je 1 | PETG | Oberseite nach oben (Braille und Symbole bleiben sauber) |
-| `kappe_ptt` | 1 | PETG | Oberseite nach oben |
+| `kappe_*` (11 Stück) | je 1 | PETG | Oberseite nach oben, Stützen nur „auf dem Druckbett“ (für den Stößel innen) |
+| `kappe_ptt` | 1 | PETG | wie die Kappen |
 | `fuss_tpu` | 4 | TPU | flach |
 | `probestreifen_ausschnitt` | 1 | PETG | flach, **zuerst drucken** |
+
+## Kappen drucken
+
+Der Stößel (Kreuz) hängt innen in der Kappe und endet 1,6 über der
+Unterkante. Bambu Studio meldet ihn deshalb als „schwebend“ – er braucht eine
+kleine Stütze. Empfohlen:
+
+- Kappe **mit der Oberseite nach oben** drucken (Braille-Punkte und Symbole
+  liegen frei und werden sauber).
+- Stützen an, Typ „Baum (automatisch)“, **„Nur auf Druckbett“**. Dann entsteht
+  nur unter dem Stößel eine kleine Stütze, die sich mit einer Pinzette
+  herausziehen lässt.
+- Nicht auf dem Kopf drucken: Dann liegen die Braille-Punkte auf Stützen und
+  werden rau.
+
+| Datei | Taste | Symbol |
+|---|---|---|
+| `kappe_favorit_1` … `_4` | Favorit 1–4 | Braille: Zahlzeichen + Ziffer 1–4 |
+| `kappe_tg_zurueck` / `kappe_tg_vor` | TG zurück / vor | Dreieck ◀ / ▶ |
+| `kappe_leiser` / `kappe_lauter` | Leiser / Lauter | Steg − / Kreuz + |
+| `kappe_verbinden` | Verbinden | Noppe |
+| `kappe_trennen` | Trennen | ✕ |
+| `kappe_beenden` | Beenden | Mulde |
+| `kappe_ptt` | PTT | Längsrille |
 
 ## Reihenfolge
 
