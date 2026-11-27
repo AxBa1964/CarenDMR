@@ -276,7 +276,7 @@ def test_client_logs_in_selects_tg_and_receives_audio():
     decoded = [p.decode_message(raw) for raw in server.received]
     assert isinstance(decoded[0], p.UnknownMessage) and decoded[0].msg_type == p.MSG_NODE_INFO
     info = json.loads(decoded[0].payload[2:].decode())
-    assert info["sw"] == "CarenDMR" and info["callsign"] == "DK7EE-APP"
+    assert info["sw"] == "CarenFM" and info["callsign"] == "DK7EE-APP"
     assert KEY not in decoded[0].payload.decode()
     assert server.received[1] == p.encode_select_tg(20)
     assert server.received[2] == p.encode_tg_monitor([9990])

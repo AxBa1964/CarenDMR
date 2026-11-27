@@ -15,6 +15,10 @@ PLACEHOLDER_CALLSIGN = "RUFZEICHEN-APP"
 DEFAULT_HOST = "fm-funknetz.de"
 DEFAULT_PORT = 5308  # Port für Apps laut FUNKAMATEUR 2/26; Relais nutzen 5300
 DEFAULT_TALKGROUP = 20  # „Testarea“ laut FM-Funknetz-Admin-Team
+# Software-Kennung in der NodeInfo; beim FM-Funknetz als „CarenFM“ beantragt.
+DEFAULT_SOFTWARE_NAME = "CarenFM"
+# Fremde Programme dürfen nicht vorgetäuscht werden.
+FOREIGN_SOFTWARE_NAMES = {"svxlink", "latry", "hamlink", "qsolink", "qso link", "svxconnect", "svxportal"}
 
 
 class FmConfigError(ValueError):
@@ -30,6 +34,7 @@ class FmFunknetzConfig:
     talkgroup: int = DEFAULT_TALKGROUP
     monitor_talkgroups: tuple[int, ...] = ()
     timeout_seconds: float = 10.0
+    software_name: str = DEFAULT_SOFTWARE_NAME
 
     def validate(self) -> None:
         callsign = self.callsign.strip()
@@ -47,6 +52,14 @@ class FmFunknetzConfig:
             raise FmConfigError("Die Talkgroup muss eine positive Zahl sein.")
         if any(not 1 <= tg <= 0xFFFFFFFF for tg in self.monitor_talkgroups):
             raise FmConfigError("Mitgehörte Talkgroups müssen positive Zahlen sein.")
+        name = self.software_name.strip()
+        if not name or len(name) > 32:
+            raise FmConfigError("Der Software-Name muss 1 bis 32 Zeichen haben.")
+        if name.casefold() in FOREIGN_SOFTWARE_NAMES:
+            raise FmConfigError(
+                f"„{name}“ ist ein anderes Programm. CarenDMR meldet sich nur unter "
+                "eigenem Namen an (z. B. CarenFM oder CarenDMR)."
+            )
         if not 1.0 <= self.timeout_seconds <= 60.0:
             raise FmConfigError("Die Wartezeit muss zwischen 1 und 60 Sekunden liegen.")
 
@@ -77,6 +90,7 @@ def load_fm_config(project_root: Path) -> FmFunknetzConfig:
             talkgroup=int(data.get("talkgroup", DEFAULT_TALKGROUP)),
             monitor_talkgroups=tuple(int(tg) for tg in data.get("monitor_talkgroups", [])),
             timeout_seconds=float(data.get("timeout_seconds", 10.0)),
+            software_name=str(data.get("software_name", DEFAULT_SOFTWARE_NAME)).strip(),
         )
     except (TypeError, ValueError) as error:
         raise FmConfigError(f"{CONFIG_FILE} enthält ungültige Werte: {error}") from error

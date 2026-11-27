@@ -5,5 +5,6 @@
   "port": 5308,
   "talkgroup": 20,
   "monitor_talkgroups": [],
-  "timeout_seconds": 10.0
+  "timeout_seconds": 10.0,
+  "software_name": "CarenFM"
 }

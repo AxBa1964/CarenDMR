@@ -35,6 +35,8 @@ Netzbetreibers: `docs/CARENDMR_BOX_KONZEPT.md`, Abschnitt „FM-Funknetz zusätz
    ```
 
    `callsign`: `DK7EE-APP` (PC-Client), `auth_key`: Key vom Netzbetreiber.
+   `software_name`: Kennung gegenüber dem Reflektor, Vorgabe `CarenFM` (so beim
+   Netzbetreiber beantragt); Namen fremder Programme werden abgelehnt.
    Die Datei ist gitignored und wird nie eingecheckt.
 
 ## Einrichten (Raspberry Pi / Linux)

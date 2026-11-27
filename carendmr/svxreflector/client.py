@@ -48,9 +48,9 @@ class Disconnected:
 EventCallback = Callable[[object], None]
 
 
-def node_info(callsign: str) -> dict:
+def node_info(callsign: str, software_name: str = "CarenFM") -> dict:
     return {
-        "sw": "CarenDMR",
+        "sw": software_name,
         "swVer": __version__,
         "callsign": callsign,
         "Website": "https://dk7ee.de/carendmr.html",
@@ -114,7 +114,7 @@ class SvxReflectorClient:
             udp.settimeout(0.5)
             self._udp = udp
             self._client_id = info.client_id
-            self._send(p.encode_node_info(node_info(cfg.callsign)))
+            self._send(p.encode_node_info(node_info(cfg.callsign, cfg.software_name)))
             self._send(p.encode_select_tg(self.talkgroup))
             self._send(p.encode_tg_monitor(cfg.monitor_talkgroups))
             self._send_udp_heartbeat()

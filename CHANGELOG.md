@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1.96 – FM-Funknetz: Software-Kennung „CarenFM“
+
+- Der Reflektor des FM-Funknetzes prüft die Software-Kennung und lehnte „CarenDMR 0.2.1.95“ ab („Software/Version nicht zugelassen“). Beantragt war die Freischaltung als „CarenFM“.
+- Neu: `software_name` in `config/fm_funknetz.local.json`, Vorgabe „CarenFM“ (gilt auch für vorhandene Dateien ohne diesen Eintrag). Die Version bleibt die CarenDMR-Version.
+- Namen anderer Programme (SvxLink, Latry, HamLink, QSO Link …) werden abgelehnt – CarenDMR meldet sich nur unter eigenem Namen an.
+
 ## 0.2.1.95 – FM-Funknetz: anmelden und empfangen
 
 - Neu: Client für das FM-Funknetz (SvxLink-Reflektor, Protokoll 2.0) in `carendmr/svxreflector/` (Qt-frei): Anmeldung per HMAC-SHA1-Challenge (Key geht nie über das Netz), Talkgroup-Wahl, Mithören weiterer Talkgroups, Heartbeats (TCP 10 s, UDP 15 s), Sprechermeldungen, Opus-Empfang mit Verschleierung verlorener Pakete.
