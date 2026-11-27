@@ -156,7 +156,7 @@ class QsoHistoryService:
                 SELECT id, started_at, ended_at, duration_seconds, source_id, callsign,
                        name, city, state, country, talkgroup, timeslot, worked, worked_at
                 FROM qso_history
-                ORDER BY ended_at DESC
+                ORDER BY ended_at DESC, id DESC
                 LIMIT ?
                 """,
                 (limit,),
@@ -379,7 +379,7 @@ class QsoHistoryService:
                     )
                 connection.commit()
                 entries = [dict(row) for row in connection.execute(
-                    "SELECT started_at, ended_at, duration_seconds, source_id, callsign, name, city, state, country, talkgroup, timeslot, worked, worked_at, sync_id FROM qso_history ORDER BY ended_at"
+                    "SELECT started_at, ended_at, duration_seconds, source_id, callsign, name, city, state, country, talkgroup, timeslot, worked, worked_at, sync_id FROM qso_history ORDER BY ended_at, id"
                 )]
                 states = [dict(row) for row in connection.execute("SELECT source_id, worked, changed_at FROM qso_sync_state ORDER BY source_id")]
                 logs = [dict(row) for row in connection.execute("SELECT source_id, callsign, qso_at, logid, logged_at FROM qrz_logbook ORDER BY qso_at")]

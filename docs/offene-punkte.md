@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.93.
+Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.94.
 
 ## Stand
 
@@ -16,6 +16,8 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.93.
 - 0.2.1.93: CarenDMR.box Schritt 1 – Codec-Bridge für Linux/aarch64
   (`native/build_md380_dynarmic_linux.sh`) und `python main.py --codec-benchmark`;
   Probelauf unter Linux x86_64 erfolgreich (11 % eines 20-ms-Rahmens).
+- 0.2.1.94: QSO-Verlauf sortiert bei gleicher Endzeit stabil (Testfehler unter
+  Windows auf dem Laptop).
 - Setup 0.2.1.92 gebaut und als `CarenDMR-Setup-0.2.1.92.zip` unter
   dk7ee.de/download abgelegt; Projektseite dk7ee.de/carendmr.html bietet den
   Download direkt an, GitHub nur noch unten als Quellcode-Verweis.

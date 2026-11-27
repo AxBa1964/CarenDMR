@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1.94 – QSO-Verlauf: stabile Reihenfolge bei gleicher Endzeit
+
+- Behoben: Enden zwei Durchgänge mit genau derselben Zeit (unter Windows wegen der gröberen Uhr möglich), war zufällig, welcher als „zuletzt gehört“ galt; Stationsübersicht zeigte dann ggf. die falsche letzte Talkgroup. Bei gleicher Endzeit entscheidet jetzt die Speicherreihenfolge (`ORDER BY ended_at DESC, id DESC`, Export `ORDER BY ended_at, id`).
+- Der Test `test_station_summary_groups_speech_turns` schlug deshalb unter Windows gelegentlich fehl; neuer Test `tests/test_qso_history_same_time_02194.py` prüft gleiche Zeitstempel ausdrücklich.
+
 ## 0.2.1.93 – CarenDMR.box: Codec-Bridge für Linux und Codec-Messung
 
 - Neu: `native/build_md380_dynarmic_linux.sh` baut die MD380-Bridge für Linux (Raspberry Pi OS 64 Bit/aarch64 und x86_64) als `native/libcarendmr_md380_bridge.so` – wie unter Windows und macOS ohne Firmware, gleicher Upstream-Commit 55c9a2c.

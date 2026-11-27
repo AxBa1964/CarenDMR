@@ -1,4 +1,4 @@
-# CarenDMR 0.2.1.93
+# CarenDMR 0.2.1.94
 
 Vorbereitung für die Windows-Exe mit Installer:
 
@@ -17,6 +17,8 @@ CarenDMR.box (Raspberry Pi): Codec-Bridge für Linux
 (`native/build_md380_dynarmic_linux.sh`) und Codec-Messung
 (`python main.py --codec-benchmark`), Anleitung in
 `docs/CARENDMR_BOX_PI_EINRICHTUNG.md`.
+
+QSO-Verlauf: stabile Reihenfolge bei gleicher Endzeit (0.2.1.94).
 
 Setup bauen: `build_setup.bat` (Tests, Exe, Installer in einem Schritt).
 
