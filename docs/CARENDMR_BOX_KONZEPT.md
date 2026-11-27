@@ -2,7 +2,7 @@
 
 Ziel: ein kleines Gerät ohne Bildschirm, das per WLAN ins Internet geht, sich bei
 BrandMeister anmeldet und vollständig ohne PC DMR-Betrieb ermöglicht. Bedienung über
-Tasten, PTT und einen Dreh-/Drückschalter direkt an der Box,
+Tasten und PTT direkt an der Box (kein Drehknopf),
 alle Rückmeldungen per Sprachausgabe. Verwaltung über eine Web-Oberfläche im
 Heimnetz (wie bei der FRITZ!Box).
 
@@ -20,14 +20,14 @@ Umsetzung erst nach „jetzt umsetzen“. Bis dahin werden hier Wünsche gesamme
   heruntergeladen (gleiche Quellen und SHA-256 wie in `CLAUDE.md`).
   Grundlage für den ARM64-Build: Branch `feature/android-arm64-prototype`.
 - **Der Raspberry Pi übernimmt alles, kein RP2040 in der Box.** Funktionstasten,
-  PTT-Leiste, Dreh-/Drückschalter und Vibrationsmodul hängen direkt an den
+  PTT-Leiste und Vibrationsmodul hängen direkt an den
   GPIO-Pins des Pi. Quittungstöne kommen über den Box-Lautsprecher (kein PAM8302
   nötig). Tasten, Braille und Kappenformen wie im Tastenfeld-Konzept.
 - Das RP2040-Tastenfeld (`docs/TASTENFELD_KONZEPT.md`) bleibt ein eigenes Gerät
   für den PC.
 - **Verwaltung:** Web-Oberfläche im Heimnetz, kein Bildschirm an der Box.
 - **Alles in einem Gehäuse:** Pi, USB-Soundkarte, Lautsprecher, Mikrofon, Tasten,
-  PTT, Dreh-/Drückschalter, Vibration. Headset wahlweise per USB oder Bluetooth.
+  PTT, Vibration. Headset wahlweise per USB oder Bluetooth.
   Ein Netzteil, ein Gerät.
 - **Gerätename im Netz: `carendmr-box`**, Web-Verwaltung unter
   `http://carendmr-box.local`.
@@ -119,14 +119,24 @@ funktionieren auch ohne JavaScript.
 
 ## Bedienung an der Box
 
-- **Dreh-/Drückschalter:** Drehen = nächster Menüpunkt, jeder Punkt wird sofort mit
-  Position angesagt („Talkgruppe Deutschland, 3 von 5“). Kurz drücken = auswählen,
-  lang drücken = zurück. Im Betrieb: Drehen = Talkgroup wechseln oder Lautstärke
-  (Belegung mit Caren abstimmen).
+- **Tastenbelegung (entschieden 27.11.2026, kein Drehknopf):**
+
+  | Taste | kurz | lang (1,5 s) | doppelt |
+  |---|---|---|---|
+  | 1–4 | Hotlist-Platz wählen | angesagten Favoriten auf diesen Platz speichern | – |
+  | Pfeil links | zurückblättern, ansagen | Vorschlag: Netz wechseln (DMR/FM) | angesagten Eintrag wählen |
+  | Pfeil rechts | vorblättern, ansagen | Vorschlag: Status ansagen („Wo bin ich?“) | angesagten Eintrag wählen |
+  | Lautstärke + | Empfang lauter, Pegel ansagen | – | – |
+  | Lautstärke − | Empfang leiser, Pegel ansagen | – | – |
+  | Aus | Vorschlag: Status ansagen | ausschalten (3 s, Ansage „Box fährt herunter“) | – |
+  | PTT | senden, solange gedrückt | – | – |
+
+  Zusammen 9 Tasten + PTT, alle an GPIO des Pi. Die Vorschläge (Netz wechseln,
+  Status) sind mit dem Nutzer abzustimmen.
 - **Tasten an der Box:** PTT, Funktionstasten wie im Tastenfeld-Konzept; kurzer
   Vibrationsimpuls bei jedem Tastendruck, Quittung (hoch = OK, tiefer Doppelton +
   lange Vibration = Fehler) über Box-Lautsprecher und Vibrationsmodul.
-- **„Wo bin ich?“-Taste:** sagt Menü, Punkt, Talkgroup und Verbindungszustand an.
+- **Status („Wo bin ich?“):** sagt Netz, Talkgroup, Lautstärke und Verbindungszustand an.
 - **Ansagen beim Einschalten:** „CarenDMR startet“ → „WLAN verbunden“ →
   „BrandMeister angemeldet, Talkgruppe Deutschland“. Fehler werden klar benannt
   („Kein WLAN – Einrichtungsmodus aktiv“).
@@ -148,9 +158,8 @@ funktionieren auch ohne JavaScript.
 | Lautsprecher Zuahaly 3 W / 8 Ω (vorhanden/bestellt) | Empfang, Ansagen, Quittungstöne |
 | Erste Tests: BerryBase „USB Mini Mikrofon“ (Art. 125147) | Mikrofon direkt per USB, ohne Löten |
 | Endausbau: Elektret-Kapsel 6 mm mit Anschlussdrähten (z. B. Amazon B00OK619WS, 3 Stück) + Kabel mit 3,5-mm-Stecker | im Gehäuse, an den Mikrofoneingang der Soundkarte; keine MAX9814/MAX4466-Module (Linepegel) |
-| Taster Gateron Brown (5–6 Funktionstasten) | an GPIO (Pull-up, gegen GND) |
+| Taster Gateron Brown (9 Tasten: 1–4, Pfeil links/rechts, +, −, Aus) | an GPIO (Pull-up, gegen GND) |
 | PTT-Leiste (2 Taster parallel) | ein GPIO |
-| Dreh-/Drückschalter (Encoder mit Taster) | Menü, drei GPIO |
 | Vibrationsmodul DAOKAI 5 V | Quittung, ein GPIO |
 | Headset (optional) | USB oder Bluetooth |
 
@@ -195,7 +204,7 @@ funktionieren auch ohne JavaScript.
     bedient den Funk nur über den `OperatingController`.
   - Eingabe: `KeypadService` mit austauschbarer Quelle – GPIO an der Box,
     USB-CDC beim RP2040-Tastenfeld am PC. Beide liefern dieselben Tastenereignisse
-    (`KEY n DOWN/UP/LONG`, Encoder), die Bedienlogik ist für beide gleich.
+    (`KEY n DOWN/UP/LONG`), die Bedienlogik ist für beide gleich.
   - Ausgabe: Linux-Variante von `SpeechOutput` (`accessibility/speech.py`).
   - Web-Verwaltung: kleiner HTTP-Server im selben Prozess oder als eigener Dienst;
     ändert Einstellungen nur über die bestehenden Application-Services
@@ -217,7 +226,7 @@ diesen Kern verdoppeln.
 ```text
 carendmr/box/                       Python: Box-Oberfläche ohne Qt
   app.py                            Start, Ablauf, Menü
-  gpio_input.py                     Tasten, PTT, Drehknopf, Vibration
+  gpio_input.py                     Tasten, PTT, Vibration
   speech_linux.py                   Sprachausgabe (espeak-ng/Piper, WAV-Ansagen)
   web/                              Web-Verwaltung (Seiten, Vorlagen)
 box/                                Pi-spezifisch, kein Python-Paket
@@ -252,7 +261,7 @@ Messwerte Pi 4 / Zero 2 W: offen.
 ## Offen
 
 - Web-Technik: nur Python-Standardbibliothek oder kleines Framework.
-- Belegung Dreh-/Drückschalter und Tastenfeld im Betrieb (mit Caren testen).
+- Tastenbelegung im Betrieb mit Caren testen (siehe „Bedienung an der Box“).
 - Pi-Modell für die fertige Box: Pi 4 (bestellt, 85 × 56 mm), Pi 3 A+
   (65 × 56 mm) oder Zero 2 W (65 × 30 mm) – nach der Codec-Messung.
 - Gehäuse (3D-Druck, Bambu Lab H2S): vorhandenes Tastenfeld-Gehäuse erweitern oder
@@ -329,8 +338,7 @@ FUNKAMATEUR-Ergänzung zu FA 2/26 „HamLink und Latry“, Latry-Projektseite):
     - DMR: 91 World-wide, 9990 Papagei (privat), 262 Deutschland, 2623 Niedersachsen/Bremen.
     - FM: 20 Testarea, 9990 Papagei, 9998 Papagei, vierte noch offen.
   - Hotliste wird sofort gespeichert und übersteht Neustarts.
-  - Offen: Dauer „lang drücken“ (Vorschlag 1,5 s). Wird der Drehknopf neben den
-    Pfeiltasten noch gebraucht (z. B. für Lautstärke) oder entfällt er?
+  - Offen: Dauer „lang drücken“ (Vorschlag 1,5 s).
 - Web-Verwaltung: Einstellungen für DMR und FM, Favoriten beider Netze bearbeiten,
   **importieren und exportieren** (Datei-Format offen, z. B. JSON wie
   `favorites.local.json`), auf Vorgaben zurücksetzen.
