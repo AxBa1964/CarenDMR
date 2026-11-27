@@ -300,8 +300,10 @@ Vorschlag zur Umsetzung (später):
 
 Vor der Umsetzung zu klären:
 
-- **Zugang erhalten** (Mail des FM-Funknetz-Admin-Teams, 27.11.2026): vergebenes
-  Rufzeichen `DO1DPL-TRX` (beantragt war `DK7EE-TRX` – klären) und ein Key.
+- **Zugang erhalten** (Mail des FM-Funknetz-Admin-Teams, 27.11.2026). Nach Korrektur
+  vergeben: **`DK7EE-APP`** und **`DK7EE-TRX`** (das zuerst genannte `DO1DPL-TRX`
+  war falsch). Vorschlag: `DK7EE-APP` für CarenDMR (PC und Box, ohne Funkgerät),
+  `DK7EE-TRX` für einen Hotspot mit Funkgerät – mit dem Betreiber bestätigen.
   Betriebsregeln aus der Mail:
   - Erste Tests **nicht** in TG 2, 262, 777 u. ä., sondern in **TG 20 „Testarea“**.
   - Modulation prüfen über die Sprachpapageien **TG 9990 und TG 9998** und

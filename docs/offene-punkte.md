@@ -64,7 +64,7 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.93.
   Konzept in `docs/CARENDMR_BOX_KONZEPT.md`. Bestellt (27.11.2026): Pi 4 mit Lüfter,
   UGREEN-Soundkarte, Elektret-Kapseln. Erster Schritt: Codec-Messung auf ARM64.
 - FM-Funknetz (SvxReflector, Opus) zusätzlich zu DMR in Box und Client; Recherche
-  im Box-Konzept. Zugang erhalten (27.11.2026), Rufzeichen `DO1DPL-TRX`; Test nur in
+  im Box-Konzept. Zugang erhalten (27.11.2026), Rufzeichen `DK7EE-APP`/`DK7EE-TRX`; Test nur in
   TG 20, Papageien TG 9990/9998;
   erlaubte Protokollversion (2 oder 3 mit Zertifikat) beim Netzbetreiber klären.
 - Quelltext-Tests schrittweise durch Verhaltenstests ersetzen; Tests kennzeichnen,
