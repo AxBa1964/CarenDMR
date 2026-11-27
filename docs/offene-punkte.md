@@ -22,8 +22,8 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.93.
 
 ## Nutzer-Handgriffe (offen)
 
-- [ ] Laut Git-Log auf dem Shack-PC ist 0.2.1.90 der letzte Commit auf `main`;
-      0.2.1.91 und 0.2.1.92 committen und pushen.
+- [x] 0.2.1.91 und 0.2.1.92 sind auf `main` (Commit 4a246f4); 0.2.1.93 am 27.11.2026
+      nach `main` übernommen. Lokal: `git pull` auf `main`.
 - [ ] `tests/test_release_zip.py` löschen.
 - [ ] Alte `logs\tg_monitor.log` (ca. 245 MB) löschen.
 - [ ] Alte `CarenDMR-Setup.exe`/`.zip` in `release\installer` löschen.

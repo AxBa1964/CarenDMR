@@ -29,13 +29,11 @@ sudo apt update
 sudo apt install -y git cmake ninja-build g++ libboost-dev python3-venv alsa-utils
 git clone https://github.com/AxBa1964/CarenDMR.git
 cd CarenDMR
-git checkout ccr-d52f5009-z7n7e5
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-box.txt
 ```
 
-Der Zweig ist der aktuelle Arbeitszweig der Box; nach der Übernahme in `main`
-entfällt `git checkout`.
+Später aktualisieren: `cd ~/CarenDMR && git pull`.
 
 ## 4. Codec-Bridge bauen
 
