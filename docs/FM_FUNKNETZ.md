@@ -65,6 +65,7 @@ Typische Meldungen:
 | `Opus fehlt` | Schritt 1 noch nicht erledigt |
 | `Server meldet: Access denied` | Rufzeichen oder Key falsch, oder noch nicht freigeschaltet (bis 60 min) |
 | `Der Server verlangt Protokoll 3.x` | Reflektor nimmt Protokoll 2.0 nicht an – dann Zertifikat nötig |
+| `Software/Version nicht zugelassen: CarenDMR …` | Anmeldung klappt, aber der Reflektor lässt nur freigegebene Client-Software zu; Freigabe beim Netzbetreiber beantragen |
 | `nicht erreichbar` | Server, Port (5308) oder Internetverbindung prüfen |
 
 ## Noch nicht enthalten

@@ -38,9 +38,12 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.95.
 
 ## FM-Funknetz (Nutzer-Test)
 
-- [ ] Opus installieren und `config\fm_funknetz.local.json` anlegen
-      (`docs/FM_FUNKNETZ.md`), dann `main.py --fm-listen` auf TG 20; Ausgabe
-      zurückmelden (Anmeldung, Sprecher, Ton).
+- [x] Erster echter Test 27.11.2026 (Laptop): Anmeldung als `DK7EE-APP`
+      erfolgreich (Protokoll 2.0, HMAC passt). Danach trennt der Server:
+      „Software/Version nicht zugelassen: CarenDMR 0.2.1.95“ – der Reflektor
+      prüft die Software-Angabe (NodeInfo `sw`/`swVer`) gegen eine Freigabeliste.
+- [ ] Freigabe von „CarenDMR“ beim FM-Funknetz-Admin-Team beantragen (Nutzer).
+      Keine fremde Software-Kennung vortäuschen.
 - [ ] Danach: Senden (zuerst Papagei TG 9990/9998), Einbindung in
       Hauptfenster/Easy/Box, FM-Favoriten, `libopus-0.dll` ins Windows-Setup.
 
