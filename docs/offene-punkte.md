@@ -57,6 +57,19 @@ Einzige Quelle für den Projektstand. Stand: 26.11.2026, Version 0.2.1.94.
 - [ ] Halterungen für Lautsprecher, Vibrationsmodul, PAM8302, Pico nach dem
       Nachmessen ins Modell aufnehmen.
 - [ ] Winkel 7° und Tastenanordnung mit Caren ausprobieren.
+- [x] Probekappe (27.11.2026): Sitz auf dem Schalter passt perfekt. Braille auf
+      der Kappe wird beim Druck mit Stützen unbrauchbar (nicht sauber fühlbar).
+
+## Wunsch (noch nicht umgesetzt): Kappen ohne Zeichen + aufgeklebte Plättchen
+
+- Kappen oben **flach, ohne Vertiefung**: auf dem Kopf gedruckt liegt die
+  Oberseite vollflächig auf der Platte, Stößel und Wände wachsen nach oben –
+  keine Stützen nötig. Alle Kappen gleich (außer PTT).
+- Kennzeichnungs-Plättchen ca. 14 × 14 × 1,2 (so groß wie die Kappenoberseite,
+  Kanten bündig zum Ertasten der Lage), flach mit Zeichen nach oben gedruckt,
+  ohne Stützen; Braille 1–4 bzw. Symbole ◀ ▶ − + Noppe ✕, Beenden als Mulde.
+- Plättchen aufkleben (Sekundenkleber oder doppelseitiges Klebeband);
+  austauschbar, ohne Kappen neu zu drucken.
 
 ## Offene Entscheidungen
 

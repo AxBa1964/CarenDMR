@@ -113,6 +113,9 @@ Kasten) ist ersetzt, steht noch in der Git-Historie.
 - Vibrationsmodul am Boden unter der PTT (nur ca. 3 Luft zu den Taster-Pins –
   nach dem Nachmessen prüfen), zwei flache Gewichte vorne, 4 TPU-Füße.
 - Dome M3 mit Einschmelzmuttern: 4 für den Podestdeckel, 4 für die Tastenplatte.
+- Kappen (Probedruck 27.11.2026): Sitz passt; Braille direkt auf der Kappe ist
+  wegen Stützen nicht sauber druckbar → Wunsch: flache Kappen + aufgeklebte
+  Kennzeichnungs-Plättchen (siehe `docs/offene-punkte.md`).
 - Tasterausschnitt 14,0 per Probestreifen bestätigt (27.11.2026, PETG, Bambu H2S).
 - Offen: Winkel (5–10°) mit Caren testen, Modulmaße nachmessen.
 
