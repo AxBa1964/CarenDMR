@@ -133,6 +133,30 @@ funktionieren auch ohne JavaScript.
 
   Zusammen 9 Tasten + PTT, alle an GPIO des Pi. Die Vorschläge (Netz wechseln,
   Status) sind mit dem Nutzer abzustimmen.
+
+- **Tastatur neu gedacht (Vorschlag 27.11.2026, nicht entschieden):** Die Box ist
+  ein eigenständiger Client, daher eigene Tasten statt Doppelbelegungen:
+
+  ```text
+  [Ein/Aus]  [Info]   [Netz]   [Wer war das?]
+  [  1  ]    [  2  ]  [  3  ]  [  4  ]
+  [  ◀  ]    [  ▶  ]  [  −  ]  [  +  ]
+  [============== PTT ==============]
+  ```
+
+  - **Ein/Aus:** an GPIO3 – der Pi 4 startet aus dem heruntergefahrenen Zustand,
+    wenn GPIO3 auf Masse gezogen wird (Overlay `gpio-shutdown`). Im Betrieb 3 s
+    halten = herunterfahren mit Ansage. Ganz stromlos nur durch Ziehen des Netzteils.
+  - **Info:** kurz = „Wo bin ich?“ (Netz, Talkgroup, Lautstärke); lang = voller
+    Status (WLAN, Anmeldung, Adresse der Web-Verwaltung, Version).
+  - **Netz:** wechselt DMR ↔ FM-Funknetz mit Ansage.
+  - **Wer war das?:** sagt die zuletzt gehörte Station an (Rufzeichen, Name aus den
+    Kontaktdaten, Talkgroup, vor wie vielen Sekunden); lang = die letzten fünf.
+  - Jeder Tastendruck unterbricht eine laufende Ansage; PTT immer sofort.
+  - Optional: 3,5-mm-Buchse für externe PTT (Handmikrofon, Fußtaster).
+  - Optional: Taste „Wiederholen“ für die letzte Ansage.
+  - Mit Pfeil links/rechts lang bleiben Funktionen frei (Reserve).
+  - Zusammen 12 Tasten + PTT; GPIO des Pi reicht.
 - **Tasten an der Box:** PTT, Funktionstasten wie im Tastenfeld-Konzept; kurzer
   Vibrationsimpuls bei jedem Tastendruck, Quittung (hoch = OK, tiefer Doppelton +
   lange Vibration = Fehler) über Box-Lautsprecher und Vibrationsmodul.
