@@ -51,6 +51,12 @@ Jeder Taster: ein Kontakt an den GPIO-Stift, der andere an GND
 | Vibrationsmodul GND | GND | 28 oder 38 |
 | Vibrationsmodul VCC | VBUS (5 V vom USB) | 40 |
 
+PAM8302-Modul (WCMCU-8302, Beschriftung Rückseite in Klammern): A+ (Audio In+),
+A− (Audio In−), SD (Shutdown), Vin (2–5VDC), Gnd (Ground); Lautsprecher an die
+großen Lötaugen + und − (die zwei kleinen daneben sind für eine Schraubklemme,
+gleiche Anschlüsse). Den Trimmer „Vol“ für den ersten Test **ganz zurückdrehen**:
+Das PWM-Signal ist ein voller 3,3-V-Rechteck und der Verstärker hat bis zu 24 dB.
+
 ## Aufspielen
 
 1. BOOTSEL-Taste am Pico gedrückt halten und USB einstecken. Es erscheint ein
