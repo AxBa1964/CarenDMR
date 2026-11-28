@@ -24,6 +24,7 @@ class Response:
     set_cookie: str | None = None
     clear_cookie: bool = False
     content_type: str = "text/html; charset=utf-8"
+    download_name: str | None = None  # gesetzt → Datei-Download
 
 
 @dataclass
@@ -44,12 +45,14 @@ class BoxWebApp:
         auth: AdminAuth | None = None,
         sessions: SessionStore | None = None,
         station_factory=None,
+        favorites_factory=None,
         test_login=None,
     ) -> None:
         self.project_root = Path(project_root)
         self._auth = auth or AdminAuth(self.project_root)
         self._sessions = sessions or SessionStore()
         self._station_factory = station_factory or self._default_station
+        self._favorites_factory = favorites_factory or self._default_favorites
         self._test_login = test_login  # für Tests; None → echter Verbindungstest
 
     @staticmethod
@@ -57,6 +60,12 @@ class BoxWebApp:
         from carendmr.application.station_settings_service import StationSettingsService
 
         return StationSettingsService(project_root)
+
+    @staticmethod
+    def _default_favorites(project_root: Path):
+        from carendmr.box.favorites import BoxFavoritesService
+
+        return BoxFavoritesService(project_root)
 
     # ------------------------------------------------------------- Routing
     def handle(self, request: Request) -> Response:
@@ -76,6 +85,8 @@ class BoxWebApp:
             return self._overview(request)
         if path == "/station":
             return self._station(request, token)
+        if path == "/talkgroups":
+            return self._talkgroups(request, token)
         return self._render(pages.page("Nicht gefunden", "<p>Diese Seite gibt es nicht.</p>"), status=404)
 
     # ----------------------------------------------------------- Anmeldung
@@ -161,6 +172,81 @@ class BoxWebApp:
             _visible(station.draft()), csrf, message="Station gespeichert.",
             password_set=bool(submitted["password"]),
         ))
+
+    def _talkgroups(self, request: Request, token: str | None) -> Response:
+        from carendmr.box.favorites import BoxChannel, BoxFavoritesError, BoxFavoritesService, NETWORKS
+
+        service = self._favorites_factory(self.project_root)
+        network = request.form.get("netz", "dmr")
+        if network not in NETWORKS:
+            network = "dmr"
+        csrf = self._sessions.csrf_token(token) or ""
+
+        def show(error: str = "", message: str = "") -> Response:
+            return self._render(pages.favorites_page(
+                network, service.favorites(network), service.hotlist(network),
+                csrf, error=error, message=message,
+            ))
+
+        if request.method != "POST":
+            if request.form.get("export") == "1":
+                response = Response(body=service.export_network(network))
+                response.content_type = "application/json; charset=utf-8"
+                response.download_name = f"carendmr-favoriten-{network}.json"
+                return response
+            return show()
+
+        if not self._sessions.check_csrf(token, request.form.get("csrf")):
+            return show(error="Sitzung abgelaufen. Bitte erneut absenden.")
+
+        action = request.form.get("aktion", "")
+        try:
+            message = self._favorites_action(service, network, action, request.form)
+        except BoxFavoritesError as error:
+            return show(error=str(error))
+        return show(message=message)
+
+    @staticmethod
+    def _favorites_action(service, network: str, action: str, form: dict) -> str:
+        from carendmr.box.favorites import BoxChannel, BoxFavoritesError
+
+        def to_int(name: str) -> int:
+            raw = str(form.get(name, "")).strip()
+            try:
+                return int(raw)
+            except ValueError as error:
+                raise BoxFavoritesError(f"„{name}“ muss eine Zahl sein.") from error
+
+        if action == "add":
+            channel = BoxChannel(
+                talkgroup=to_int("talkgroup"),
+                name=form.get("name", ""),
+                timeslot=int(form.get("timeslot", 2) or 2),
+                call_type=form.get("call_type", "group"),
+            )
+            service.add_favorite(network, channel)
+            return "Favorit hinzugefügt."
+        if action == "remove":
+            service.remove_favorite(network, to_int("index"))
+            return "Favorit entfernt."
+        if action == "up":
+            service.move_favorite(network, to_int("index"), -1)
+            return "Verschoben."
+        if action == "down":
+            service.move_favorite(network, to_int("index"), +1)
+            return "Verschoben."
+        if action == "assign":
+            service.assign_hotlist(network, to_int("slot"), to_int("favorite"))
+            return f"Auf Platz {form.get('slot')} gelegt."
+        if action == "clear_slot":
+            service.clear_hotlist(network, to_int("slot"))
+            return f"Platz {form.get('slot')} geleert."
+        if action == "import":
+            added = service.import_network(
+                network, form.get("import_text", ""), replace_existing=form.get("replace") == "1"
+            )
+            return f"{added} Favoriten geladen."
+        raise BoxFavoritesError("Unbekannte Aktion.")
 
     def _run_test(self, config) -> str:
         if self._test_login is not None:

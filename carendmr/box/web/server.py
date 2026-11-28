@@ -66,6 +66,8 @@ class _Handler(BaseHTTPRequestHandler):
         else:
             self.send_response(response.status)
             self.send_header("Content-Type", response.content_type)
+            if response.download_name:
+                self.send_header("Content-Disposition", f'attachment; filename="{response.download_name}"')
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")

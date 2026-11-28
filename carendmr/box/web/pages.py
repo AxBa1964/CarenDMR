@@ -39,6 +39,7 @@ def page(title: str, body: str, *, nav: bool = True) -> str:
     navigation = (
         '<nav aria-label="Hauptmenü"><a href="/">Übersicht</a>'
         '<a href="/station">DMR-Station</a>'
+        '<a href="/talkgroups">Talkgroups</a>'
         '<a href="/abmelden">Abmelden</a></nav>'
         if nav else ""
     )
@@ -136,3 +137,100 @@ def station_page(
         + "</form>"
     )
     return page("DMR-Station", body)
+
+
+def _hidden(csrf: str, network: str) -> str:
+    return (
+        f'<input type="hidden" name="csrf" value="{escape(csrf)}">'
+        f'<input type="hidden" name="netz" value="{escape(network)}">'
+    )
+
+
+def favorites_page(
+    network: str, favorites, hotlist, csrf: str, *, error: str = "", message: str = ""
+) -> str:
+    net_label = "DMR" if network == "dmr" else "FM-Funknetz"
+    other = "fm" if network == "dmr" else "dmr"
+    other_label = "FM-Funknetz" if network == "dmr" else "DMR"
+    is_dmr = network == "dmr"
+
+    switch = (
+        f'<p>Netz: <strong>{escape(net_label)}</strong> · '
+        f'<a href="/talkgroups?netz={other}">zu {escape(other_label)} wechseln</a></p>'
+    )
+
+    # Hotliste 1–4
+    slot_options = "".join(
+        f'<option value="{i}">{escape(fav.label())}</option>'
+        for i, fav in enumerate(favorites)
+    )
+    slot_rows = []
+    for slot in range(1, 5):
+        current = hotlist[slot - 1] if slot - 1 < len(hotlist) else None
+        belegt = current.label() if current else "frei"
+        assign = (
+            f'<form method="post" action="/talkgroups" style="display:inline">'
+            f'{_hidden(csrf, network)}'
+            f'<input type="hidden" name="slot" value="{slot}">'
+            f'<label for="fav{slot}">Favorit für Platz {slot}</label>'
+            f'<select id="fav{slot}" name="favorite">{slot_options}</select> '
+            f'<button type="submit" name="aktion" value="assign">auf Platz {slot}</button>'
+            f'</form>'
+        ) if favorites else "<p class=\"hint\">Erst Favoriten anlegen.</p>"
+        clear = (
+            f'<form method="post" action="/talkgroups" style="display:inline">'
+            f'{_hidden(csrf, network)}'
+            f'<input type="hidden" name="slot" value="{slot}">'
+            f'<button type="submit" name="aktion" value="clear_slot">Platz {slot} leeren</button>'
+            f'</form>'
+        ) if current else ""
+        slot_rows.append(f"<li>Platz {slot}: <strong>{escape(belegt)}</strong><br>{assign} {clear}</li>")
+    hotlist_html = "<h2>Hotliste (Tasten 1–4)</h2>\n<ul>\n" + "\n".join(slot_rows) + "\n</ul>"
+
+    # Favoritenliste
+    rows = []
+    for index, fav in enumerate(favorites):
+        buttons = (
+            f'<form method="post" action="/talkgroups" style="display:inline">{_hidden(csrf, network)}'
+            f'<input type="hidden" name="index" value="{index}">'
+            f'<button type="submit" name="aktion" value="up">nach oben</button>'
+            f'<button type="submit" name="aktion" value="down">nach unten</button>'
+            f'<button type="submit" name="aktion" value="remove">entfernen</button></form>'
+        )
+        detail = f" · TS{fav.timeslot} · {'privat' if fav.call_type=='private' else 'Gruppe'}" if is_dmr else ""
+        rows.append(f"<li>{escape(fav.label())}{detail}<br>{buttons}</li>")
+    list_html = (
+        "<h2>Favoritenliste</h2>\n<ol>\n" + "\n".join(rows) + "\n</ol>"
+        if favorites else "<h2>Favoritenliste</h2>\n<p class=\"hint\">Noch keine Favoriten.</p>"
+    )
+
+    # Hinzufügen
+    dmr_fields = (
+        '<label for="timeslot">Zeitschlitz</label>'
+        '<select id="timeslot" name="timeslot"><option value="2">2</option><option value="1">1</option></select>'
+        '<label for="call_type">Rufart</label>'
+        '<select id="call_type" name="call_type">'
+        '<option value="group">Gruppe</option><option value="private">privat</option></select>'
+    ) if is_dmr else ""
+    add_html = (
+        "<h2>Favorit hinzufügen</h2>\n"
+        f'<form method="post" action="/talkgroups">{_hidden(csrf, network)}'
+        + _field("name", "Name", hint="z. B. Deutschland")
+        + "\n" + _field("talkgroup", "Talkgroup", kind="number", required=True, inputmode="numeric")
+        + "\n" + dmr_fields
+        + '\n<button type="submit" name="aktion" value="add">Hinzufügen</button></form>'
+    )
+
+    # Import/Export
+    io_html = (
+        "<h2>Sichern und laden</h2>\n"
+        f'<p><a href="/talkgroups?netz={network}&export=1">Favoriten als Datei speichern (Export)</a></p>\n'
+        f'<form method="post" action="/talkgroups">{_hidden(csrf, network)}'
+        '<label for="import_text">Favoriten einfügen (JSON)</label>'
+        '<textarea id="import_text" name="import_text" rows="5" style="width:100%"></textarea>'
+        '<label><input type="checkbox" name="replace" value="1"> bestehende Liste ersetzen</label>'
+        '<button type="submit" name="aktion" value="import">Laden</button></form>'
+    )
+
+    body = error_box(error) + ok_box(message) + switch + hotlist_html + list_html + add_html + io_html
+    return page(f"Talkgroups {net_label}", body)

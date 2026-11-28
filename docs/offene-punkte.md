@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.97.
+Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.98.
 
 ## Stand
 
@@ -55,8 +55,8 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.97.
 
 - [x] Gerüst, Verwaltungskennwort, Übersicht, DMR-Station mit Verbindungstest
       (`python main.py --box-web`).
-- [ ] Weitere Seiten: WLAN, Sprach-Codec, Audio, Talkgroups/Favoriten (Import/Export,
-      Hotliste 1–4), FM-Funknetz, System (Update, Neustand, Sicherung).
+- [x] Talkgroups/Favoriten je Netz mit Hotliste 1–4 und Import/Export (0.2.1.98).
+- [ ] Weitere Seiten: Audio, FM-Funknetz, WLAN, Sprach-Codec, System (Update, Neustart, Sicherung).
 - [ ] Einrichtungsassistent (abbrechbar, Schritt für Schritt).
 - [ ] Erst auf dem Pi testen; mDNS-Name carendmr-box.local einrichten.
 

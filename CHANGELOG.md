@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1.98 – Box-Web: Talkgroups und Favoriten (je Netz, Hotliste 1–4)
+
+- Neue Web-Seite „Talkgroups“: Favoritenliste je Netz (DMR und FM getrennt), hinzufügen, entfernen, umsortieren.
+- Hotliste mit 4 Plätzen (Tasten 1–4) je Netz: Favorit auf einen Platz legen oder Platz leeren – entspricht „Taste lang drücken“ an der Box.
+- Sichern und Laden: Favoriten je Netz als JSON exportieren und wieder einfügen (zusammenführen oder ersetzen).
+- Eigenes Box-Modell in `config/box_favorites.local.json` (gitignored), unabhängig von den Desktop-Favoriten.
+
 ## 0.2.1.97 – CarenDMR-Box: Web-Verwaltung (Übersicht und DMR-Station)
 
 - Neu: barrierefreie Web-Verwaltung der Box, nur Python-Standardbibliothek, in `carendmr/box/web/` (Qt-frei). Start: `python main.py --box-web` (Vorgabe Port 8080, Option `--port`).
