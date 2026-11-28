@@ -46,6 +46,7 @@ class BoxWebApp:
         sessions: SessionStore | None = None,
         station_factory=None,
         favorites_factory=None,
+        audio_factory=None,
         test_login=None,
     ) -> None:
         self.project_root = Path(project_root)
@@ -53,6 +54,7 @@ class BoxWebApp:
         self._sessions = sessions or SessionStore()
         self._station_factory = station_factory or self._default_station
         self._favorites_factory = favorites_factory or self._default_favorites
+        self._audio_factory = audio_factory if audio_factory is not None else self._default_audio
         self._test_login = test_login  # für Tests; None → echter Verbindungstest
 
     @staticmethod
@@ -66,6 +68,12 @@ class BoxWebApp:
         from carendmr.box.favorites import BoxFavoritesService
 
         return BoxFavoritesService(project_root)
+
+    @staticmethod
+    def _default_audio(project_root: Path):
+        from carendmr.application.audio_setup_service import AudioSetupService
+
+        return AudioSetupService(project_root)
 
     # ------------------------------------------------------------- Routing
     def handle(self, request: Request) -> Response:
@@ -87,6 +95,8 @@ class BoxWebApp:
             return self._station(request, token)
         if path == "/talkgroups":
             return self._talkgroups(request, token)
+        if path == "/audio":
+            return self._audio(request, token)
         return self._render(pages.page("Nicht gefunden", "<p>Diese Seite gibt es nicht.</p>"), status=404)
 
     # ----------------------------------------------------------- Anmeldung
@@ -247,6 +257,61 @@ class BoxWebApp:
             )
             return f"{added} Favoriten geladen."
         raise BoxFavoritesError("Unbekannte Aktion.")
+
+    def _audio(self, request: Request, token: str | None) -> Response:
+        from carendmr.box.audio_settings import BoxAudioSettings, BoxAudioSettingsError
+
+        levels = BoxAudioSettings(self.project_root)
+        csrf = self._sessions.csrf_token(token) or ""
+
+        inputs: list = []
+        outputs: list = []
+        current_in = current_out = None
+        devices_ok = True
+        audio = None
+        if self._audio_factory is not None:
+            try:
+                audio = self._audio_factory(self.project_root)
+                inputs, outputs = audio.scan()
+                current_in, current_out = audio.current_keys()
+            except Exception:
+                devices_ok = False
+        else:
+            devices_ok = False
+
+        def show(error: str = "", message: str = "") -> Response:
+            return self._render(pages.audio_page(
+                inputs, outputs, current_in, current_out,
+                levels.output_volume_percent(), levels.microphone_gain_percent(),
+                csrf, error=error, message=message, devices_available=devices_ok,
+            ))
+
+        if request.method != "POST":
+            return show()
+        if not self._sessions.check_csrf(token, request.form.get("csrf")):
+            return show(error="Sitzung abgelaufen. Bitte erneut absenden.")
+
+        action = request.form.get("aktion", "")
+        try:
+            if action == "save_levels":
+                levels.save(
+                    output_volume_percent=request.form.get("volume", "100"),
+                    microphone_gain_percent=request.form.get("gain", "100"),
+                )
+                return show(message="Lautstärke gespeichert.")
+            if audio is None:
+                return show(error="Audiogeräte sind hier nicht verfügbar.")
+            if action == "save_devices":
+                audio.save(request.form.get("input", ""), request.form.get("output", ""))
+                current_in = request.form.get("input", "")
+                current_out = request.form.get("output", "")
+                return show(message="Geräte gespeichert.")
+            if action == "test":
+                audio.play_test_tone(request.form.get("output", ""))
+                return show(message="Probeton abgespielt.")
+        except (BoxAudioSettingsError, ValueError) as error:
+            return show(error=str(error))
+        return show(error="Unbekannte Aktion.")
 
     def _run_test(self, config) -> str:
         if self._test_login is not None:

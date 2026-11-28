@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1.99 – Box-Web: Audio
+
+- Neue Web-Seite „Audio“: Mikrofon und Lautsprecher auswählen, Probeton, Empfangslautstärke und Mikrofonpegel (0–400 %).
+- Lautstärke und Pegel werden direkt in `config/audio_send.local.json` gespeichert (dieselbe Datei wie der Funkkern), ohne laufenden Funk.
+- Geräteauswahl über den vorhandenen `AudioSetupService`; ohne angeschlossene Soundkarte zeigt die Seite einen Hinweis, die Lautstärke bleibt trotzdem einstellbar.
+
 ## 0.2.1.98 – Box-Web: Talkgroups und Favoriten (je Netz, Hotliste 1–4)
 
 - Neue Web-Seite „Talkgroups“: Favoritenliste je Netz (DMR und FM getrennt), hinzufügen, entfernen, umsortieren.

@@ -40,6 +40,7 @@ def page(title: str, body: str, *, nav: bool = True) -> str:
         '<nav aria-label="Hauptmenü"><a href="/">Übersicht</a>'
         '<a href="/station">DMR-Station</a>'
         '<a href="/talkgroups">Talkgroups</a>'
+        '<a href="/audio">Audio</a>'
         '<a href="/abmelden">Abmelden</a></nav>'
         if nav else ""
     )
@@ -234,3 +235,49 @@ def favorites_page(
 
     body = error_box(error) + ok_box(message) + switch + hotlist_html + list_html + add_html + io_html
     return page(f"Talkgroups {net_label}", body)
+
+
+def audio_page(
+    inputs, outputs, current_input, current_output, volume: int, gain: int, csrf: str,
+    *, error: str = "", message: str = "", devices_available: bool = True,
+) -> str:
+    def options(choices, selected) -> str:
+        return "".join(
+            f'<option value="{escape(c.key)}"{" selected" if c.key == selected else ""}>'
+            f"{escape(c.label)}</option>"
+            for c in choices
+        )
+
+    if devices_available and (inputs or outputs):
+        devices = (
+            '<form method="post" action="/audio">'
+            + f'<input type="hidden" name="csrf" value="{escape(csrf)}">'
+            + '<label for="input">Mikrofon</label>'
+            + f'<select id="input" name="input">{options(inputs, current_input)}</select>'
+            + '<label for="output">Lautsprecher</label>'
+            + f'<select id="output" name="output">{options(outputs, current_output)}</select>'
+            + '<button type="submit" name="aktion" value="save_devices">Geräte speichern</button>'
+            + '<button type="submit" name="aktion" value="test">Probeton</button></form>'
+        )
+    else:
+        devices = (
+            '<p class="hint">Keine Audiogeräte gefunden. Die Geräteauswahl steht erst '
+            "zur Verfügung, wenn eine USB-Soundkarte angeschlossen ist (auf dem Pi).</p>"
+        )
+
+    volume_form = (
+        "<h2>Lautstärke und Mikrofon</h2>\n"
+        f'<form method="post" action="/audio">'
+        f'<input type="hidden" name="csrf" value="{escape(csrf)}">'
+        + _field("volume", "Empfangslautstärke (Prozent)", str(volume), kind="number",
+                 inputmode="numeric", hint="0–400")
+        + "\n" + _field("gain", "Mikrofonpegel (Prozent)", str(gain), kind="number",
+                        inputmode="numeric", hint="0–400")
+        + '\n<button type="submit" name="aktion" value="save_levels">Speichern</button></form>'
+    )
+
+    body = (
+        error_box(error) + ok_box(message)
+        + "<h2>Geräte</h2>\n" + devices + "\n" + volume_form
+    )
+    return page("Audio", body)
