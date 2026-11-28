@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.102.
+Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.103.
 
 ## Stand
 

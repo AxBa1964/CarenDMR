@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1.103 – Box-Web: freundlicheres Aussehen (gleiche Funktion)
+
+- Die Web-Verwaltung bekommt ein wertigeres, aber weiterhin schlichtes Aussehen: Kopfzeile mit Markenzeichen, Karten-Layout, abgerundete Eingabefelder, farbige Schaltflächen, hell/dunkel je nach System.
+- Funktion, Reihenfolge und Beschriftungen sind unverändert. Barrierefreiheit bleibt: semantisches HTML, klare Fokusrahmen für die Tastatur, gute Kontraste, kein JavaScript, keine externen Schriften oder Server (läuft offline auf der Box).
+
 ## 0.2.1.102 – Box-Web: Favoriten-Import versteht den Desktop-Export
 
 - Der Import auf der Talkgroups-Seite akzeptiert jetzt auch den Favoriten-Export des normalen CarenDMR (Felder `target` und `custom_name`/`default_name`), nicht nur das Box-eigene Format. So lassen sich vorhandene DMR-Favoriten direkt in die Box übernehmen.

@@ -9,33 +9,77 @@ from __future__ import annotations
 from html import escape
 
 _STYLE = """
-:root { color-scheme: light dark; }
-* { box-sizing: border-box; }
-body { font-family: system-ui, sans-serif; line-height: 1.5; margin: 0;
-       padding: 1rem; max-width: 42rem; margin-inline: auto; }
-h1 { font-size: 1.5rem; }
-nav a { margin-right: 1rem; }
-form { margin-top: 1rem; }
-label { display: block; margin-top: 1rem; font-weight: bold; }
-input[type=text], input[type=number], input[type=password] {
-    width: 100%; padding: 0.5rem; font-size: 1rem; margin-top: 0.25rem; }
-.hint { font-weight: normal; color: GrayText; }
-button { margin-top: 1.25rem; padding: 0.6rem 1.2rem; font-size: 1rem; }
-.error { border: 2px solid #b00020; background: #fdecea; color: #611a15;
-         padding: 0.75rem; margin-top: 1rem; }
-.ok { border: 2px solid #1b5e20; background: #e7f4e4; color: #14341a;
-      padding: 0.75rem; margin-top: 1rem; }
-dl { margin-top: 1rem; }
-dt { font-weight: bold; margin-top: 0.75rem; }
-@media (prefers-color-scheme: dark) {
-  .error { background: #3b1513; color: #f8d7d5; }
-  .ok { background: #16311a; color: #d6f0d2; }
+:root{
+  color-scheme: light dark;
+  --bg:#eef1f5; --card:#ffffff; --text:#1a2230; --muted:#5b6676;
+  --accent:#0d7d74; --accent-text:#ffffff; --border:#d4dae2;
+  --error-bg:#fdecea; --error-bd:#b3261e; --error-tx:#611a15;
+  --ok-bg:#e7f4e4; --ok-bd:#1b7a32; --ok-tx:#14341a;
+  --radius:12px; --shadow:0 1px 3px rgba(16,24,40,.09),0 1px 2px rgba(16,24,40,.06);
 }
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1621; --card:#17202c; --text:#e7edf4; --muted:#9aa7b6;
+    --accent:#2bb3a6; --accent-text:#07221f; --border:#2a3745;
+    --error-bg:#3b1513; --error-bd:#e06a63; --error-tx:#f8d7d5;
+    --ok-bg:#16311a; --ok-bd:#4fae5e; --ok-tx:#d6f0d2;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55;
+  margin:0;background:var(--bg);color:var(--text);padding:0 16px 48px}
+a{color:var(--accent)}
+.topbar{display:flex;align-items:center;gap:10px;max-width:44rem;margin:0 auto;padding:18px 0 10px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.15rem;color:var(--text)}
+.brand svg{width:28px;height:28px;flex:none;color:var(--accent)}
+nav{display:flex;flex-wrap:wrap;gap:6px;max-width:44rem;margin:0 auto;
+  padding:6px 0 10px;border-bottom:1px solid var(--border)}
+nav a{display:inline-block;padding:8px 13px;border-radius:999px;text-decoration:none;
+  color:var(--text);background:transparent}
+nav a:hover{background:rgba(13,125,116,.12)}
+main{max-width:44rem;margin:18px auto 0;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px}
+h1{font-size:1.6rem;margin:0 0 .4rem}
+h2{font-size:1.2rem;margin:1.6rem 0 .25rem;padding-top:1.1rem;border-top:1px solid var(--border)}
+h2:first-of-type{border-top:0;padding-top:.25rem}
+label{display:block;margin-top:1rem;font-weight:600}
+.hint{font-weight:400;color:var(--muted)}
+input[type=text],input[type=number],input[type=password],select,textarea{
+  width:100%;padding:.6rem .7rem;font-size:1rem;margin-top:.35rem;
+  border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text)}
+textarea{resize:vertical}
+input:focus-visible,select:focus-visible,textarea:focus-visible,
+button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button{margin-top:1.25rem;margin-right:.5rem;padding:.65rem 1.25rem;font-size:1rem;font-weight:600;
+  color:var(--accent-text);background:var(--accent);border:1px solid transparent;
+  border-radius:8px;cursor:pointer}
+button:hover{filter:brightness(1.08)}
+form{margin-top:.5rem}
+dl{margin-top:1rem;display:grid;grid-template-columns:auto 1fr;gap:.4rem 1.25rem}
+dt{font-weight:700;color:var(--muted)}
+dd{margin:0}
+ol,ul{padding-left:1.3rem}
+li{margin:.55rem 0}
+.error{border:1px solid var(--error-bd);background:var(--error-bg);color:var(--error-tx);
+  padding:.75rem 1rem;border-radius:8px;margin-top:1rem}
+.ok{border:1px solid var(--ok-bd);background:var(--ok-bg);color:var(--ok-tx);
+  padding:.75rem 1rem;border-radius:8px;margin-top:1rem}
+@media (max-width:30rem){main{padding:18px 16px}}
 """.strip()
+
+_BRAND_ICON = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
+    '<circle cx="12" cy="14" r="3"></circle>'
+    '<path d="M7.8 9.8a6 6 0 0 1 8.4 0"></path>'
+    '<path d="M5 7a9 9 0 0 1 14 0"></path></svg>'
+)
 
 
 def page(title: str, body: str, *, nav: bool = True) -> str:
     """Rahmen einer Seite. ``title`` erscheint als Titel und als erste H1."""
+    header = f'<header class="topbar"><span class="brand">{_BRAND_ICON}CarenDMR-Box</span></header>'
     navigation = (
         '<nav aria-label="Hauptmenü"><a href="/">Übersicht</a>'
         '<a href="/station">DMR-Station</a>'
@@ -53,7 +97,7 @@ def page(title: str, body: str, *, nav: bool = True) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f"<title>{escape(title)} – CarenDMR-Box</title>\n"
         f"<style>{_STYLE}</style>\n</head>\n<body>\n"
-        f"{navigation}\n<main>\n<h1>{escape(title)}</h1>\n{body}\n</main>\n</body>\n</html>\n"
+        f"{header}\n{navigation}\n<main>\n<h1>{escape(title)}</h1>\n{body}\n</main>\n</body>\n</html>\n"
     )
 
 
