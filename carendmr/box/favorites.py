@@ -60,9 +60,15 @@ class BoxChannel:
 
     @classmethod
     def from_dict(cls, item: dict) -> "BoxChannel":
+        # Eigenes Box-Format (talkgroup/name) und Desktop-CarenDMR-Export
+        # (target/custom_name/default_name) werden beide verstanden.
+        talkgroup = item.get("talkgroup", item.get("target"))
+        if talkgroup is None:
+            raise KeyError("talkgroup")
+        name = item.get("name") or item.get("custom_name") or item.get("default_name") or ""
         return cls(
-            talkgroup=int(item["talkgroup"]),
-            name=str(item.get("name", "")),
+            talkgroup=int(talkgroup),
+            name=str(name),
             timeslot=int(item.get("timeslot", 2) or 2),
             call_type=str(item.get("call_type", "group") or "group"),
         )

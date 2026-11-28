@@ -171,3 +171,24 @@ def test_page_csrf_required(tmp_path):
         {SESSION_COOKIE: token})).body
     assert "Sitzung abgelaufen" in page
     assert BoxFavoritesService(tmp_path).favorites("dmr") == ()
+
+
+def test_import_desktop_carendmr_export(tmp_path):
+    """0.2.1.102: Export des Desktop-CarenDMR (target/custom_name) laden."""
+    desktop = [
+        {"custom_name": "World-wide", "default_name": "World-wide", "target": 91,
+         "timeslot": 2, "call_type": "group", "note": "", "position": 0},
+        {"custom_name": "Papagei", "default_name": "", "target": 9990,
+         "timeslot": 2, "call_type": "private", "note": "Echotest", "position": 1},
+        {"custom_name": "Deutschland", "default_name": "Deutschland", "target": 262,
+         "timeslot": 2, "call_type": "group", "note": "", "position": 2},
+    ]
+    service = BoxFavoritesService(tmp_path)
+    added = service.import_network("dmr", json.dumps(desktop))
+    assert added == 3
+    favorites = service.favorites("dmr")
+    assert [f.talkgroup for f in favorites] == [91, 9990, 262]
+    assert favorites[0].name == "World-wide"
+    assert favorites[1].call_type == "private"
+    # default_name wird genutzt, wenn custom_name fehlt
+    assert BoxChannel.from_dict({"target": 262, "default_name": "Deutschland"}).name == "Deutschland"

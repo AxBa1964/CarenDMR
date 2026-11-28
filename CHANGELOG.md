@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1.102 – Box-Web: Favoriten-Import versteht den Desktop-Export
+
+- Der Import auf der Talkgroups-Seite akzeptiert jetzt auch den Favoriten-Export des normalen CarenDMR (Felder `target` und `custom_name`/`default_name`), nicht nur das Box-eigene Format. So lassen sich vorhandene DMR-Favoriten direkt in die Box übernehmen.
+
 ## 0.2.1.101 – Box-Web: System und Einrichtungsassistent
 
 - Neue Web-Seite „System“: Verwaltungskennwort ändern, Box neu starten oder herunterfahren (nur auf dem Raspberry Pi), Sicherung der Einstellungen als Datei herunterladen.
