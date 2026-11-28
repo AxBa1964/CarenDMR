@@ -1,6 +1,6 @@
 # CarenDMR – offene Punkte
 
-Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.100.
+Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.101.
 
 ## Stand
 
@@ -58,8 +58,10 @@ Einzige Quelle für den Projektstand. Stand: 27.11.2026, Version 0.2.1.100.
 - [x] Talkgroups/Favoriten je Netz mit Hotliste 1–4 und Import/Export (0.2.1.98).
 - [x] Audio: Geräte, Probeton, Lautstärke/Mikrofonpegel (0.2.1.99).
 - [x] FM-Funknetz: Zugang speichern und testen (0.2.1.100).
-- [ ] Weitere Seiten: WLAN, Sprach-Codec, System (Update, Neustart, Sicherung).
-- [ ] Einrichtungsassistent (abbrechbar).
+- [x] System: Kennwort ändern, Neustart/Herunterfahren, Sicherung (0.2.1.101).
+- [x] Einrichtungsassistent als abbrechbare Schritt-Liste (0.2.1.101).
+- [ ] Noch offen: WLAN-Einrichtung (im Einrichtungsmodus), Sprach-Codec-Seite,
+      Update-Funktion, Sicherung wieder einspielen (Restore).
 - [ ] Einrichtungsassistent (abbrechbar, Schritt für Schritt).
 - [ ] Erst auf dem Pi testen; mDNS-Name carendmr-box.local einrichten.
 

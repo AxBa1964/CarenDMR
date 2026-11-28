@@ -49,6 +49,7 @@ class BoxWebApp:
         audio_factory=None,
         test_login=None,
         fm_test=None,
+        system_action=None,
     ) -> None:
         self.project_root = Path(project_root)
         self._auth = auth or AdminAuth(self.project_root)
@@ -58,6 +59,7 @@ class BoxWebApp:
         self._audio_factory = audio_factory if audio_factory is not None else self._default_audio
         self._test_login = test_login  # für Tests; None → echter Verbindungstest
         self._fm_test = fm_test
+        self._system_action = system_action
 
     @staticmethod
     def _default_station(project_root: Path):
@@ -101,6 +103,10 @@ class BoxWebApp:
             return self._audio(request, token)
         if path == "/fm":
             return self._fm(request, token)
+        if path == "/system":
+            return self._system(request, token)
+        if path == "/einrichtung":
+            return self._render(pages.assistant_page(self._assistant_steps()))
         return self._render(pages.page("Nicht gefunden", "<p>Diese Seite gibt es nicht.</p>"), status=404)
 
     # ----------------------------------------------------------- Anmeldung
@@ -380,6 +386,79 @@ class BoxWebApp:
             {k: v for k, v in new_draft.items() if k != "key_set"}, csrf,
             message="FM-Zugang gespeichert.", key_set=new_draft.get("key_set", False),
         ))
+
+    def _system(self, request: Request, token: str | None) -> Response:
+        csrf = self._sessions.csrf_token(token) or ""
+
+        def show(error: str = "", message: str = "") -> Response:
+            return self._render(pages.system_page(csrf, error=error, message=message))
+
+        if request.method != "POST":
+            if request.form.get("backup") == "1":
+                from carendmr.box.backup import backup_json
+
+                response = Response(body=backup_json(self.project_root))
+                response.content_type = "application/json; charset=utf-8"
+                response.download_name = "carendmr-box-sicherung.json"
+                return response
+            return show()
+        if not self._sessions.check_csrf(token, request.form.get("csrf")):
+            return show(error="Sitzung abgelaufen. Bitte erneut absenden.")
+
+        action = request.form.get("aktion", "")
+        if action == "change_password":
+            if not self._auth.verify(request.form.get("old", "")):
+                return show(error="Das aktuelle Kennwort ist falsch.")
+            new1 = request.form.get("new1", "")
+            if new1 != request.form.get("new2", ""):
+                return show(error="Die neuen Kennwörter stimmen nicht überein.")
+            try:
+                self._auth.set_password(new1)
+            except ValueError as error:
+                return show(error=str(error))
+            return show(message="Verwaltungskennwort geändert.")
+        if action in ("reboot", "shutdown"):
+            from carendmr.box.system_control import SystemControlError
+
+            try:
+                message = (self._system_action or self._default_system_action)(action)
+            except SystemControlError as error:
+                return show(error=str(error))
+            return show(message=message)
+        return show(error="Unbekannte Aktion.")
+
+    @staticmethod
+    def _default_system_action(action: str) -> str:
+        from carendmr.box import system_control
+
+        return system_control.reboot() if action == "reboot" else system_control.shutdown()
+
+    def _assistant_steps(self) -> list[tuple[str, str, bool]]:
+        return [
+            ("Verwaltungskennwort", "/system", self._auth.is_configured()),
+            ("DMR-Station", "/station", self._step_station_done()),
+            ("Audio", "/audio", (self.project_root / "config" / "audio.local.json").is_file()),
+            ("FM-Funknetz", "/fm", self._step_fm_done()),
+            ("Talkgroups und Favoriten", "/talkgroups", self._step_favorites_done()),
+        ]
+
+    def _step_station_done(self) -> bool:
+        try:
+            return bool(self._station_factory(self.project_root).load().callsign)
+        except Exception:
+            return False
+
+    def _step_fm_done(self) -> bool:
+        from carendmr.svxreflector.config import fm_draft
+
+        draft = fm_draft(self.project_root)
+        return bool(draft.get("key_set")) and bool(draft.get("callsign"))
+
+    def _step_favorites_done(self) -> bool:
+        from carendmr.box.favorites import NETWORKS
+
+        service = self._favorites_factory(self.project_root)
+        return any(service.favorites(network) for network in NETWORKS)
 
     def _fm_stored_key(self) -> str:
         import json

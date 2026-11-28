@@ -42,6 +42,8 @@ def page(title: str, body: str, *, nav: bool = True) -> str:
         '<a href="/talkgroups">Talkgroups</a>'
         '<a href="/audio">Audio</a>'
         '<a href="/fm">FM-Funknetz</a>'
+        '<a href="/einrichtung">Einrichtung</a>'
+        '<a href="/system">System</a>'
         '<a href="/abmelden">Abmelden</a></nav>'
         if nav else ""
     )
@@ -305,3 +307,45 @@ def fm_page(values: dict, csrf: str, *, error: str = "", message: str = "", key_
         + '<button type="submit" name="aktion" value="test">Verbindung testen</button></form>'
     )
     return page("FM-Funknetz", body)
+
+
+def system_page(csrf: str, *, error: str = "", message: str = "") -> str:
+    body = (
+        error_box(error) + ok_box(message)
+        + "<h2>Verwaltungskennwort ändern</h2>\n"
+        + f'<form method="post" action="/system"><input type="hidden" name="csrf" value="{escape(csrf)}">'
+        + _field("old", "Aktuelles Kennwort", kind="password", required=True)
+        + "\n" + _field("new1", "Neues Kennwort", kind="password", required=True)
+        + "\n" + _field("new2", "Neues Kennwort wiederholen", kind="password", required=True)
+        + '\n<button type="submit" name="aktion" value="change_password">Kennwort ändern</button></form>'
+        + "\n<h2>Sicherung</h2>\n"
+        + '<p><a href="/system?backup=1">Einstellungen als Datei speichern</a> '
+        + '(Favoriten, Station, FM und Audio – ohne Kennwörter und Key).</p>'
+        + "\n<h2>Box</h2>\n"
+        + f'<form method="post" action="/system" style="display:inline"><input type="hidden" name="csrf" value="{escape(csrf)}">'
+        + '<button type="submit" name="aktion" value="reboot">Box neu starten</button></form>\n'
+        + f'<form method="post" action="/system" style="display:inline"><input type="hidden" name="csrf" value="{escape(csrf)}">'
+        + '<button type="submit" name="aktion" value="shutdown">Box herunterfahren</button></form>'
+        + '\n<p class="hint">Neustart und Herunterfahren wirken nur auf der Box (Raspberry Pi).</p>'
+    )
+    return page("System", body)
+
+
+def assistant_page(steps: list[tuple[str, str, bool]]) -> str:
+    """steps: (Titel, Link, erledigt)."""
+    total = len(steps)
+    done = sum(1 for _, _, ok in steps if ok)
+    items = []
+    for number, (title, link, ok) in enumerate(steps, start=1):
+        status = "erledigt" if ok else "offen"
+        items.append(
+            f'<li>Schritt {number} von {total}: <a href="{escape(link)}">{escape(title)}</a> '
+            f"– <strong>{status}</strong></li>"
+        )
+    body = (
+        f"<p>Diese Liste führt durch die Einrichtung. {done} von {total} Schritten erledigt. "
+        "Sie können jederzeit aufhören und später hier weitermachen.</p>\n"
+        + "<ol>\n" + "\n".join(items) + "\n</ol>\n"
+        + '<p><a href="/">Zur Übersicht (abbrechen)</a></p>'
+    )
+    return page("Einrichtung", body)

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1.101 – Box-Web: System und Einrichtungsassistent
+
+- Neue Web-Seite „System“: Verwaltungskennwort ändern, Box neu starten oder herunterfahren (nur auf dem Raspberry Pi), Sicherung der Einstellungen als Datei herunterladen.
+- Die Sicherung enthält Favoriten beider Netze, DMR-Station, FM-Zugang und Audio-Lautstärken, **ohne Kennwörter und Key**.
+- Neuer **Einrichtungsassistent** (`/einrichtung`): barrierefreie, abbrechbare Schritt-Liste (Kennwort, DMR-Station, Audio, FM-Funknetz, Favoriten) mit Fortschritt „x von 5 erledigt“ und Link zu jedem Schritt; der Stand wird jedes Mal neu ermittelt, man kann also jederzeit weitermachen.
+- Neustart/Herunterfahren über `carendmr/box/system_control.py` (wirkt nur unter Linux), Sicherung über `carendmr/box/backup.py`.
+
 ## 0.2.1.100 – Box-Web: FM-Funknetz-Seite
 
 - Neue Web-Seite „FM-Funknetz“: Rufzeichen, Key, Software-Kennung (Vorgabe CarenFM), Server, Port und Start-Talkgroup; Speichern und Verbindungstest.
