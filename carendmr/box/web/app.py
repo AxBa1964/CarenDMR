@@ -48,6 +48,7 @@ class BoxWebApp:
         favorites_factory=None,
         audio_factory=None,
         test_login=None,
+        fm_test=None,
     ) -> None:
         self.project_root = Path(project_root)
         self._auth = auth or AdminAuth(self.project_root)
@@ -56,6 +57,7 @@ class BoxWebApp:
         self._favorites_factory = favorites_factory or self._default_favorites
         self._audio_factory = audio_factory if audio_factory is not None else self._default_audio
         self._test_login = test_login  # für Tests; None → echter Verbindungstest
+        self._fm_test = fm_test
 
     @staticmethod
     def _default_station(project_root: Path):
@@ -97,6 +99,8 @@ class BoxWebApp:
             return self._talkgroups(request, token)
         if path == "/audio":
             return self._audio(request, token)
+        if path == "/fm":
+            return self._fm(request, token)
         return self._render(pages.page("Nicht gefunden", "<p>Diese Seite gibt es nicht.</p>"), status=404)
 
     # ----------------------------------------------------------- Anmeldung
@@ -312,6 +316,99 @@ class BoxWebApp:
         except (BoxAudioSettingsError, ValueError) as error:
             return show(error=str(error))
         return show(error="Unbekannte Aktion.")
+
+    def _fm(self, request: Request, token: str | None) -> Response:
+        from carendmr.svxreflector.config import FmConfigError, FmFunknetzConfig, fm_draft, save_fm_config
+
+        draft = fm_draft(self.project_root)
+        csrf = self._sessions.csrf_token(token) or ""
+
+        def visible() -> dict:
+            shown = dict(draft)
+            shown.pop("key_set", None)
+            return shown
+
+        def show(error: str = "", message: str = "", values: dict | None = None) -> Response:
+            return self._render(pages.fm_page(
+                values if values is not None else visible(), csrf,
+                error=error, message=message, key_set=draft.get("key_set", False),
+            ))
+
+        if request.method != "POST":
+            return show()
+        if not self._sessions.check_csrf(token, request.form.get("csrf")):
+            return show(error="Sitzung abgelaufen. Bitte erneut absenden.")
+
+        form = request.form
+        values = {
+            "callsign": form.get("callsign", "").strip().upper(),
+            "host": form.get("host", draft["host"]).strip(),
+            "software_name": form.get("software_name", "").strip() or "CarenFM",
+        }
+        try:
+            port = int(form.get("port", draft["port"]) or draft["port"])
+            talkgroup = int(form.get("talkgroup", draft["talkgroup"]) or draft["talkgroup"])
+        except ValueError:
+            values.update({"port": form.get("port", ""), "talkgroup": form.get("talkgroup", "")})
+            return show(error="Port und Talkgroup müssen Zahlen sein.", values=values)
+        values.update({"port": port, "talkgroup": talkgroup})
+
+        action = form.get("aktion", "speichern")
+        key = form.get("auth_key", "")
+        try:
+            if action == "test":
+                effective_key = key.strip() or self._fm_stored_key()
+                config = FmFunknetzConfig(
+                    callsign=values["callsign"], auth_key=effective_key, host=values["host"],
+                    port=port, talkgroup=talkgroup, software_name=values["software_name"],
+                )
+                config.validate()
+                message = self._run_fm_test(config)
+                return show(message=message, values=values)
+            save_fm_config(
+                self.project_root, callsign=values["callsign"], auth_key=key,
+                host=values["host"], port=port, talkgroup=talkgroup,
+                software_name=values["software_name"],
+                monitor_talkgroups=tuple(draft.get("monitor_talkgroups", [])),
+            )
+        except (FmConfigError, ValueError) as error:
+            return show(error=str(error), values=values)
+        except Exception as error:  # Verbindungstest meldet Klartext
+            return show(error=str(error), values=values)
+        new_draft = fm_draft(self.project_root)
+        return self._render(pages.fm_page(
+            {k: v for k, v in new_draft.items() if k != "key_set"}, csrf,
+            message="FM-Zugang gespeichert.", key_set=new_draft.get("key_set", False),
+        ))
+
+    def _fm_stored_key(self) -> str:
+        import json
+
+        from carendmr.svxreflector.config import config_path
+
+        path = config_path(self.project_root)
+        if not path.is_file():
+            return ""
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return str(data.get("auth_key", "")) if isinstance(data, dict) else ""
+        except (OSError, ValueError):
+            return ""
+
+    def _run_fm_test(self, config) -> str:
+        if self._fm_test is not None:
+            return self._fm_test(config)
+        from carendmr.svxreflector.client import Connected, SvxReflectorClient
+
+        events: list = []
+        client = SvxReflectorClient(config, events.append)
+        try:
+            connected = client.connect()
+        finally:
+            client.close()
+        if isinstance(connected, Connected):
+            return f"Verbindungstest erfolgreich: angemeldet als {config.callsign}, Talkgroup {connected.talkgroup}."
+        return "Verbindungstest erfolgreich."
 
     def _run_test(self, config) -> str:
         if self._test_login is not None:

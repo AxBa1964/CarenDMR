@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1.100 – Box-Web: FM-Funknetz-Seite
+
+- Neue Web-Seite „FM-Funknetz“: Rufzeichen, Key, Software-Kennung (Vorgabe CarenFM), Server, Port und Start-Talkgroup; Speichern und Verbindungstest.
+- Der Key ist nur schreibbar (wird nie angezeigt, beim Leerlassen bleibt der alte erhalten) und steht nur in `config/fm_funknetz.local.json`.
+- Kennungen fremder Programme (SvxLink, Latry …) werden auch hier abgelehnt.
+
 ## 0.2.1.99 – Box-Web: Audio
 
 - Neue Web-Seite „Audio“: Mikrofon und Lautsprecher auswählen, Probeton, Empfangslautstärke und Mikrofonpegel (0–400 %).

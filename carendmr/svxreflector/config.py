@@ -96,3 +96,67 @@ def load_fm_config(project_root: Path) -> FmFunknetzConfig:
         raise FmConfigError(f"{CONFIG_FILE} enthält ungültige Werte: {error}") from error
     config.validate()
     return config
+
+
+def fm_draft(project_root: Path) -> dict:
+    """Aktuelle FM-Werte fürs Formular (ohne den Key im Klartext)."""
+    path = config_path(project_root)
+    data: dict = {}
+    if path.is_file():
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                data = raw
+        except (OSError, json.JSONDecodeError):
+            data = {}
+    return {
+        "callsign": str(data.get("callsign", "")),
+        "host": str(data.get("host", DEFAULT_HOST)),
+        "port": int(data.get("port", DEFAULT_PORT) or DEFAULT_PORT),
+        "talkgroup": int(data.get("talkgroup", DEFAULT_TALKGROUP) or DEFAULT_TALKGROUP),
+        "software_name": str(data.get("software_name", DEFAULT_SOFTWARE_NAME) or DEFAULT_SOFTWARE_NAME),
+        "monitor_talkgroups": list(data.get("monitor_talkgroups", [])),
+        "key_set": bool(data.get("auth_key")),
+    }
+
+
+def save_fm_config(
+    project_root: Path, *, callsign: str, auth_key: str, host: str, port: int,
+    talkgroup: int, software_name: str = DEFAULT_SOFTWARE_NAME,
+    monitor_talkgroups: tuple[int, ...] = (),
+) -> None:
+    """Prüft die Werte und schreibt ``fm_funknetz.local.json``.
+
+    Ist ``auth_key`` leer, bleibt der gespeicherte Key erhalten.
+    """
+    path = config_path(project_root)
+    existing = fm_draft(project_root)
+    key = auth_key.strip()
+    if not key:
+        current = {}
+        if path.is_file():
+            try:
+                current = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                current = {}
+        key = str(current.get("auth_key", "")) if isinstance(current, dict) else ""
+    config = FmFunknetzConfig(
+        callsign=callsign.strip().upper(), auth_key=key, host=host.strip(),
+        port=int(port), talkgroup=int(talkgroup), software_name=software_name.strip(),
+        monitor_talkgroups=tuple(int(tg) for tg in monitor_talkgroups),
+    )
+    config.validate()
+    payload = {
+        "callsign": config.callsign,
+        "auth_key": config.auth_key,
+        "host": config.host,
+        "port": config.port,
+        "talkgroup": config.talkgroup,
+        "monitor_talkgroups": list(config.monitor_talkgroups),
+        "timeout_seconds": config.timeout_seconds,
+        "software_name": config.software_name,
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.replace(path)

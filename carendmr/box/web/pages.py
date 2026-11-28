@@ -41,6 +41,7 @@ def page(title: str, body: str, *, nav: bool = True) -> str:
         '<a href="/station">DMR-Station</a>'
         '<a href="/talkgroups">Talkgroups</a>'
         '<a href="/audio">Audio</a>'
+        '<a href="/fm">FM-Funknetz</a>'
         '<a href="/abmelden">Abmelden</a></nav>'
         if nav else ""
     )
@@ -281,3 +282,26 @@ def audio_page(
         + "<h2>Geräte</h2>\n" + devices + "\n" + volume_form
     )
     return page("Audio", body)
+
+
+def fm_page(values: dict, csrf: str, *, error: str = "", message: str = "", key_set: bool = False) -> str:
+    key_hint = "gesetzt – leer lassen, um ihn zu behalten" if key_set else "noch nicht gesetzt"
+    body = (
+        error_box(error) + ok_box(message)
+        + '<p>Zugang zum FM-Funknetz (SvxLink-Reflektor). Für die Box gilt das '
+        + 'Rufzeichen <strong>DK7EE-TRX</strong>.</p>'
+        + '<form method="post" action="/fm">'
+        + f'<input type="hidden" name="csrf" value="{escape(csrf)}">'
+        + _field("callsign", "Rufzeichen", str(values.get("callsign", "")), required=True,
+                 hint="z. B. DK7EE-TRX")
+        + "\n" + _field("auth_key", "Key", kind="password", hint=key_hint)
+        + "\n" + _field("software_name", "Software-Kennung", str(values.get("software_name", "")),
+                        hint="Vorgabe CarenFM")
+        + "\n" + _field("host", "Server", str(values.get("host", "")))
+        + "\n" + _field("port", "Port", str(values.get("port", "")), kind="number", inputmode="numeric")
+        + "\n" + _field("talkgroup", "Start-Talkgroup", str(values.get("talkgroup", "")),
+                        kind="number", inputmode="numeric", hint="z. B. 20 (Testarea)")
+        + '\n<button type="submit" name="aktion" value="speichern">Speichern</button>'
+        + '<button type="submit" name="aktion" value="test">Verbindung testen</button></form>'
+    )
+    return page("FM-Funknetz", body)
